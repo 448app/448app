@@ -154,6 +154,25 @@
       .pf-action { flex-direction: row; justify-content: center; flex-wrap: wrap; min-width: unset; }
       .pf-allocations { grid-template-columns: 1fr; }
     }
+    /* ── Desktop revert — กลับเป็นขนาดเดิมก่อน v104 ── */
+    @media (hover: hover) and (pointer: fine) {
+      .feature-hero h2 { font-size: 1.5rem; margin-bottom: 4px; }
+      .feature-hero p  { font-size: .92rem; }
+      .pf-card { padding: 22px; grid-template-columns: 180px 1fr auto; gap: 22px; }
+      .pf-donut-wrap { width: 160px; height: 160px; }
+      .pf-donut-name { font-size: .85rem; line-height: 1.15; }
+      .pf-donut-tag { font-size: .68rem; margin-top: 2px; }
+      .pf-allocations { gap: 6px 18px; margin-bottom: 12px; }
+      .pf-alloc-item { gap: 8px; font-size: .85rem; }
+      .pf-alloc-dot { width: 12px; height: 12px; }
+      .pf-desc { font-size: .85rem; line-height: 1.6; padding: 12px 14px; }
+      .pf-action { gap: 8px; min-width: 130px; }
+      .pf-select-btn { padding: 12px 18px; font-size: .88rem; }
+      .pf-tag { padding: 4px 10px; font-size: .72rem; }
+      .selected-banner .sb-ico { font-size: 1.6rem; }
+      .selected-banner .sb-text { font-size: .9rem; }
+      .selected-banner .sb-clear { padding: 6px 12px; font-size: .82rem; }
+    }
   </style>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">

@@ -462,37 +462,45 @@ footer span { color: var(--red-primary); font-weight: 700; }
 .sb-profile-role { font-size: 1.05rem; color: #bbb; }
 
 /* ════════════════════════════════════════════
-   DESKTOP OVERRIDE — sidebar เล็กกว่า original ~10%
+   DESKTOP OVERRIDE — sidebar + main content กลับไปขนาดเดิมก่อน v100
    เงื่อนไข: device ที่มี mouse จริง (hover: hover + pointer: fine)
-   → iPad/touch จะใช้ขนาดใหญ่ (default), desktop จะใช้ขนาดเดิม -10%
+   → iPad/touch จะใช้ขนาดใหญ่ (default), desktop จะใช้ขนาด original
 ═══════════════════════════════════════════ */
 @media (hover: hover) and (pointer: fine) {
-  .app-sidebar { width: 216px; }
-  .sb-logo-area { padding: 13px 20px 9px; }
-  .sb-brand { font-size: 1.22rem; }
-  .sb-tagline { font-size: .6rem; margin-top: 2px; }
-  .sb-divider { margin: 0 20px 7px; }
-  .app-sb-section { padding: 0 11px; margin-bottom: 5px; }
-  .app-sb-lbl { font-size: .56rem; margin-bottom: 3px; }
+  /* ── Sidebar (revert to original v99) ── */
+  .app-sidebar { width: 240px; }
+  .sb-logo-area { padding: 14px 22px 10px; }
+  .sb-brand { font-size: 1.35rem; }
+  .sb-tagline { font-size: .66rem; margin-top: 2px; }
+  .sb-divider { margin: 0 22px 8px; }
+  .app-sb-section { padding: 0 12px; margin-bottom: 6px; }
+  .app-sb-lbl { font-size: .62rem; margin-bottom: 3px; }
   .app-sb-item {
-    gap: 9px; padding: 6px 9px;
-    font-size: .77rem; margin-bottom: 1px;
+    gap: 10px; padding: 7px 10px;
+    font-size: .85rem; margin-bottom: 1px;
   }
-  .app-sb-item .sb-ico { font-size: .86rem; width: 18px; }
-  .app-sb-item .sb-ico .svg-icon { width: 16px; height: 16px; }
+  .app-sb-item .sb-ico { font-size: .95rem; width: 20px; }
+  .app-sb-item .sb-ico .svg-icon { width: 18px; height: 18px; }
   .app-sb-item .sb-badge {
-    font-size: .57rem; padding: 2px 6px;
+    font-size: .63rem; padding: 2px 7px;
   }
   .sb-avatar-box {
-    width: 32px; height: 32px; border-radius: 9px; font-size: .82rem;
+    width: 36px; height: 36px; border-radius: 10px; font-size: .9rem;
   }
-  .sb-profile-name { font-size: .74rem; }
-  .sb-profile-role { font-size: .61rem; }
+  .sb-profile-name { font-size: .82rem; }
+  .sb-profile-role { font-size: .68rem; }
   .app-main {
-    margin-left: 216px;
-    width: calc(100vw - 216px);
-    max-width: calc(100vw - 216px);
+    margin-left: 240px;
+    width: calc(100vw - 240px);
+    max-width: calc(100vw - 240px);
   }
+  /* ── Main content (revert v104 enlargements) ── */
+  .app-content { font-size: initial; }
+  .stat-card .s-label  { font-size: 0.82rem; }
+  .stat-card .s-value  { font-size: 1.6rem; }
+  .stat-card .s-change { font-size: 0.78rem; }
+  .app-topbar-left .tb-title { font-size: .98rem; }
+  .app-topbar-left .tb-date  { font-size: .76rem; margin-top: 1px; }
 }
 
 /* Main area */
