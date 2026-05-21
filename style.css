@@ -462,36 +462,36 @@ footer span { color: var(--red-primary); font-weight: 700; }
 .sb-profile-role { font-size: 1.05rem; color: #bbb; }
 
 /* ════════════════════════════════════════════
-   DESKTOP OVERRIDE — ใช้ขนาด sidebar เดิม (ก่อน iPad enlargement)
+   DESKTOP OVERRIDE — sidebar เล็กกว่า iPad ~30%
    เงื่อนไข: device ที่มี mouse จริง (hover: hover + pointer: fine)
-   → iPad/touch จะใช้ขนาดใหญ่ (default), desktop จะใช้ขนาดเดิม
+   → iPad/touch จะใช้ขนาดใหญ่ (default), desktop จะใช้ขนาดเล็กลง 30%
 ═══════════════════════════════════════════ */
 @media (hover: hover) and (pointer: fine) {
-  .app-sidebar { width: 240px; }
-  .sb-logo-area { padding: 14px 22px 10px; }
-  .sb-brand { font-size: 1.35rem; }
-  .sb-tagline { font-size: .66rem; margin-top: 2px; }
-  .sb-divider { margin: 0 22px 8px; }
-  .app-sb-section { padding: 0 12px; margin-bottom: 6px; }
-  .app-sb-lbl { font-size: .62rem; margin-bottom: 3px; }
+  .app-sidebar { width: 200px; }
+  .sb-logo-area { padding: 10px 16px 8px; }
+  .sb-brand { font-size: .95rem; }
+  .sb-tagline { font-size: .46rem; margin-top: 2px; }
+  .sb-divider { margin: 0 16px 6px; }
+  .app-sb-section { padding: 0 8px; margin-bottom: 4px; }
+  .app-sb-lbl { font-size: .44rem; margin-bottom: 2px; }
   .app-sb-item {
-    gap: 10px; padding: 7px 10px;
-    font-size: .85rem; margin-bottom: 1px;
+    gap: 7px; padding: 5px 8px;
+    font-size: .6rem; margin-bottom: 1px;
   }
-  .app-sb-item .sb-ico { font-size: .95rem; width: 20px; }
-  .app-sb-item .sb-ico .svg-icon { width: 18px; height: 18px; }
+  .app-sb-item .sb-ico { font-size: .67rem; width: 14px; }
+  .app-sb-item .sb-ico .svg-icon { width: 13px; height: 13px; }
   .app-sb-item .sb-badge {
-    font-size: .63rem; padding: 2px 7px;
+    font-size: .44rem; padding: 1px 5px;
   }
   .sb-avatar-box {
-    width: 36px; height: 36px; border-radius: 10px; font-size: .9rem;
+    width: 26px; height: 26px; border-radius: 8px; font-size: .65rem;
   }
-  .sb-profile-name { font-size: .82rem; }
-  .sb-profile-role { font-size: .68rem; }
+  .sb-profile-name { font-size: .58rem; }
+  .sb-profile-role { font-size: .48rem; }
   .app-main {
-    margin-left: 240px;
-    width: calc(100vw - 240px);
-    max-width: calc(100vw - 240px);
+    margin-left: 200px;
+    width: calc(100vw - 200px);
+    max-width: calc(100vw - 200px);
   }
 }
 
