@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>448 Wealth Management Plan — สามเหลี่ยมการเงิน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
+      authDomain: "app-d83ab.firebaseapp.com",
+      projectId: "app-d83ab",
+      storageBucket: "app-d83ab.firebasestorage.app",
+      messagingSenderId: "2200674251",
+      appId: "1:2200674251:web:0b240a123df2e5b86ea04e"
+    });
+    const fbAuth = firebase.auth();
+  </script>
+  <style>
+    /* ── Hero ── */
+    .py-hero {
+      background: linear-gradient(135deg, #1F2D4F 0%, #2C3E61 100%);
+      padding: 36px 40px;
+      color: white; position: relative; overflow: hidden;
+      border-radius: 0 0 24px 24px;
+      box-shadow: 0 6px 24px rgba(31,45,79,.20);
+    }
+    .py-hero::before {
+      content: ''; position: absolute; top: -40%; right: -10%;
+      width: 380px; height: 380px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,169,97,.18), transparent);
+    }
+    .py-hero h2 {
+      font-size: 1.85rem; font-weight: 800; margin-bottom: 4px;
+      display: flex; align-items: center; gap: 14px;
+      position: relative;
+    }
+    .py-hero h2 .icon-tile {
+      width: 50px; height: 50px; border-radius: 12px;
+      background: rgba(201,169,97,.25); border: 1.5px solid #C9A961;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; color: #C9A961;
+    }
+    .py-hero p { font-size: 1rem; opacity: .85; position: relative; }
+
+    /* ── Page wrap ── */
+    .py-wrap {
+      max-width: 1280px; margin: 0 auto; padding: 28px 30px 60px;
+    }
+
+    /* ── 2-column layout: pyramid + descriptions ── */
+    .py-grid {
+      display: grid; grid-template-columns: minmax(380px, 480px) 1fr;
+      gap: 36px; align-items: center;
+      margin-top: 8px;
+    }
+    @media (max-width: 920px) {
+      .py-grid { grid-template-columns: 1fr; gap: 24px; }
+    }
+
+    /* ── Pyramid (left) ── */
+    .py-pyramid-wrap {
+      position: relative;
+      padding: 20px 0 30px;
+    }
+
+    /* Container holds 5 trapezoids stacked */
+    .py-stack {
+      position: relative;
+      display: flex; flex-direction: column;
+      align-items: center;
+      filter: drop-shadow(0 10px 20px rgba(120,30,30,.25));
+    }
+    /* Each layer is a colored trapezoid */
+    .py-layer {
+      width: 100%;
+      color: white;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      transition: all .3s cubic-bezier(.2,.9,.3,1.05);
+      position: relative;
+      letter-spacing: .02em;
+    }
+    .py-layer:hover { filter: brightness(1.08); transform: scale(1.02); }
+    .py-layer.active { filter: brightness(1.15); transform: scale(1.04); }
+
+    /* Color gradient from dark red (top) to light red (bottom) */
+    .py-l5 { /* Wealth Distribution (top) */
+      background: linear-gradient(135deg, #6B1F2A, #8B2C36);
+      clip-path: polygon(50% 0, 65% 100%, 35% 100%);
+      height: 80px; padding-top: 18px;
+      font-size: .9rem; line-height: 1.2;
+    }
+    .py-l4 {
+      background: linear-gradient(135deg, #7E2530, #9C2F3C);
+      clip-path: polygon(35% 0, 65% 0, 73% 100%, 27% 100%);
+      height: 70px; font-size: 1rem;
+      margin-top: -1px;
+    }
+    .py-l3 {
+      background: linear-gradient(135deg, #8B2C36, #A53442);
+      clip-path: polygon(27% 0, 73% 0, 81% 100%, 19% 100%);
+      height: 70px; font-size: 1.05rem;
+      margin-top: -1px;
+    }
+    .py-l2 {
+      background: linear-gradient(135deg, #9C2F3C, #B23B48);
+      clip-path: polygon(19% 0, 81% 0, 89% 100%, 11% 100%);
+      height: 70px; font-size: 1.1rem;
+      margin-top: -1px;
+    }
+    .py-l1 { /* Cash Flow (bottom) */
+      background: linear-gradient(135deg, #A53442, #BC3F50);
+      clip-path: polygon(11% 0, 89% 0, 100% 100%, 0 100%);
+      height: 78px; font-size: 1.15rem;
+      margin-top: -1px;
+    }
+
+    /* Tax Planning side label */
+    .py-tax-side {
+      position: absolute; left: -14px; top: 50%;
+      transform: translateY(-50%) rotate(-90deg); transform-origin: center;
+      background: linear-gradient(135deg, #C9A961, #B8924A);
+      color: #1F2D4F; padding: 8px 18px;
+      border-radius: 10px; font-weight: 800; font-size: .9rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,.18);
+      letter-spacing: .05em; white-space: nowrap;
+      border: 1.5px solid #FFF;
+      z-index: 5;
+    }
+
+    /* Arrow up icon */
+    .py-arrow-up {
+      position: absolute; top: -28px; left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.6rem; color: #1F2D4F;
+      animation: floatUp 2.4s ease-in-out infinite;
+    }
+    @keyframes floatUp {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50%      { transform: translateX(-50%) translateY(-8px); }
+    }
+
+    /* ── Description Cards (right) ── */
+    .py-desc-list {
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .py-desc {
+      background: linear-gradient(135deg, #1F2D4F, #2C3E61);
+      color: white; padding: 18px 22px;
+      border-radius: 14px;
+      box-shadow: 0 4px 14px rgba(31,45,79,.18);
+      position: relative;
+      display: grid; grid-template-columns: 50px 1fr auto;
+      gap: 14px; align-items: center;
+      cursor: pointer;
+      transition: all .25s cubic-bezier(.2,.9,.3,1.05);
+      border-left: 4px solid transparent;
+    }
+    .py-desc:hover {
+      transform: translateX(4px);
+      box-shadow: 0 8px 20px rgba(31,45,79,.28);
+      border-left-color: #C9A961;
+    }
+    .py-desc.active {
+      transform: translateX(8px) scale(1.02);
+      border-left-color: #C9A961;
+      box-shadow: 0 10px 24px rgba(31,45,79,.32);
+    }
+    .py-desc-icon {
+      width: 50px; height: 50px; border-radius: 12px;
+      background: rgba(201,169,97,.2);
+      border: 1.5px solid #C9A961;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; flex-shrink: 0;
+    }
+    .py-desc-body { min-width: 0; }
+    .py-desc-title {
+      font-weight: 800; font-size: 1.05rem; margin-bottom: 3px;
+      color: #C9A961;
+      letter-spacing: .02em;
+    }
+    .py-desc-text {
+      font-size: .88rem; opacity: .9; line-height: 1.55;
+    }
+    .py-desc-text b { color: #C9A961; font-weight: 700; }
+    .py-desc-cta {
+      padding: 8px 14px; border-radius: 50px;
+      background: #C9A961; color: #1F2D4F; border: none;
+      font-family: 'Sarabun', sans-serif; font-weight: 800; font-size: .82rem;
+      cursor: pointer; transition: all .15s; white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .py-desc-cta:hover {
+      background: #FFF; transform: scale(1.05);
+    }
+    @media (max-width: 600px) {
+      .py-desc { grid-template-columns: 44px 1fr; }
+      .py-desc-cta { grid-column: 1 / -1; justify-self: stretch; }
+    }
+
+    /* ── Footer note ── */
+    .py-footer {
+      max-width: 1280px; margin: 28px auto 0;
+      padding: 22px 28px;
+      background: linear-gradient(135deg, #FFF8E7, #FFFFFF);
+      border-radius: 16px;
+      border: 1.5px solid rgba(201,169,97,.4);
+      display: flex; align-items: flex-start; gap: 16px;
+      box-shadow: 0 2px 10px rgba(201,169,97,.12);
+    }
+    .py-footer-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: #C9A961; color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    .py-footer-text {
+      font-size: .92rem; color: #5C4A1F; line-height: 1.6;
+    }
+    .py-footer-text b { color: #1F2D4F; }
+
+    /* Entry animations */
+    .fade-up {
+      opacity: 0; transform: translateY(20px);
+      animation: fadeUp .6s cubic-bezier(.2,.9,.3,1.05) forwards;
+    }
+    .fade-up.d1 { animation-delay: .1s; }
+    .fade-up.d2 { animation-delay: .2s; }
+    .fade-up.d3 { animation-delay: .3s; }
+    .fade-up.d4 { animation-delay: .4s; }
+    .fade-up.d5 { animation-delay: .5s; }
+    .fade-up.d6 { animation-delay: .6s; }
+    @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+    /* Layer entry from bottom up */
+    .py-layer-anim {
+      opacity: 0; transform: translateY(40px) scaleY(.5);
+      animation: pyLayer .6s cubic-bezier(.2,.9,.3,1.05) forwards;
+    }
+    .py-l1.py-layer-anim { animation-delay: .2s; }
+    .py-l2.py-layer-anim { animation-delay: .35s; }
+    .py-l3.py-layer-anim { animation-delay: .5s; }
+    .py-l4.py-layer-anim { animation-delay: .65s; }
+    .py-l5.py-layer-anim { animation-delay: .8s; }
+    @keyframes pyLayer {
+      to { opacity: 1; transform: translateY(0) scaleY(1); }
+    }
+  </style>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F2D4F">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="448 Wealth">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
+</head>
+
+<body>
+<div class="app-layout">
+  <aside class="app-sidebar">
+    <div class="sb-top-accent"></div>
+    <div class="sb-logo-area">
+      <div class="sb-brand">448</div>
+      <div class="sb-tagline">Wealth Management</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เมนูหลัก</div>
+      <div class="app-sb-item" onclick="location.href='dashboard.html'"><span class="sb-ico">🏠</span> หน้าแรก</div>
+      <div class="app-sb-item" onclick="location.href='clients.html'"><span class="sb-ico">👥</span> รายชื่อลูกค้า</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='financial.html'"><span class="sb-ico">💰</span> กระแสเงินสด</div>
+      <div class="app-sb-item" onclick="location.href='assets.html'"><span class="sb-ico">💎</span> สินทรัพย์</div>
+      <div class="app-sb-item" onclick="location.href='networth.html'"><span class="sb-ico">⚖️</span> งบการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='ratios.html'"><span class="sb-ico">📐</span> อัตราส่วนการเงิน</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='education.html'"><span class="sb-ico">🎓</span> การศึกษาบุตร</div>
+      <div class="app-sb-item" onclick="location.href='retirement.html'"><span class="sb-ico">🛋️</span> วางแผนเกษียณ</div>
+      <div class="app-sb-item" onclick="location.href='goals.html'"><span class="sb-ico">🎯</span> เป้าหมายชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='life-insurance.html'"><span class="sb-ico">☂️</span> ประกันชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='health-insurance.html'"><span class="sb-ico">⚕️</span> ประกันสุขภาพ</div>
+      <div class="app-sb-item" onclick="location.href='policies_summary.html'"><span class="sb-ico">📊</span> สรุปกรมธรรม์</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วิเคราะห์และแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='priority.html'"><span class="sb-ico">⭐</span> ลำดับความสำคัญ</div>
+      <div class="app-sb-item" onclick="location.href='portfolio.html'"><span class="sb-ico">📈</span> พอร์ตแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='plan_summary.html'"><span class="sb-ico">📋</span> สรุปแผน</div>
+      <div class="app-sb-item" onclick="location.href='timeline.html'"><span class="sb-ico">⏳</span> Life Timeline</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เครื่องมือ</div>
+      <div class="app-sb-item" onclick="location.href='tax2.html'"><span class="sb-ico">🧾</span> คำนวณภาษี</div>
+      <div class="app-sb-item" onclick="location.href='appointments.html'"><span class="sb-ico">📅</span> นัดหมาย</div>
+      <div class="app-sb-item" onclick="location.href='guide.html'"><span class="sb-ico">📖</span> คู่มือการใช้งาน</div>
+    </div>
+    <div class="sb-bottom-area">
+      <div class="sb-profile-row" onclick="location.href='profile.html'">
+        <div class="sb-avatar-box" id="sb-avatar">A</div>
+        <div>
+          <div class="sb-profile-name" id="sb-name">Agent</div>
+          <div class="sb-profile-role">AIA · ดูโปรไฟล์</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main" style="overflow-y:auto;">
+    <!-- Hero -->
+    <div class="py-hero fade-up">
+      <h2>
+        <span class="icon-tile">🔺</span>
+        สามเหลี่ยมการเงิน
+      </h2>
+      <p>คือกระบวนการที่ต้องรู้ก่อนวางแผนการเงิน — 5 ขั้นจากฐานสู่ยอด</p>
+    </div>
+
+    <div class="py-wrap">
+      <div class="py-grid">
+        <!-- Pyramid visual -->
+        <div class="py-pyramid-wrap fade-up d1">
+          <div class="py-stack">
+            <span class="py-arrow-up">↑</span>
+            <div class="py-layer py-l5 py-layer-anim" data-target="dist">Wealth<br>Distribution</div>
+            <div class="py-layer py-l4 py-layer-anim" data-target="invest">Investment</div>
+            <div class="py-layer py-l3 py-layer-anim" data-target="serious">Saving For Serious Goal</div>
+            <div class="py-layer py-l2 py-layer-anim" data-target="risk">Risk Management</div>
+            <div class="py-layer py-l1 py-layer-anim" data-target="cash">Cash Flow Management</div>
+            <div class="py-tax-side">Tax Planning</div>
+          </div>
+        </div>
+
+        <!-- Description cards -->
+        <div class="py-desc-list">
+          <div class="py-desc fade-up d2" data-key="dist">
+            <div class="py-desc-icon">👑</div>
+            <div class="py-desc-body">
+              <div class="py-desc-title">การส่งมอบความมั่งคั่ง</div>
+              <div class="py-desc-text">ถ่ายโอนให้ผู้รับมรดกจาก<b>การวางแผนมรดก</b> · ครอบครัว · บ้าน · รถ</div>
+            </div>
+            <button class="py-desc-cta" onclick="alert('Wealth Distribution — เปิดเร็วๆนี้')">ดูแผน →</button>
+          </div>
+
+          <div class="py-desc fade-up d3" data-key="invest">
+            <div class="py-desc-icon">📈</div>
+            <div class="py-desc-body">
+              <div class="py-desc-title">Life Style — Investment Planning</div>
+              <div class="py-desc-text">ลงทุนเพื่อเพิ่มความมั่งคั่งและสนับสนุน <b>ไลฟ์สไตล์</b> ที่ต้องการ</div>
+            </div>
+            <button class="py-desc-cta" onclick="location.href='portfolio.html'">พอร์ตแนะนำ →</button>
+          </div>
+
+          <div class="py-desc fade-up d4" data-key="serious">
+            <div class="py-desc-icon">🎯</div>
+            <div class="py-desc-body">
+              <div class="py-desc-title">Wealth Accumulation</div>
+              <div class="py-desc-text"><b>Retirement Planning</b> · <b>Education Planning</b> — สะสมเงินเพื่อเป้าหมายสำคัญ</div>
+            </div>
+            <button class="py-desc-cta" onclick="location.href='retirement.html'">วางแผน →</button>
+          </div>
+
+          <div class="py-desc fade-up d5" data-key="risk">
+            <div class="py-desc-icon">🛡️</div>
+            <div class="py-desc-body">
+              <div class="py-desc-title">Transfer Risk (โอนย้ายความเสี่ยง)</div>
+              <div class="py-desc-text"><b>ชีวิต · สุขภาพ · ทรัพย์สิน</b> — ใช้ประกันโอนความเสี่ยงให้บริษัทประกัน</div>
+            </div>
+            <button class="py-desc-cta" onclick="location.href='life-insurance.html'">ดูประกัน →</button>
+          </div>
+
+          <div class="py-desc fade-up d6" data-key="cash">
+            <div class="py-desc-icon">💰</div>
+            <div class="py-desc-body">
+              <div class="py-desc-title">การบริหารรายรับรายจ่ายและหนี้สิน</div>
+              <div class="py-desc-text">มีเงินสำรองทุกเดือน <b>3–6 เท่า</b>ของค่าใช้จ่ายต่อเดือน · จัดการหนี้สิน</div>
+            </div>
+            <button class="py-desc-cta" onclick="location.href='financial.html'">กระแสเงินสด →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer note -->
+      <div class="py-footer fade-up d6">
+        <div class="py-footer-icon">💡</div>
+        <div class="py-footer-text">
+          <b>เริ่มจากฐานพีระมิดเสมอ</b> — บริหารรายรับรายจ่ายและเงินสำรองให้พร้อมก่อน
+          จึงจัดการความเสี่ยงด้วยประกัน แล้วจึงสะสมเป้าหมายสำคัญ ลงทุน
+          และส่งมอบความมั่งคั่ง · ตลอดทั้ง 5 ขั้น <b>Tax Planning</b> เป็นส่วนที่ใช้ร่วมเพื่อประหยัดภาษีในทุกช่วง
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+const _uid = localStorage.getItem('aia_currentUser');
+if (!_uid) location.href = 'login.html';
+
+fbAuth.onAuthStateChanged(user => {
+  if (!user) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; }
+});
+
+/* Profile in sidebar */
+(function initSidebar(){
+  try {
+    const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+    const u = users.find(x => x.id === _uid);
+    if (!u) return;
+    const name = ((u.firstName||'') + (u.lastName ? ' '+u.lastName : '')).trim() || 'Agent';
+    const initial = (u.firstName || 'A').charAt(0).toUpperCase();
+    const sbAv = document.getElementById('sb-avatar');
+    const sbNm = document.getElementById('sb-name');
+    if (sbNm) sbNm.textContent = name;
+    if (sbAv) {
+      const p = u.profile || {};
+      if (p.photo) {
+        sbAv.style.backgroundImage = `url('${p.photo}')`;
+        sbAv.style.backgroundSize = 'cover'; sbAv.style.backgroundPosition = 'center';
+        sbAv.classList.add('has-photo'); sbAv.textContent = '';
+      } else {
+        sbAv.textContent = initial;
+      }
+    }
+  } catch(e){}
+})();
+
+/* Layer ↔ description sync — hover/click a layer highlights matching desc */
+function syncSelection(key) {
+  document.querySelectorAll('.py-layer').forEach(l => {
+    l.classList.toggle('active', l.dataset.target === key);
+  });
+  document.querySelectorAll('.py-desc').forEach(d => {
+    d.classList.toggle('active', d.dataset.key === key);
+  });
+}
+document.querySelectorAll('.py-layer').forEach(l => {
+  l.addEventListener('mouseenter', () => syncSelection(l.dataset.target));
+  l.addEventListener('click', () => {
+    const t = l.dataset.target;
+    syncSelection(t);
+    /* scroll matching desc into view on mobile */
+    const desc = document.querySelector(`.py-desc[data-key="${t}"]`);
+    if (desc) desc.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
+});
+document.querySelectorAll('.py-desc').forEach(d => {
+  d.addEventListener('mouseenter', () => syncSelection(d.dataset.key));
+});
+</script>
+
+</body>
+</html>

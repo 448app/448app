@@ -275,6 +275,7 @@ if ('serviceWorker' in navigator
     /* ตัดสินว่าหน้าไหน active — match path สุดท้าย */
     const path = (location.pathname || '').toLowerCase();
     const isTimeline = path.endsWith('timeline.html');
+    const isPyramid  = path.endsWith('pyramid.html');
     /* ใช้ SVG icons จาก IconLib (line-style เหมือน sidebar) — fallback เป็น emoji ถ้ายังไม่โหลด */
     const ico = (name, emoji) => {
       if (window.IconLib && window.IconLib.getIcon) {
@@ -292,7 +293,7 @@ if ('serviceWorker' in navigator
         <span class="fm-ico">${ico('map', '🗺️')}</span>
         <span>Timeline</span>
       </button>
-      <button class="fm-item" onclick="alert('Pyramid view — เปิดเร็วๆนี้')" title="Pyramid">
+      <button class="fm-item ${isPyramid ? 'active' : ''}" onclick="location.href='pyramid.html'" title="Pyramid">
         <span class="fm-ico">${ico('pyramid', '🔺')}</span>
         <span>Pyramid</span>
       </button>
