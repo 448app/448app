@@ -10,7 +10,6 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
-  <script src="money-input.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -249,7 +248,7 @@
     .ast-apply-opt {
       display: flex; align-items: center; gap: 14px;
       padding: 12px 14px; background: white;
-      border: 1.5px solid var(--gast-divider, #C0C8D6);
+      border: 1.5px solid var(--ast-divider);
       border-radius: 100px; cursor: pointer;
       font-family: var(--font); font-size: 1rem; font-weight: 700;
       color: var(--ast-blue); transition: all .15s;
@@ -341,79 +340,6 @@
       .ast-table { min-width: 880px; }
     }
 
-    /* Modal */
-    .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4);
-      z-index: 500; align-items: center; justify-content: center; padding: 20px;
-    }
-    .modal-overlay.open { display: flex; }
-    .modal-box {
-      background: white; border-radius: var(--radius); width: 560px; max-width: 100%;
-      max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2);
-    }
-    .modal-header {
-      background: linear-gradient(135deg, var(--red-primary), var(--red-dark));
-      color: white; padding: 18px 22px;
-      display: flex; align-items: center; justify-content: space-between;
-      border-radius: var(--radius) var(--radius) 0 0; position: sticky; top: 0; z-index: 5;
-    }
-    .modal-header h3 { font-size: 1rem; font-weight: 700; }
-    .modal-close { background: none; border: none; color: white; font-size: 1.3rem; cursor: pointer; }
-    .modal-body { padding: 22px; }
-    .modal-footer {
-      padding: 14px 22px; background: var(--gray-100);
-      border-radius: 0 0 var(--radius) var(--radius);
-      display: flex; gap: 10px; justify-content: flex-end;
-    }
-    .form-row { margin-bottom: 14px; }
-    .form-row label {
-      display: block; font-size: .82rem; font-weight: 600;
-      color: var(--gray-600); margin-bottom: 5px;
-    }
-    .form-row label .opt { color: var(--gray-400); font-weight: 400; font-size: .76rem; }
-    .form-row input, .form-row select, .form-row textarea {
-      width: 100%; padding: 10px 12px; border: 1.5px solid var(--gray-200);
-      border-radius: 8px; font-size: .92rem; font-family: var(--font); box-sizing: border-box;
-    }
-    .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
-      outline: none; border-color: var(--red-primary); box-shadow: 0 0 0 3px var(--red-soft);
-    }
-    .form-row textarea { resize: vertical; min-height: 60px; }
-    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-
-    .fv-display {
-      background: var(--red-soft); border-radius: 10px; padding: 14px 16px;
-      margin-top: 10px; border-left: 3px solid var(--red-primary);
-    }
-    .fv-lbl { font-size: .78rem; color: var(--red-primary); font-weight: 700; margin-bottom: 4px; }
-    .fv-val { font-size: 1.4rem; font-weight: 800; color: var(--red-dark); }
-    .fv-detail { font-size: .76rem; color: var(--gray-600); margin-top: 4px; }
-
-    .toast {
-      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(60px);
-      background: #1a1a2e; color: white; padding: 11px 22px; border-radius: 24px;
-      font-size: .88rem; font-weight: 600; z-index: 9999; transition: transform .3s;
-    }
-    .toast.show { transform: translateX(-50%) translateY(0); }
-
-    .no-client {
-      background: white; border-radius: var(--radius); padding: 60px 30px;
-      text-align: center; color: var(--gray-500); box-shadow: var(--shadow-sm);
-    }
-    .no-client .nc-icon { font-size: 3rem; margin-bottom: 12px; }
-    .no-client p { font-size: 1rem; }
-    .no-client a { color: var(--red-primary); font-weight: 700; }
-
-    @media(max-width:900px) {
-      .summary-grid { grid-template-columns: repeat(2,1fr); }
-    }
-    @media(max-width:600px) {
-      .summary-grid { grid-template-columns: 1fr; }
-      .form-grid-2, .form-grid-3 { grid-template-columns: 1fr; }
-      .assets-table th:nth-child(4), .assets-table td:nth-child(4),
-      .assets-table th:nth-child(5), .assets-table td:nth-child(5) { display: none; }
-    }
   </style>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
@@ -505,92 +431,6 @@
   </main>
 </div>
 
-<!-- Modal: Add/Edit Asset -->
-<div class="modal-overlay" id="asset-modal">
-  <div class="modal-box">
-    <div class="modal-header">
-      <h3 id="modal-title">เพิ่มสินทรัพย์</h3>
-      <button class="modal-close" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-grid-2">
-        <div class="form-row">
-          <label>ประเภทสินทรัพย์ *</label>
-          <select id="f-type" onchange="onTypeChange()">
-            <optgroup label="💧 สินทรัพย์สภาพคล่อง">
-              <option value="cash">💵 เงินสด</option>
-              <option value="deposit">💰 เงินฝาก</option>
-              <option value="bond">📜 ตราสารหนี้</option>
-            </optgroup>
-            <optgroup label="📈 สินทรัพย์เพื่อการลงทุน">
-              <option value="pvd">🏢 PVD (กองทุนสำรองเลี้ยงชีพ)</option>
-              <option value="rmf">🌱 RMF</option>
-              <option value="ltf">📈 LTF</option>
-              <option value="ssf">🌿 SSF</option>
-              <option value="thaiesg">🌍 ThaiESG</option>
-              <option value="mutual">🏦 กองทุนรวม</option>
-              <option value="unitlinked">🔗 Unit Linked</option>
-              <option value="stock">📊 หุ้น</option>
-            </optgroup>
-            <optgroup label="🏠 สินทรัพย์ใช้ส่วนตัว">
-              <option value="realestate">🏠 อสังหาริมทรัพย์</option>
-              <option value="other">📦 อื่นๆ</option>
-            </optgroup>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>ชื่อ / รายละเอียด *</label>
-          <input id="f-name" type="text" placeholder="เช่น บัญชีออมทรัพย์ SCB">
-        </div>
-      </div>
-
-      <div class="form-grid-3">
-        <div class="form-row">
-          <label>มูลค่าปัจจุบัน (บาท) *</label>
-          <input id="f-currentValue" class="money-fmt" inputmode="decimal" min="0" placeholder="0" oninput="updateFV()">
-        </div>
-        <div class="form-row">
-          <label>ผลตอบแทน/ปี (%)</label>
-          <input id="f-return" type="number" step="0.1" placeholder="0.0" oninput="updateFV()">
-        </div>
-        <div class="form-row">
-          <label>ระยะเวลา (ปี)</label>
-          <input id="f-term" type="number" min="0" placeholder="0" oninput="updateFV()">
-        </div>
-      </div>
-
-      <div class="form-row">
-        <label>เงินสมทบ (บาท)
-          <span class="opt">— ถ้าใส่เพิ่มสม่ำเสมอ</span>
-        </label>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <input id="f-contribution" class="money-fmt" inputmode="decimal" min="0" placeholder="0" oninput="updateFV()" style="flex:1;min-width:0;">
-          <select id="f-contrib-freq" onchange="updateFV()" style="width:auto;flex-shrink:0;padding:9px 10px;border:1.5px solid var(--gray-300);border-radius:var(--radius-sm);font-family:var(--font);font-size:.9rem;background:white;">
-            <option value="annual">ต่อปี</option>
-            <option value="monthly">ต่อเดือน</option>
-          </select>
-        </div>
-        <div id="f-contrib-hint" style="font-size:.78rem;color:var(--gray-500);margin-top:4px;"></div>
-      </div>
-
-      <div class="fv-display">
-        <div class="fv-lbl">📈 มูลค่าอนาคต (FV) — คำนวณอัตโนมัติ</div>
-        <div class="fv-val" id="fv-result">฿ 0</div>
-        <div class="fv-detail" id="fv-detail">FV = PV(1+r)ⁿ + PMT × [(1+r)ⁿ − 1] / r × (1+r) <small>(annuity-due)</small></div>
-      </div>
-
-      <div class="form-row" style="margin-top:14px;">
-        <label>หมายเหตุ <span class="opt">— optional</span></label>
-        <textarea id="f-note" placeholder="ข้อมูลเพิ่มเติม..."></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
-      <button class="btn btn-primary" onclick="saveAsset()">💾 บันทึก</button>
-    </div>
-  </div>
-</div>
-
 <!-- Apply-to modal -->
 <div class="ast-apply-overlay" id="ast-apply-modal" onclick="if(event.target===this)closeApplyModal()">
   <div class="ast-apply-card">
@@ -601,8 +441,6 @@
     <div class="ast-apply-options" id="ast-apply-options"></div>
   </div>
 </div>
-
-<div class="toast" id="toast"></div>
 
 <script>
 /* ════════════════════════════════════════════
@@ -625,7 +463,7 @@ function updateUser(fn) {
   fn(users[idx]);
   localStorage.setItem('aia_users', JSON.stringify(users));
 }
-function getClients() { return (getUser().data && getUser().data.clients) || []; }
+function getClients() { const u = getUser(); return (u.data && u.data.clients) || []; }
 function getCurrentClient() {
   return getClients().find(c => c.id === selectedClientId) || null;
 }
@@ -707,8 +545,6 @@ function _rowFields(type) {
    STATE
 ═══════════════════════════════════════════ */
 let selectedClientId = null;
-let editingId = null;
-let currentFilter = 'all';
 
 /* ════════════════════════════════════════════
    FV CALCULATION (annuity-due — เงินสมทบเข้าตอนต้นงวด)
@@ -733,13 +569,6 @@ function calcFV(pv, rate, years, pmt, freq) {
   const factor = Math.pow(1 + rate, years);
   if (rate === 0) return pv + pmt * years;
   return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
-}
-
-function fmt(n) {
-  return '฿' + Math.round(n).toLocaleString('th-TH');
-}
-function fmtShort(n) {
-  return '฿' + Math.round(n).toLocaleString('th-TH');
 }
 
 /* ════════════════════════════════════════════
@@ -774,8 +603,15 @@ function onClientChange(cid) {
 ═══════════════════════════════════════════ */
 function _astParseNum(str) {
   if (str == null) return 0;
-  const n = Number(String(str).replace(/[^\d.\-]/g,''));
-  return isFinite(n) ? n : 0;
+  /* strip everything except digits + decimal — disallow negative (assets are non-negative) */
+  const n = Number(String(str).replace(/[^\d.]/g,''));
+  return isFinite(n) && n >= 0 ? n : 0;
+}
+/* HTML-escape for use inside attribute values — prevents XSS from imported/malicious data */
+function _astEscapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function _astFmtNum(n) {
   if (!n || !isFinite(n)) return '';
@@ -1153,7 +989,8 @@ function updateCustomRowFV(id) {
 function renderCustomRow(a) {
   const isFV = a.customCategory === 'fv';
   const cv = a.currentValue || ''; const co = a.contribution || '';
-  const er = a.expectedReturn || ''; const tm = a.term || '';
+  /* preserve explicit 0 in number inputs (er/tm) — use ?? */
+  const er = a.expectedReturn ?? ''; const tm = a.term ?? '';
   const cf = a.cashFlow || '';
   const cvFmt = cv ? _astFmtNum(cv) : '';
   const coFmt = co ? _astFmtNum(co) : '';
@@ -1164,7 +1001,7 @@ function renderCustomRow(a) {
       <td class="col-name">
         <span class="ast-row-name" style="display:flex; align-items:center; gap:4px;">
           <button class="ast-cust-del" onclick="deleteCustomRow('${a.id}')" title="ลบแถว">×</button>
-          <input type="text" class="ast-cust-name" value="${(a.name||'').replace(/"/g,'&quot;')}"
+          <input type="text" class="ast-cust-name" value="${_astEscapeAttr(a.name||'')}"
                  placeholder="${isFV ? 'ชื่อรายการ (มูลค่าอนาคต)' : 'ชื่อรายการ (กระแสเงินสดรับ)'}"
                  onblur="onCustomCellChange('${a.id}','name',this.value)"
                  onchange="onCustomCellChange('${a.id}','name',this.value)">
@@ -1265,10 +1102,12 @@ function renderRow(row) {
   const d = getRowData(row.type);
   const f = _rowFields(row.type);   /* field visibility per type */
   const has = d.count > 0;
+  /* Use ?? so explicit 0 is preserved in number inputs (er/tm),
+     but text inputs still show empty when 0 (no value entered) */
   const cv = d.currentValue || '';
   const co = d.contribution || '';
-  const er = d.expectedReturn || '';
-  const tm = d.term || '';
+  const er = d.count > 0 ? (d.expectedReturn ?? '') : '';
+  const tm = d.count > 0 ? (d.term ?? '') : '';
   const cf = d.cashFlow || '';
   const cvFmt = cv ? _astFmtNum(cv) : '';
   const coFmt = co ? _astFmtNum(co) : '';
@@ -1343,155 +1182,9 @@ function renderRow(row) {
   `;
 }
 
-function setFilter(f) {
-  currentFilter = f;
-  render();
-}
-
-/* ════════════════════════════════════════════
-   MODAL
-═══════════════════════════════════════════ */
-function openModal(id) {
-  editingId = id || null;
-  document.getElementById('modal-title').textContent = id ? 'แก้ไขสินทรัพย์' : 'เพิ่มสินทรัพย์';
-
-  if (id) {
-    const a = getAssets().find(x => x.id === id);
-    if (a) {
-      document.getElementById('f-type').value         = a.type || 'deposit';
-      document.getElementById('f-name').value         = a.name || '';
-      document.getElementById('f-currentValue').value = a.currentValue || '';
-      document.getElementById('f-return').value       = a.expectedReturn || '';
-      document.getElementById('f-term').value         = a.term || '';
-      document.getElementById('f-contribution').value = a.contribution || '';
-      const freqEl = document.getElementById('f-contrib-freq');
-      if (freqEl) freqEl.value = a.contribFreq || 'annual';
-      document.getElementById('f-note').value         = a.note || '';
-    }
-  } else {
-    document.getElementById('f-type').value         = 'deposit';
-    document.getElementById('f-name').value         = '';
-    document.getElementById('f-currentValue').value = '';
-    document.getElementById('f-return').value       = '';
-    document.getElementById('f-term').value         = '';
-    document.getElementById('f-contribution').value = '';
-    const freqEl = document.getElementById('f-contrib-freq');
-    if (freqEl) freqEl.value = 'annual';
-    document.getElementById('f-note').value         = '';
-  }
-  onTypeChange();
-  updateFV();
-  document.getElementById('asset-modal').classList.add('open');
-}
-
-function closeModal() {
-  document.getElementById('asset-modal').classList.remove('open');
-  editingId = null;
-}
-
-function onTypeChange() {
-  // Suggest default returns based on type
-  const t = document.getElementById('f-type').value;
-  const ret = document.getElementById('f-return');
-  if (!ret.value || ret.value === '0') {
-    const defaults = {
-      deposit: 1.5, bond: 3, pvd: 5, rmf: 6, ltf: 6, ssf: 6, thaiesg: 6,
-      mutual: 7, unitlinked: 5, realestate: 4, stock: 8, other: 3
-    };
-    ret.value = defaults[t] || 3;
-  }
-  updateFV();
-}
-
-function updateFV() {
-  const pv = parseMoney(document.getElementById('f-currentValue'));
-  const r  = Number(document.getElementById('f-return').value || 0);
-  const n  = Number(document.getElementById('f-term').value || 0);
-  const pmt= parseMoney(document.getElementById('f-contribution'));
-  const freqEl = document.getElementById('f-contrib-freq');
-  const freq   = freqEl ? freqEl.value : 'annual';
-  const fv = calcFV(pv, r, n, pmt, freq);
-  document.getElementById('fv-result').textContent = fmt(fv);
-  /* Hint: แสดง equivalent ของอีกหน่วย */
-  const hintEl = document.getElementById('f-contrib-hint');
-  if (hintEl) {
-    if (pmt > 0) {
-      hintEl.textContent = freq === 'monthly'
-        ? `≈ ฿${(pmt * 12).toLocaleString('th-TH')} ต่อปี`
-        : `≈ ฿${Math.round(pmt / 12).toLocaleString('th-TH')} ต่อเดือน`;
-    } else {
-      hintEl.textContent = '';
-    }
-  }
-  if (n > 0) {
-    const pmtLabel = pmt > 0
-      ? (freq === 'monthly' ? `+ ${fmt(pmt)}/เดือน` : `+ ${fmt(pmt)}/ปี`)
-      : '';
-    document.getElementById('fv-detail').textContent =
-      `${fmt(pv)} × (1+${r}%)^${n} ${pmtLabel} = ${fmt(fv)}`;
-  } else {
-    document.getElementById('fv-detail').textContent = 'ระบุระยะเวลาเพื่อคำนวณ FV';
-  }
-}
-
-function saveAsset() {
-  const name = document.getElementById('f-name').value.trim();
-  const cv   = parseMoney(document.getElementById('f-currentValue'));
-  if (!name) { showToast('⚠️ กรุณาใส่ชื่อ'); return; }
-  if (cv <= 0) { showToast('⚠️ กรุณาใส่มูลค่าปัจจุบัน'); return; }
-
-  const freqEl = document.getElementById('f-contrib-freq');
-  const a = {
-    id:             editingId || ('a' + Date.now().toString(36) + Math.random().toString(36).slice(2,5)),
-    type:           document.getElementById('f-type').value,
-    name,
-    currentValue:   cv,
-    expectedReturn: Number(document.getElementById('f-return').value || 0),
-    term:           Number(document.getElementById('f-term').value || 0),
-    contribution:   parseMoney(document.getElementById('f-contribution')),
-    contribFreq:    freqEl ? freqEl.value : 'annual',
-    note:           document.getElementById('f-note').value.trim(),
-    createdAt:      editingId ? undefined : new Date().toISOString(),
-  };
-
-  updateUser(u => {
-    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
-    if (!c) return;
-    if (!c.assets) c.assets = [];
-    if (editingId) {
-      const idx = c.assets.findIndex(x => x.id === editingId);
-      if (idx >= 0) { a.createdAt = c.assets[idx].createdAt; c.assets[idx] = a; }
-    } else {
-      c.assets.push(a);
-    }
-  });
-
-  closeModal();
-  render();
-  showToast(editingId ? '✅ อัปเดตแล้ว' : '✅ เพิ่มสินทรัพย์แล้ว');
-}
-
-function deleteAsset(id) {
-  if (!confirm('ลบสินทรัพย์นี้?')) return;
-  updateUser(u => {
-    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
-    if (c && c.assets) c.assets = c.assets.filter(a => a.id !== id);
-  });
-  render();
-  showToast('🗑️ ลบแล้ว');
-}
-
 /* ════════════════════════════════════════════
    UTILS
 ═══════════════════════════════════════════ */
-let toastTimer;
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
-}
-
 function initSidebar() {
   const u = getUser();
   const p = u.profile || {};
@@ -1522,19 +1215,18 @@ fbAuth.onAuthStateChanged(user => {
   initSidebar();
   initClientSelect();
   render();
-  /* Cross-tab sync: ถ้า user แก้ใน tab อื่น (เช่น networth.html ลบหนี้) → re-render */
+  /* Cross-tab sync: ถ้า user แก้ใน tab อื่น (เช่น networth.html ลบหนี้) → re-render.
+     Race-condition guard: commit dirty inputs first; defer render slightly ถ้ามี
+     input focus อยู่ — ป้องกัน DOM ถูกทำลายระหว่างผู้ใช้พิมพ์ */
   window.addEventListener('storage', (e) => {
     if (e.key === 'aia_users') {
-      initClientSelect();
-      render();
+      _commitDirtyInputs();
+      const ae = document.activeElement;
+      const isTyping = ae && ae.tagName === 'INPUT';
+      setTimeout(() => { initClientSelect(); render(); }, isTyping ? 200 : 0);
     }
   });
 })();
-
-document.getElementById('asset-modal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-
 </script>
 </body>
 </html>

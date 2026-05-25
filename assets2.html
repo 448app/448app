@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>448 Wealth Management — สินทรัพย์ (v2)</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
+      authDomain: "app-d83ab.firebaseapp.com",
+      projectId: "app-d83ab",
+      storageBucket: "app-d83ab.firebasestorage.app",
+      messagingSenderId: "2200674251",
+      appId: "1:2200674251:web:0b240a123df2e5b86ea04e"
+    });
+    const fbAuth = firebase.auth();
+  </script>
+  <style>
+    /* ── Hero ── */
+    .a2-hero {
+      background: linear-gradient(135deg, #1F2D4F 0%, #2C3E61 100%);
+      padding: 28px 36px 32px;
+      color: white; position: relative; overflow: hidden;
+      border-radius: 0 0 24px 24px;
+      box-shadow: 0 6px 24px rgba(31,45,79,.20);
+      margin-bottom: 24px;
+    }
+    .a2-hero::before {
+      content: ''; position: absolute; top: -40%; right: -10%;
+      width: 360px; height: 360px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(201,169,97,.18), transparent);
+    }
+    .a2-hero-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap; position: relative;
+    }
+    .a2-hero h2 {
+      font-size: 1.6rem; font-weight: 800; margin-bottom: 2px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .a2-hero h2 .icon-tile {
+      width: 46px; height: 46px; border-radius: 12px;
+      background: rgba(201,169,97,.25); border: 1.5px solid #C9A961;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; color: #C9A961;
+    }
+    .a2-hero p { font-size: .92rem; opacity: .82; margin-left: 58px; }
+    .a2-client-picker {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.15); backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(255,255,255,.3);
+      border-radius: 12px; padding: 6px 8px 6px 14px;
+    }
+    .a2-client-picker label { font-size: .82rem; opacity: .85; }
+    .a2-client-picker select {
+      background: rgba(255,255,255,.95); color: #1F2D4F;
+      border: none; border-radius: 8px; padding: 8px 14px;
+      font-family: inherit; font-weight: 700; font-size: .9rem;
+      min-width: 170px; cursor: pointer;
+    }
+
+    /* ── Summary stats ── */
+    .a2-summary {
+      max-width: 1280px; margin: -20px auto 24px;
+      padding: 0 30px;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+      position: relative; z-index: 2;
+    }
+    .a2-stat {
+      background: white; border-radius: 16px; padding: 18px 22px;
+      box-shadow: 0 4px 14px rgba(0,0,0,.06);
+      border: 1px solid #E5E7EB;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .a2-stat .lbl {
+      font-size: .78rem; color: #6B7280; font-weight: 600;
+      letter-spacing: .04em;
+    }
+    .a2-stat .val {
+      font-size: 1.5rem; font-weight: 800; color: #1F2D4F;
+      line-height: 1.1;
+    }
+    .a2-stat .val.gold { color: #C9A961; }
+    .a2-stat .val.green { color: #27AE60; }
+    .a2-stat .val.blue { color: #2D9CDB; }
+    .a2-stat .sub { font-size: .72rem; color: #9CA3AF; }
+    @media (max-width: 820px) {
+      .a2-summary { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── Page wrap ── */
+    .a2-wrap { max-width: 1280px; margin: 0 auto; padding: 0 30px 60px; }
+
+    /* ── Section card ── */
+    .a2-section {
+      background: white; border-radius: 18px; padding: 4px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.05);
+      border: 1px solid #E5E7EB;
+      margin-bottom: 20px; overflow: hidden;
+    }
+    .a2-section-header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 24px;
+      border-bottom: 1px dashed #E5E7EB;
+    }
+    .a2-section.savings .a2-section-header {
+      background: linear-gradient(90deg, rgba(201,169,97,.08), transparent);
+    }
+    .a2-section.investment .a2-section-header {
+      background: linear-gradient(90deg, rgba(45,156,219,.08), transparent);
+    }
+    .a2-section-icon {
+      width: 44px; height: 44px; border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; color: white; flex-shrink: 0;
+    }
+    .a2-section.savings .a2-section-icon {
+      background: linear-gradient(135deg, #C9A961, #B8924A);
+      box-shadow: 0 4px 12px rgba(201,169,97,.35);
+    }
+    .a2-section.investment .a2-section-icon {
+      background: linear-gradient(135deg, #2D9CDB, #56CCF2);
+      box-shadow: 0 4px 12px rgba(45,156,219,.35);
+    }
+    .a2-section-title {
+      font-size: 1.05rem; font-weight: 800; color: #1F2D4F;
+    }
+    .a2-section-sub { font-size: .78rem; color: #6B7280; margin-top: 2px; }
+    .a2-section-total {
+      margin-left: auto; text-align: right;
+    }
+    .a2-section-total .lbl {
+      font-size: .72rem; color: #6B7280; font-weight: 600;
+    }
+    .a2-section-total .val {
+      font-size: 1.25rem; font-weight: 800;
+    }
+    .a2-section.savings .a2-section-total .val { color: #C9A961; }
+    .a2-section.investment .a2-section-total .val { color: #2D9CDB; }
+
+    /* ── Table-like row layout ── */
+    .a2-table { width: 100%; }
+    .a2-thead {
+      display: grid;
+      grid-template-columns: minmax(180px, 1.5fr) 1fr 1fr .7fr .5fr 1fr .9fr 56px;
+      gap: 8px; padding: 12px 24px;
+      font-size: .76rem; color: #6B7280; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em;
+      background: #FAFAFB;
+      border-bottom: 1px solid #E5E7EB;
+    }
+    .a2-thead .num, .a2-thead .center { text-align: center; }
+    .a2-row {
+      display: grid;
+      grid-template-columns: minmax(180px, 1.5fr) 1fr 1fr .7fr .5fr 1fr .9fr 56px;
+      gap: 8px; padding: 12px 24px; align-items: center;
+      border-bottom: 1px solid #F3F4F6;
+      transition: background .15s;
+    }
+    .a2-row:hover { background: #FAFBFD; }
+    .a2-row:last-child { border-bottom: none; }
+
+    .a2-cell-name {
+      display: flex; align-items: center; gap: 12px; min-width: 0;
+    }
+    .a2-row-emoji {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: #F3F4F6;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+      color: #1F2D4F;
+    }
+    .a2-section.savings .a2-row-emoji { background: rgba(201,169,97,.12); color: #C9A961; }
+    .a2-section.investment .a2-row-emoji { background: rgba(45,156,219,.12); color: #2D9CDB; }
+    .a2-row-name {
+      font-size: .94rem; font-weight: 600; color: #1F2D4F;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .a2-row-info-btn {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #E5E7EB; color: #6B7280;
+      font-size: .68rem; font-weight: 800;
+      display: inline-flex; align-items: center; justify-content: center;
+      cursor: help; flex-shrink: 0;
+    }
+    .a2-row-info-btn:hover { background: #1F2D4F; color: white; }
+    .a2-row-badge {
+      font-size: .68rem; padding: 2px 7px; border-radius: 50px;
+      background: rgba(39,174,96,.15); color: #27AE60; font-weight: 700;
+    }
+
+    /* Input cells */
+    .a2-input {
+      width: 100%; padding: 8px 10px; border: 1.5px solid #E5E7EB;
+      border-radius: 8px; font-family: inherit; font-size: .92rem;
+      text-align: right; background: white;
+      color: #1F2D4F; font-weight: 600;
+      transition: all .15s; outline: none;
+      box-sizing: border-box;
+    }
+    .a2-input::placeholder { color: #D1D5DB; font-weight: 400; }
+    .a2-input:hover { border-color: #C9A961; }
+    .a2-input:focus {
+      border-color: #C9A961; background: #FFFDF7;
+      box-shadow: 0 0 0 3px rgba(201,169,97,.15);
+    }
+    .a2-input.has-val { background: #FFFDF7; }
+    .a2-input.pct, .a2-input.yr { text-align: center; padding-right: 6px; }
+    .a2-pct-wrap, .a2-yr-wrap {
+      position: relative; display: flex; align-items: center;
+    }
+    .a2-pct-wrap::after {
+      content: '%'; position: absolute; right: 8px;
+      color: #6B7280; font-size: .82rem; pointer-events: none;
+    }
+    .a2-yr-wrap::after {
+      content: 'ปี'; position: absolute; right: 8px;
+      color: #6B7280; font-size: .76rem; pointer-events: none;
+    }
+    .a2-input.pct { padding-right: 22px; }
+    .a2-input.yr { padding-right: 24px; }
+
+    /* FV / computed cells */
+    .a2-fv-cell {
+      text-align: right; font-weight: 700; color: #27AE60;
+      font-size: .94rem;
+    }
+    .a2-fv-cell.empty { color: #D1D5DB; font-style: italic; font-weight: 400; }
+    .a2-fv-cell.empty::before { content: '—'; }
+
+    .a2-cell-disabled {
+      text-align: center; color: #D1D5DB; font-size: 1.2rem;
+    }
+
+    /* Apply button */
+    .a2-apply-wrap {
+      display: flex; justify-content: center;
+    }
+    .a2-apply-btn {
+      width: 40px; height: 40px; border-radius: 10px;
+      border: 1.5px dashed #D1D5DB; background: white;
+      cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; justify-content: center;
+      color: #9CA3AF; font-size: 1rem;
+    }
+    .a2-apply-btn:hover {
+      border-color: #1F2D4F; color: #1F2D4F; background: #FAFAFB;
+      transform: scale(1.05);
+    }
+    .a2-apply-btn.assigned {
+      border-style: solid; border-color: #1F2D4F;
+      background: linear-gradient(135deg, #1F2D4F, #2C3E61); color: white;
+      box-shadow: 0 4px 10px rgba(31,45,79,.25);
+    }
+    .a2-apply-btn.assigned:hover { transform: scale(1.08); }
+
+    /* ── Custom row toolbar ── */
+    .a2-add-row {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      padding: 16px 24px;
+      background: #FAFAFB;
+      border-top: 1px dashed #E5E7EB;
+    }
+    .a2-add-btn {
+      flex: 1; min-width: 200px;
+      padding: 11px 18px;
+      background: white; border: 1.5px dashed #C9A961;
+      border-radius: 10px; cursor: pointer; transition: all .15s;
+      font-family: inherit; font-weight: 700; font-size: .9rem;
+      color: #B8924A;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .a2-add-btn:hover {
+      background: #FFFDF7; border-style: solid;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(201,169,97,.18);
+    }
+    .a2-add-btn.cf {
+      border-color: #2D9CDB; color: #2D9CDB;
+    }
+    .a2-add-btn.cf:hover { background: #F0F9FF; }
+
+    /* ── Bottom nav ── */
+    .a2-bottom-nav {
+      max-width: 1280px; margin: 24px auto 0;
+      padding: 0 30px;
+      display: flex; justify-content: space-between; align-items: center;
+      gap: 12px;
+    }
+    .a2-nav-btn {
+      padding: 12px 24px; border-radius: 12px;
+      border: 1.5px solid #E5E7EB; background: white;
+      font-family: inherit; font-weight: 700; font-size: .95rem;
+      cursor: pointer; transition: all .2s;
+      display: flex; align-items: center; gap: 8px;
+      color: #1F2D4F;
+    }
+    .a2-nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 14px rgba(0,0,0,.08);
+      border-color: #C9A961;
+    }
+    .a2-nav-btn.primary {
+      background: linear-gradient(135deg, #C9A961, #B8924A);
+      color: white; border-color: transparent;
+    }
+    .a2-nav-btn.primary:hover { background: linear-gradient(135deg, #B8924A, #A07A35); }
+
+    /* ── Apply modal ── */
+    .a2-modal-ovl {
+      display: none; position: fixed; inset: 0;
+      background: rgba(31,45,79,.55); z-index: 200;
+      align-items: center; justify-content: center; padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .a2-modal-ovl.open { display: flex; }
+    .a2-modal {
+      background: white; border-radius: 18px; padding: 24px;
+      max-width: 380px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+    .a2-modal h3 {
+      font-size: 1.1rem; font-weight: 800; color: #1F2D4F;
+      margin-bottom: 4px;
+    }
+    .a2-modal-sub {
+      font-size: .82rem; color: #6B7280; margin-bottom: 18px;
+    }
+    .a2-modal-opts {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .a2-modal-opt {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; border-radius: 12px;
+      background: #FAFAFB; border: 1.5px solid #E5E7EB;
+      cursor: pointer; transition: all .15s;
+      font-family: inherit; font-weight: 600; font-size: .95rem;
+      color: #1F2D4F; text-align: left;
+    }
+    .a2-modal-opt:hover {
+      background: #FFFDF7; border-color: #C9A961;
+      transform: translateX(2px);
+    }
+    .a2-modal-opt.active {
+      background: linear-gradient(135deg, #C9A961, #B8924A);
+      color: white; border-color: transparent;
+      box-shadow: 0 4px 12px rgba(201,169,97,.35);
+    }
+    .a2-modal-opt .ico {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: rgba(31,45,79,.08);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .a2-modal-opt.active .ico {
+      background: rgba(255,255,255,.25); color: white;
+    }
+    .a2-modal-opt .ico.muted { color: #9CA3AF; }
+
+    /* ── Tooltip ── */
+    .a2-tooltip {
+      position: relative;
+    }
+    .a2-tooltip:hover::before {
+      content: attr(data-tip);
+      position: absolute; bottom: 100%; left: 50%;
+      transform: translateX(-50%) translateY(-4px);
+      background: #1F2D4F; color: white;
+      font-size: .78rem; padding: 6px 10px; border-radius: 6px;
+      white-space: nowrap; z-index: 50;
+      max-width: 280px; white-space: normal;
+      width: max-content; max-width: 240px;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    /* No client state */
+    .a2-no-client {
+      max-width: 540px; margin: 60px auto;
+      background: white; border-radius: 16px;
+      padding: 50px 30px; text-align: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.06);
+    }
+    .a2-no-client .ico { font-size: 3.5rem; margin-bottom: 14px; }
+    .a2-no-client h3 { font-size: 1.15rem; color: #1F2D4F; margin-bottom: 6px; }
+    .a2-no-client p { color: #6B7280; margin-bottom: 18px; }
+    .a2-no-client a {
+      display: inline-block; padding: 10px 22px;
+      background: linear-gradient(135deg, #C9A961, #B8924A); color: white;
+      text-decoration: none; border-radius: 10px; font-weight: 700;
+    }
+
+    /* Custom row delete button */
+    .a2-cust-del {
+      width: 22px; height: 22px; border-radius: 6px;
+      background: #FEE2E2; color: #DC2626; border: none;
+      font-size: .85rem; font-weight: 800; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all .15s;
+    }
+    .a2-cust-del:hover { background: #DC2626; color: white; transform: scale(1.1); }
+    .a2-cust-name-input {
+      flex: 1; min-width: 0;
+      padding: 6px 8px; border: 1.5px dashed #D1D5DB;
+      border-radius: 6px; font-family: inherit; font-size: .9rem;
+      background: white; outline: none;
+    }
+    .a2-cust-name-input:focus { border-color: #C9A961; border-style: solid; background: #FFFDF7; }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .a2-thead, .a2-row {
+        grid-template-columns: minmax(140px, 1.2fr) 1fr 1fr .7fr 48px;
+      }
+      .a2-thead .col-term, .a2-thead .col-fv, .a2-thead .col-cf,
+      .a2-row .col-term, .a2-row .col-fv, .a2-row .col-cf { display: none; }
+      .a2-hero p { margin-left: 0; }
+    }
+    @media (max-width: 600px) {
+      .a2-summary { grid-template-columns: 1fr 1fr; padding: 0 16px; }
+      .a2-wrap { padding: 0 16px 60px; }
+      .a2-hero { padding: 20px 22px 26px; }
+      .a2-hero h2 { font-size: 1.3rem; }
+      .a2-bottom-nav { padding: 0 16px; flex-direction: column; align-items: stretch; }
+      .a2-nav-btn { justify-content: center; }
+    }
+
+    /* ── Fade-up animations ── */
+    .a2-fade {
+      opacity: 0; transform: translateY(15px);
+      animation: a2fade .5s cubic-bezier(.2,.9,.3,1.05) forwards;
+    }
+    .a2-fade.d1 { animation-delay: .08s; }
+    .a2-fade.d2 { animation-delay: .16s; }
+    .a2-fade.d3 { animation-delay: .24s; }
+    @keyframes a2fade { to { opacity: 1; transform: translateY(0); } }
+  </style>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F2D4F">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="448 Wealth">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="app-layout">
+  <aside class="app-sidebar">
+    <div class="sb-top-accent"></div>
+    <div class="sb-logo-area">
+      <div class="sb-brand">448</div>
+      <div class="sb-tagline">Wealth Management</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เมนูหลัก</div>
+      <div class="app-sb-item" onclick="location.href='dashboard.html'"><span class="sb-ico">🏠</span> หน้าแรก</div>
+      <div class="app-sb-item" onclick="location.href='clients.html'"><span class="sb-ico">👥</span> รายชื่อลูกค้า</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='financial.html'"><span class="sb-ico">💰</span> กระแสเงินสด</div>
+      <div class="app-sb-item active"><span class="sb-ico">💎</span> สินทรัพย์</div>
+      <div class="app-sb-item" onclick="location.href='networth.html'"><span class="sb-ico">⚖️</span> งบการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='ratios.html'"><span class="sb-ico">📐</span> อัตราส่วนการเงิน</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='education.html'"><span class="sb-ico">🎓</span> การศึกษาบุตร</div>
+      <div class="app-sb-item" onclick="location.href='retirement.html'"><span class="sb-ico">🛋️</span> วางแผนเกษียณ</div>
+      <div class="app-sb-item" onclick="location.href='goals.html'"><span class="sb-ico">🎯</span> เป้าหมายชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='life-insurance.html'"><span class="sb-ico">☂️</span> ประกันชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='health-insurance.html'"><span class="sb-ico">⚕️</span> ประกันสุขภาพ</div>
+      <div class="app-sb-item" onclick="location.href='policies_summary.html'"><span class="sb-ico">📊</span> สรุปกรมธรรม์</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วิเคราะห์และแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='priority.html'"><span class="sb-ico">⭐</span> ลำดับความสำคัญ</div>
+      <div class="app-sb-item" onclick="location.href='portfolio.html'"><span class="sb-ico">📈</span> พอร์ตแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='plan_summary.html'"><span class="sb-ico">📋</span> สรุปแผน</div>
+      <div class="app-sb-item" onclick="location.href='timeline.html'"><span class="sb-ico">⏳</span> Life Timeline</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เครื่องมือ</div>
+      <div class="app-sb-item" onclick="location.href='tax2.html'"><span class="sb-ico">🧾</span> คำนวณภาษี</div>
+      <div class="app-sb-item" onclick="location.href='appointments.html'"><span class="sb-ico">📅</span> นัดหมาย</div>
+      <div class="app-sb-item" onclick="location.href='guide.html'"><span class="sb-ico">📖</span> คู่มือการใช้งาน</div>
+    </div>
+    <div class="sb-bottom-area">
+      <div class="sb-profile-row" onclick="location.href='profile.html'">
+        <div class="sb-avatar-box" id="sb-avatar">A</div>
+        <div>
+          <div class="sb-profile-name" id="sb-name">Agent</div>
+          <div class="sb-profile-role">AIA · ดูโปรไฟล์</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main" style="overflow-y:auto;">
+    <!-- Hero -->
+    <div class="a2-hero a2-fade">
+      <div class="a2-hero-row">
+        <div>
+          <h2><span class="icon-tile">💎</span> สินทรัพย์ลูกค้า</h2>
+          <p>จัดเก็บข้อมูลสินทรัพย์ทุกประเภทเพื่อวางแผนการเงินอย่างครบถ้วน</p>
+        </div>
+        <div class="a2-client-picker">
+          <span style="font-size:1.2rem;">👤</span>
+          <select id="client-select" onchange="onClientChange(this.value)"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div id="content-wrap"></div>
+  </main>
+</div>
+
+<!-- Apply-to Modal -->
+<div class="a2-modal-ovl" id="a2-apply-modal" onclick="if(event.target===this)closeApplyModal()">
+  <div class="a2-modal">
+    <h3>นำไปใช้กับแผน</h3>
+    <div class="a2-modal-sub">เลือกแผนที่จะนำสินทรัพย์นี้ไปใช้ในการคำนวณ</div>
+    <div class="a2-modal-opts" id="a2-apply-options"></div>
+  </div>
+</div>
+
+<script>
+const _uid = localStorage.getItem('aia_currentUser');
+if (!_uid) location.href = 'login.html';
+
+function getUser() {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const u = users.find(x => x.id === _uid);
+  if (!u) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; return {}; }
+  return u;
+}
+function updateUser(fn) {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const idx = users.findIndex(x => x.id === _uid);
+  if (idx === -1) return;
+  if (!users[idx].data) users[idx].data = {};
+  fn(users[idx]);
+  localStorage.setItem('aia_users', JSON.stringify(users));
+}
+function getClients() { return (getUser().data && getUser().data.clients) || []; }
+function getCurrentClient() { return getClients().find(c => c.id === selectedClientId) || null; }
+function getAssets() { const c = getCurrentClient(); return (c && c.assets) ? c.assets : []; }
+
+/* ── Asset types (full list — same as assets.html) ── */
+const ASSET_TYPES = {
+  deposit:    { icon:'💰', svg:'deposit',    label:'เงินฝาก' },
+  bond:       { icon:'📜', svg:'bond',       label:'ตราสารหนี้' },
+  annuity:    { icon:'🛡️', svg:'shield',     label:'ประกันบำนาญ' },
+  pvd:        { icon:'🏢', svg:'building',   label:'กองทุนสำรองเลี้ยงชีพ' },
+  rmf:        { icon:'🌱', svg:'seedling',   label:'RMF' },
+  ltf:        { icon:'📈', svg:'trendingUp', label:'LTF' },
+  ssf:        { icon:'🌿', svg:'leaf',       label:'SSF' },
+  thaiesg:    { icon:'🌍', svg:'globe',      label:'ThaiESG' },
+  mutual:     { icon:'🏦', svg:'bank',       label:'กองทุนรวม' },
+  unitlinked: { icon:'🔗', svg:'link',       label:'Unit Linked' },
+  realestate: { icon:'🏠', svg:'house',      label:'ค่าเช่าอสังหาริมทรัพย์' },
+  stock:      { icon:'📊', svg:'chartBar',   label:'หุ้นสามัญ' },
+  other:      { icon:'📦', svg:'box',        label:'อื่นๆ' },
+};
+function _renderAssetIcon(t) {
+  if (window.IconLib && t.svg) return window.IconLib.getIcon(t.svg, { size: 18 });
+  return t.icon;
+}
+
+/* 2 Groups (matches user's request) */
+const SAVINGS_ROWS = [
+  { type:'deposit',  info:'เงินฝากธนาคาร ออมทรัพย์ ฝากประจำ — ปลอดภัย, ผลตอบแทนต่ำ' },
+  { type:'bond',     info:'พันธบัตรรัฐบาล / หุ้นกู้เอกชน — ผลตอบแทนปานกลาง' },
+  { type:'annuity',  info:'ประกันแบบบำนาญ — จ่ายบำนาญหลังเกษียณ ลดหย่อนภาษีได้' },
+];
+const INVESTMENT_ROWS = [
+  { type:'pvd',        info:'กองทุนสำรองเลี้ยงชีพ — นายจ้างจ่ายสมทบ ลดหย่อนได้' },
+  { type:'rmf',        info:'RMF — ถือ ≥5 ปีและขายตอนอายุ 55+ ลดหย่อนได้' },
+  { type:'ltf',        info:'LTF — สิทธิลดหย่อนสิ้นสุดปี 2562 (legacy)' },
+  { type:'ssf',        info:'SSF — ถือ ≥10 ปี ลดหย่อนได้ ≤30% รายได้' },
+  { type:'thaiesg',    info:'Thai ESG Fund — ลดหย่อนได้ ≤30% รายได้ max 300K' },
+  { type:'mutual',     info:'กองทุนรวมทั่วไป — หุ้น/ตราสารหนี้/ผสม' },
+  { type:'unitlinked', info:'ประกันชีวิตควบการลงทุน' },
+  { type:'realestate', info:'อสังหาริมทรัพย์ที่ปล่อยเช่า — ใส่กระแสเงินสดรับ/เดือน' },
+  { type:'stock',      info:'หุ้นสามัญในตลาดหลักทรัพย์ — ผลตอบแทนสูง ความเสี่ยงสูง' },
+];
+
+/* Field visibility per type */
+const ROW_FIELDS_BY_TYPE = {
+  _default:   { contrib: true,  term: true,  fv: true,  cashFlow: false },
+  annuity:    { contrib: true,  term: false, fv: false, cashFlow: true  },
+  realestate: { contrib: true,  term: false, fv: false, cashFlow: true  },
+  pvd:        { contrib: false, term: true,  fv: true,  cashFlow: false },
+};
+function _rowFields(type) {
+  return Object.assign({}, ROW_FIELDS_BY_TYPE._default, ROW_FIELDS_BY_TYPE[type] || {});
+}
+
+/* State */
+let selectedClientId = null;
+
+/* FV calculation — annuity-due */
+function calcFV(pv, rate, years, pmt, freq) {
+  pv = Number(pv) || 0;
+  rate = (Number(rate) || 0) / 100;
+  years = Number(years) || 0;
+  pmt = Number(pmt) || 0;
+  if (years <= 0) return pv;
+  if (freq === 'monthly' && pmt > 0) {
+    const r_m = rate / 12; const n_m = years * 12;
+    const factor_m = Math.pow(1 + r_m, n_m);
+    if (r_m === 0) return pv + pmt * n_m;
+    return pv * Math.pow(1 + rate, years) + pmt * (factor_m - 1) / r_m * (1 + r_m);
+  }
+  const factor = Math.pow(1 + rate, years);
+  if (rate === 0) return pv + pmt * years;
+  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
+}
+
+function _astParseNum(str) {
+  if (str == null) return 0;
+  /* strip everything except digits + decimal — disallow negative (assets are non-negative) */
+  const n = Number(String(str).replace(/[^\d.]/g,''));
+  return isFinite(n) && n >= 0 ? n : 0;
+}
+/* HTML-escape for use inside attribute values — prevents XSS from imported/malicious data */
+function _astEscapeAttr(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function _astFmtNum(n) {
+  if (!n || !isFinite(n)) return '';
+  return Math.round(Number(n)).toLocaleString('th-TH');
+}
+function _astFmtFV(n) {
+  if (!n || !isFinite(n)) return '';
+  return Number(n) >= 1000
+    ? Math.round(Number(n)).toLocaleString('th-TH')
+    : Number(n).toFixed(2);
+}
+function fmt(n) { return '฿' + Math.round(n).toLocaleString('th-TH'); }
+
+function _annualContrib(a) {
+  const v = Number(a.contribution || 0);
+  return a.contribFreq === 'monthly' ? v * 12 : v;
+}
+
+function getRowData(type) {
+  const list = getAssets().filter(a => a.type === type && !a.customCategory);
+  if (list.length === 0) return { currentValue:0, contribution:0, expectedReturn:0, term:0, cashFlow:0, appliedTo:null, count:0 };
+  if (list.length === 1) {
+    const a = list[0];
+    return {
+      currentValue: Number(a.currentValue||0),
+      contribution: _annualContrib(a),
+      expectedReturn: Number(a.expectedReturn||0),
+      term: Number(a.term||0),
+      cashFlow: Number(a.cashFlow||0),
+      appliedTo: a.appliedTo || null,
+      count: 1,
+    };
+  }
+  const sumCV = list.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const wR = sumCV > 0
+    ? list.reduce((s,a) => s + Number(a.currentValue||0) * Number(a.expectedReturn||0), 0) / sumCV
+    : 0;
+  return {
+    currentValue: sumCV,
+    contribution: list.reduce((s,a) => s + _annualContrib(a), 0),
+    expectedReturn: wR,
+    term: Math.max(...list.map(a => Number(a.term||0))),
+    cashFlow: list.reduce((s,a) => s + Number(a.cashFlow||0), 0),
+    appliedTo: (list.find(a => a.appliedTo) || {}).appliedTo || null,
+    count: list.length,
+  };
+}
+
+/* Apply-to modal */
+let _astApplyType = null;
+const APPLY_OPTIONS = [
+  { value:'retire',    icon:'🛋️', svg:'sofa',      label:'แผนเกษียณ' },
+  { value:'education', icon:'🎓', svg:'education', label:'แผนการศึกษาบุตร' },
+  { value:null,        icon:'−',  svg:null,        label:'ไม่ระบุ', muted:true },
+];
+function _renderApplyIcon(value, size) {
+  size = size || 18;
+  if (!window.IconLib) {
+    return value === 'retire' ? '🛋️' : value === 'education' ? '🎓' : '−';
+  }
+  if (value === 'retire')    return window.IconLib.getIcon('sofa', { size });
+  if (value === 'education') return window.IconLib.getIcon('education', { size });
+  return '−';
+}
+
+function openApplyModal(type) {
+  _commitDirtyInputs();
+  _astApplyType = type;
+  const d = getRowData(type);
+  const cur = d.appliedTo;
+  const opts = document.getElementById('a2-apply-options');
+  opts.innerHTML = APPLY_OPTIONS.map(o => `
+    <button class="a2-modal-opt ${cur === o.value ? 'active' : ''}" data-value="${o.value === null ? '' : o.value}">
+      <span class="ico ${o.muted ? 'muted' : ''}">${o.svg && window.IconLib ? window.IconLib.getIcon(o.svg, { size:20 }) : o.icon}</span>
+      <span>${o.label}</span>
+    </button>
+  `).join('');
+  opts.querySelectorAll('.a2-modal-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.getAttribute('data-value');
+      setApplyTo(v === '' ? null : v);
+    });
+  });
+  document.getElementById('a2-apply-modal').classList.add('open');
+}
+function closeApplyModal() {
+  document.getElementById('a2-apply-modal').classList.remove('open');
+  _astApplyType = null;
+}
+function setApplyTo(value) {
+  const target = _astApplyType;
+  if (!target) { closeApplyModal(); return; }
+  /* Custom row apply */
+  if (typeof target === 'string' && target.startsWith('__cust:')) {
+    const id = target.slice(7);
+    updateUser(u => {
+      const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+      if (!c || !c.assets) return;
+      const a = c.assets.find(x => x.id === id);
+      if (!a) return;
+      if (value === null) delete a.appliedTo;
+      else a.appliedTo = value;
+    });
+  } else {
+    updateUser(u => {
+      const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+      if (!c || !c.assets) return;
+      c.assets.forEach(a => {
+        if (a.type === target && !a.customCategory) {
+          if (value === null) delete a.appliedTo;
+          else a.appliedTo = value;
+        }
+      });
+    });
+  }
+  closeApplyModal();
+  render();
+}
+function openApplyModalForCustom(id) {
+  _commitDirtyInputs();
+  _astApplyType = '__cust:' + id;
+  const a = getAssets().find(x => x.id === id);
+  const cur = a ? a.appliedTo : null;
+  const opts = document.getElementById('a2-apply-options');
+  opts.innerHTML = APPLY_OPTIONS.map(o => `
+    <button class="a2-modal-opt ${cur === o.value ? 'active' : ''}" data-value="${o.value === null ? '' : o.value}">
+      <span class="ico ${o.muted ? 'muted' : ''}">${o.svg && window.IconLib ? window.IconLib.getIcon(o.svg, { size:20 }) : o.icon}</span>
+      <span>${o.label}</span>
+    </button>
+  `).join('');
+  opts.querySelectorAll('.a2-modal-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const v = btn.getAttribute('data-value');
+      setApplyTo(v === '' ? null : v);
+    });
+  });
+  document.getElementById('a2-apply-modal').classList.add('open');
+}
+
+/* Cell change handlers */
+function onCellChange(type, field, rawValue) {
+  let value;
+  if (field === 'expectedReturn' || field === 'term') value = Number(rawValue) || 0;
+  else value = _astParseNum(rawValue);
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!c.assets) c.assets = [];
+    let a = c.assets.find(x => x.type === type && !x.customCategory);
+    if (!a) {
+      const t = ASSET_TYPES[type] || ASSET_TYPES.other;
+      a = {
+        id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+        type, name: t.label,
+        currentValue:0, contribution:0, contribFreq:'annual',
+        expectedReturn:0, term:0, cashFlow:0,
+        createdAt: new Date().toISOString(),
+      };
+      c.assets.push(a);
+    }
+    a[field] = value;
+    if (!a.contribFreq) a.contribFreq = 'annual';
+  });
+  updateRowFV(type);
+  updateTotals();
+}
+function updateRowFV(type) {
+  const list = getAssets().filter(a => a.type === type && !a.customCategory);
+  const fv = list.reduce((s, a) => s + calcFV(
+    a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const cell = document.querySelector(`[data-fv-type="${type}"]`);
+  if (cell) {
+    if (fv > 0) { cell.textContent = _astFmtFV(fv); cell.classList.remove('empty'); }
+    else { cell.textContent = ''; cell.classList.add('empty'); }
+  }
+}
+function updateTotals() {
+  const assets = getAssets();
+  const tCV = assets.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const tFV = assets.reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const tCF = assets.reduce((s,a) => s + Number(a.cashFlow||0), 0);
+  /* Per-section totals */
+  const savCV = SAVINGS_ROWS.reduce((s,r) => s + getRowData(r.type).currentValue, 0);
+  const invCV = INVESTMENT_ROWS.reduce((s,r) => s + getRowData(r.type).currentValue, 0);
+  const setIf = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ? fmt(val) : '฿0'; };
+  setIf('a2-total-cv', tCV);
+  setIf('a2-total-fv', tFV);
+  setIf('a2-total-cf', tCF);
+  setIf('a2-savings-total', savCV);
+  setIf('a2-investment-total', invCV);
+  /* count */
+  const tCount = SAVINGS_ROWS.length + INVESTMENT_ROWS.length + getCustomRows().length;
+  const cnt = document.getElementById('a2-count');
+  if (cnt) cnt.textContent = tCount;
+}
+
+/* Custom rows */
+function getCustomRows() {
+  return getAssets().filter(a => a.customCategory === 'fv' || a.customCategory === 'cf');
+}
+function addCustomRow(category) {
+  if (!selectedClientId) return;
+  _commitDirtyInputs();
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!c.assets) c.assets = [];
+    c.assets.push({
+      id: 'cust-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+      type:'other', customCategory:category, name:'',
+      currentValue:0, contribution:0, contribFreq:'annual',
+      expectedReturn:0, term:0, cashFlow:0,
+      createdAt: new Date().toISOString(),
+    });
+  });
+  render();
+}
+function deleteCustomRow(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (c && c.assets) c.assets = c.assets.filter(a => a.id !== id);
+  });
+  render();
+}
+function onCustomCellChange(id, field, value) {
+  let v;
+  if (field === 'expectedReturn' || field === 'term') v = Number(value) || 0;
+  else if (field === 'name') v = String(value || '');
+  else v = _astParseNum(value);
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.assets) return;
+    const a = c.assets.find(x => x.id === id);
+    if (!a) return;
+    a[field] = v;
+    if (!a.contribFreq) a.contribFreq = 'annual';
+  });
+  updateCustomRowFV(id);
+  updateTotals();
+}
+function updateCustomRowFV(id) {
+  const a = getAssets().find(x => x.id === id);
+  if (!a || a.customCategory !== 'fv') return;
+  const fv = calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual');
+  const cell = document.querySelector(`[data-fv-cust="${id}"]`);
+  if (cell) {
+    if (fv > 0) { cell.textContent = _astFmtFV(fv); cell.classList.remove('empty'); }
+    else { cell.textContent = ''; cell.classList.add('empty'); }
+  }
+}
+
+/* iOS commit-dirty-inputs helper */
+let _astCommitting = false;
+function _commitDirtyInputs() {
+  if (_astCommitting) return;
+  _astCommitting = true;
+  try {
+    const ae = document.activeElement;
+    if (ae && ae.tagName === 'INPUT' && ae.blur) ae.blur();
+    document.querySelectorAll('.a2-input, .a2-cust-name-input').forEach(inp => {
+      if (!inp.value || !inp.value.trim()) return;
+      try {
+        inp.dispatchEvent(new Event('blur', { bubbles:true }));
+        inp.dispatchEvent(new Event('change', { bubbles:true }));
+      } catch(_) {}
+    });
+  } finally {
+    /* reset immediately — setTimeout delay would miss rapid double-taps (iPad) */
+    _astCommitting = false;
+  }
+}
+
+/* ── Render ── */
+function initClientSelect() {
+  const sel = document.getElementById('client-select');
+  const clients = getClients();
+  if (clients.length === 0) {
+    sel.innerHTML = '<option value="">— ไม่มีลูกค้า —</option>';
+    return;
+  }
+  const stored = localStorage.getItem('aia_selectedClient');
+  selectedClientId = (stored && clients.find(c => c.id === stored)) ? stored : clients[0].id;
+  localStorage.setItem('aia_selectedClient', selectedClientId);
+  sel.innerHTML = clients.map(c =>
+    `<option value="${c.id}" ${c.id === selectedClientId ? 'selected':''}>${c.firstName||''} ${c.lastName||''}</option>`
+  ).join('');
+}
+function onClientChange(cid) {
+  _commitDirtyInputs();   /* save any unsaved typing before switching client (iPad/PWA) */
+  selectedClientId = cid;
+  localStorage.setItem('aia_selectedClient', cid);
+  render();
+}
+
+function renderRow(rowMeta) {
+  const t = ASSET_TYPES[rowMeta.type] || ASSET_TYPES.other;
+  const data = getRowData(rowMeta.type);
+  const fields = _rowFields(rowMeta.type);
+  const cv = data.currentValue || ''; const co = data.contribution || '';
+  /* preserve explicit 0 in number inputs (er/tm) — only when row has data */
+  const er = data.count > 0 ? (data.expectedReturn ?? '') : '';
+  const tm = data.count > 0 ? (data.term ?? '') : '';
+  const cf = data.cashFlow || '';
+  const cvFmt = cv ? _astFmtNum(cv) : '';
+  const coFmt = co ? _astFmtNum(co) : '';
+  const cfFmt = cf ? _astFmtNum(cf) : '';
+  /* FV: sum per-asset using each asset's own contribFreq — matches updateRowFV exactly.
+     Avoids inconsistency on initial render when legacy data has contribFreq='monthly'. */
+  const _list = getAssets().filter(a => a.type === rowMeta.type && !a.customCategory);
+  const fvVal = _list.reduce((s, a) => s + calcFV(
+    a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const fvFmt = fvVal > 0 ? _astFmtFV(fvVal) : '';
+  const badge = rowMeta.type === 'pvd' ? `<span class="a2-row-badge">PVD</span>` : '';
+
+  return `
+    <div class="a2-row">
+      <div class="a2-cell-name">
+        <div class="a2-row-emoji">${_renderAssetIcon(t)}</div>
+        <div style="min-width:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span class="a2-row-name">${t.label}</span>
+          ${badge}
+          <span class="a2-row-info-btn a2-tooltip" data-tip="${rowMeta.info||''}">i</span>
+        </div>
+      </div>
+      <div>
+        <input type="text" class="a2-input ${cv?'has-val':''}" inputmode="decimal"
+               value="${cvFmt}" placeholder="—"
+               onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${rowMeta.type}','currentValue',this.value);"
+               onchange="onCellChange('${rowMeta.type}','currentValue',this.value)">
+      </div>
+      <div>
+        ${fields.contrib ? `
+          <input type="text" class="a2-input ${co?'has-val':''}" inputmode="decimal"
+                 value="${coFmt}" placeholder="—"
+                 onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${rowMeta.type}','contribution',this.value);"
+                 onchange="onCellChange('${rowMeta.type}','contribution',this.value)">
+        ` : `<div class="a2-cell-disabled">−</div>`}
+      </div>
+      <div>
+        <span class="a2-pct-wrap">
+          <input type="number" class="a2-input pct ${er?'has-val':''}" step="0.01"
+                 value="${er}" placeholder="—"
+                 onblur="onCellChange('${rowMeta.type}','expectedReturn',this.value)"
+                 onchange="onCellChange('${rowMeta.type}','expectedReturn',this.value)">
+        </span>
+      </div>
+      <div class="col-term">
+        ${fields.term ? `
+          <span class="a2-yr-wrap">
+            <input type="number" class="a2-input yr ${tm?'has-val':''}" step="1" min="0"
+                   value="${tm}" placeholder="—"
+                   onblur="onCellChange('${rowMeta.type}','term',this.value)"
+                   onchange="onCellChange('${rowMeta.type}','term',this.value)">
+          </span>
+        ` : `<div class="a2-cell-disabled">−</div>`}
+      </div>
+      <div class="col-fv">
+        ${fields.fv ? `<span class="a2-fv-cell ${!fvFmt?'empty':''}" data-fv-type="${rowMeta.type}">${fvFmt}</span>` : `<div class="a2-cell-disabled">−</div>`}
+      </div>
+      <div class="col-cf">
+        ${fields.cashFlow ? `
+          <input type="text" class="a2-input ${cf?'has-val':''}" inputmode="decimal"
+                 value="${cfFmt}" placeholder="—"
+                 onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${rowMeta.type}','cashFlow',this.value);"
+                 onchange="onCellChange('${rowMeta.type}','cashFlow',this.value)">
+        ` : `<div class="a2-cell-disabled">−</div>`}
+      </div>
+      <div class="a2-apply-wrap">
+        <button class="a2-apply-btn ${data.appliedTo?'assigned':''}"
+                onclick="openApplyModal('${rowMeta.type}')"
+                title="${data.appliedTo === 'retire' ? 'นำไปใช้กับเกษียณ' : data.appliedTo === 'education' ? 'นำไปใช้กับการศึกษา' : 'นำไปใช้กับแผน...'}">
+          ${_renderApplyIcon(data.appliedTo, 18)}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCustomRow(a) {
+  const isFV = a.customCategory === 'fv';
+  const cv = a.currentValue || ''; const co = a.contribution || '';
+  /* preserve explicit 0 in number inputs (er/tm) */
+  const er = a.expectedReturn ?? ''; const tm = a.term ?? '';
+  const cf = a.cashFlow || '';
+  const cvFmt = cv ? _astFmtNum(cv) : '';
+  const coFmt = co ? _astFmtNum(co) : '';
+  const cfFmt = cf ? _astFmtNum(cf) : '';
+  /* FV uses asset's own contribFreq — matches updateCustomRowFV (B3 consistency fix) */
+  const fvVal = isFV ? calcFV(
+    a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual') : 0;
+  const fvFmt = fvVal > 0 ? _astFmtFV(fvVal) : '';
+
+  return `
+    <div class="a2-row" data-cust-id="${a.id}">
+      <div class="a2-cell-name">
+        <button class="a2-cust-del" onclick="deleteCustomRow('${a.id}')" title="ลบ">×</button>
+        <input type="text" class="a2-cust-name-input" value="${_astEscapeAttr(a.name||'')}"
+               placeholder="${isFV ? 'ชื่อรายการ (มูลค่าอนาคต)' : 'ชื่อรายการ (กระแสเงินสดรับ)'}"
+               onblur="onCustomCellChange('${a.id}','name',this.value)"
+               onchange="onCustomCellChange('${a.id}','name',this.value)">
+      </div>
+      <div>
+        <input type="text" class="a2-input ${cv?'has-val':''}" inputmode="decimal"
+               value="${cvFmt}" placeholder="—"
+               onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','currentValue',this.value);"
+               onchange="onCustomCellChange('${a.id}','currentValue',this.value)">
+      </div>
+      <div>
+        <input type="text" class="a2-input ${co?'has-val':''}" inputmode="decimal"
+               value="${coFmt}" placeholder="—"
+               onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','contribution',this.value);"
+               onchange="onCustomCellChange('${a.id}','contribution',this.value)">
+      </div>
+      <div>
+        <span class="a2-pct-wrap">
+          <input type="number" class="a2-input pct ${er?'has-val':''}" step="0.01"
+                 value="${er}" placeholder="—"
+                 onblur="onCustomCellChange('${a.id}','expectedReturn',this.value)"
+                 onchange="onCustomCellChange('${a.id}','expectedReturn',this.value)">
+        </span>
+      </div>
+      <div class="col-term">
+        ${isFV ? `
+          <span class="a2-yr-wrap">
+            <input type="number" class="a2-input yr ${tm?'has-val':''}" step="1" min="0"
+                   value="${tm}" placeholder="—"
+                   onblur="onCustomCellChange('${a.id}','term',this.value)"
+                   onchange="onCustomCellChange('${a.id}','term',this.value)">
+          </span>
+        ` : `<div class="a2-cell-disabled">−</div>`}
+      </div>
+      <div class="col-fv">
+        ${isFV ? `<span class="a2-fv-cell ${!fvFmt?'empty':''}" data-fv-cust="${a.id}">${fvFmt}</span>` : `<div class="a2-cell-disabled">−</div>`}
+      </div>
+      <div class="col-cf">
+        ${!isFV ? `
+          <input type="text" class="a2-input ${cf?'has-val':''}" inputmode="decimal"
+                 value="${cfFmt}" placeholder="—"
+                 onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','cashFlow',this.value);"
+                 onchange="onCustomCellChange('${a.id}','cashFlow',this.value)">
+        ` : `<div class="a2-cell-disabled">−</div>`}
+      </div>
+      <div class="a2-apply-wrap">
+        <button class="a2-apply-btn ${a.appliedTo?'assigned':''}"
+                onclick="openApplyModalForCustom('${a.id}')"
+                title="นำไปใช้กับแผน...">
+          ${_renderApplyIcon(a.appliedTo, 18)}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  const wrap = document.getElementById('content-wrap');
+  if (!selectedClientId) {
+    wrap.innerHTML = `
+      <div class="a2-no-client">
+        <div class="ico">👤</div>
+        <h3>ยังไม่มีลูกค้า</h3>
+        <p>กรุณาเลือกหรือเพิ่มลูกค้าก่อนเพื่อเริ่มจัดเก็บข้อมูลสินทรัพย์</p>
+        <a href="clients.html">→ ไปเพิ่มลูกค้า</a>
+      </div>`;
+    return;
+  }
+
+  const tCV = SAVINGS_ROWS.concat(INVESTMENT_ROWS).reduce((s,r) => s + getRowData(r.type).currentValue, 0);
+  const tFV = getAssets().reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const tCF = getAssets().reduce((s,a) => s + Number(a.cashFlow||0), 0);
+
+  const tHead = `
+    <div class="a2-thead">
+      <div>รายการ</div>
+      <div class="num">มูลค่าปัจจุบัน</div>
+      <div class="num">ออม/ปี</div>
+      <div class="center">ผลตอบแทน</div>
+      <div class="center col-term">ระยะเวลา</div>
+      <div class="num col-fv">มูลค่าอนาคต</div>
+      <div class="num col-cf">กระแสเงินสด</div>
+      <div class="center">นำไปใช้</div>
+    </div>
+  `;
+
+  /* Custom rows */
+  const customs = getCustomRows();
+  const fvCustoms = customs.filter(a => a.customCategory === 'fv');
+  const cfCustoms = customs.filter(a => a.customCategory === 'cf');
+
+  wrap.innerHTML = `
+    <div class="a2-summary">
+      <div class="a2-stat a2-fade">
+        <div class="lbl">รวมมูลค่าปัจจุบัน</div>
+        <div class="val" id="a2-total-cv">${fmt(tCV)}</div>
+        <div class="sub">สินทรัพย์ทั้งหมด</div>
+      </div>
+      <div class="a2-stat a2-fade d1">
+        <div class="lbl">มูลค่าอนาคต (FV)</div>
+        <div class="val green" id="a2-total-fv">${fmt(tFV)}</div>
+        <div class="sub">เมื่อครบระยะเวลา</div>
+      </div>
+      <div class="a2-stat a2-fade d2">
+        <div class="lbl">กระแสเงินสดรับ/ปี</div>
+        <div class="val blue" id="a2-total-cf">${fmt(tCF)}</div>
+        <div class="sub">รายรับจากสินทรัพย์</div>
+      </div>
+      <div class="a2-stat a2-fade d3">
+        <div class="lbl">จำนวนรายการ</div>
+        <div class="val gold" id="a2-count">${SAVINGS_ROWS.length + INVESTMENT_ROWS.length + customs.length}</div>
+        <div class="sub">รวมในระบบ</div>
+      </div>
+    </div>
+
+    <div class="a2-wrap">
+      <!-- Savings Section -->
+      <div class="a2-section savings a2-fade d1">
+        <div class="a2-section-header">
+          <div class="a2-section-icon">💰</div>
+          <div>
+            <div class="a2-section-title">เงินออม</div>
+            <div class="a2-section-sub">สินทรัพย์ความเสี่ยงต่ำ — เงินฝาก ตราสารหนี้ ประกันบำนาญ</div>
+          </div>
+          <div class="a2-section-total">
+            <div class="lbl">รวมในหมวด</div>
+            <div class="val" id="a2-savings-total">${fmt(SAVINGS_ROWS.reduce((s,r) => s + getRowData(r.type).currentValue, 0))}</div>
+          </div>
+        </div>
+        <div class="a2-table">
+          ${tHead}
+          ${SAVINGS_ROWS.map(renderRow).join('')}
+        </div>
+      </div>
+
+      <!-- Investment Section -->
+      <div class="a2-section investment a2-fade d2">
+        <div class="a2-section-header">
+          <div class="a2-section-icon">📈</div>
+          <div>
+            <div class="a2-section-title">เงินลงทุน</div>
+            <div class="a2-section-sub">สินทรัพย์เพื่อการเติบโต — กองทุน หุ้น อสังหา ฯลฯ</div>
+          </div>
+          <div class="a2-section-total">
+            <div class="lbl">รวมในหมวด</div>
+            <div class="val" id="a2-investment-total">${fmt(INVESTMENT_ROWS.reduce((s,r) => s + getRowData(r.type).currentValue, 0))}</div>
+          </div>
+        </div>
+        <div class="a2-table">
+          ${tHead}
+          ${INVESTMENT_ROWS.map(renderRow).join('')}
+        </div>
+      </div>
+
+      <!-- Custom Rows -->
+      ${customs.length > 0 ? `
+        <div class="a2-section a2-fade d3">
+          <div class="a2-section-header">
+            <div class="a2-section-icon" style="background:linear-gradient(135deg,#8E44AD,#A569BD);">📦</div>
+            <div>
+              <div class="a2-section-title">รายการที่เพิ่มเอง</div>
+              <div class="a2-section-sub">มูลค่าอนาคต / กระแสเงินสดรับที่กำหนดเอง</div>
+            </div>
+            <div class="a2-section-total">
+              <div class="lbl">รายการ</div>
+              <div class="val" style="color:#8E44AD;">${customs.length}</div>
+            </div>
+          </div>
+          <div class="a2-table">
+            ${tHead}
+            ${customs.map(renderCustomRow).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Add custom buttons -->
+      <div class="a2-add-row" style="border-radius:14px; background:white; border:1px dashed #E5E7EB; margin-top:16px;">
+        <button class="a2-add-btn" onclick="addCustomRow('fv')">＋ เพิ่มมูลค่าอนาคต</button>
+        <button class="a2-add-btn cf" onclick="addCustomRow('cf')">＋ เพิ่มกระแสเงินสดรับ</button>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <div class="a2-bottom-nav">
+      <button class="a2-nav-btn" onclick="location.href='clients.html'">
+        ← เลือกลูกค้า
+      </button>
+      <button class="a2-nav-btn primary" onclick="location.href='retirement.html'">
+        เกษียณ →
+      </button>
+    </div>
+  `;
+}
+
+/* Init */
+function initSidebar() {
+  try {
+    const u = getUser();
+    const p = u.profile || {};
+    const name = ((u.firstName||'') + (u.lastName ? ' '+u.lastName : '')).trim() || 'Agent';
+    const initial = (u.firstName || 'A').charAt(0).toUpperCase();
+    const sbAv = document.getElementById('sb-avatar');
+    const sbNm = document.getElementById('sb-name');
+    if (sbNm) sbNm.textContent = name;
+    if (sbAv) {
+      if (p.photo) {
+        sbAv.style.backgroundImage = `url('${p.photo}')`;
+        sbAv.style.backgroundSize = 'cover'; sbAv.style.backgroundPosition = 'center';
+        sbAv.classList.add('has-photo'); sbAv.textContent = '';
+      } else {
+        sbAv.textContent = initial;
+      }
+    }
+  } catch(e){}
+}
+
+fbAuth.onAuthStateChanged(user => {
+  if (!user) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; }
+});
+
+(function init() {
+  initSidebar();
+  initClientSelect();
+  render();
+  /* Cross-tab sync — guard against destroying DOM while user is typing */
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'aia_users') {
+      _commitDirtyInputs();
+      const ae = document.activeElement;
+      const isTyping = ae && ae.tagName === 'INPUT';
+      setTimeout(() => { initClientSelect(); render(); }, isTyping ? 200 : 0);
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
