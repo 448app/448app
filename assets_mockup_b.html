@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wealth Stack — Mockup B</title>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #1F2D4F;
+    --primary-light: #2C3E61;
+    --accent: #C9A961;
+    --bg: #F7F8FB;
+    --surface: #FFFFFF;
+    --text: #1A1F2E;
+    --text-muted: #6B7280;
+    --border: #E5E7EB;
+
+    --liquid: #2D9CDB;
+    --liquid-soft: #E3F2FD;
+    --liquid-grad: linear-gradient(135deg, #2D9CDB, #56CCF2);
+
+    --invest: #27AE60;
+    --invest-soft: #E8F5E9;
+    --invest-grad: linear-gradient(135deg, #27AE60, #6FCF97);
+
+    --personal: #F2994A;
+    --personal-soft: #FFF3E0;
+    --personal-grad: linear-gradient(135deg, #F2994A, #F2C94C);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Prompt', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 32px; padding-bottom: 80px;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    max-width: 1080px; margin: 0 auto 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .page-title {
+    font-size: 1.8rem; font-weight: 700;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .page-title .gem {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; color: var(--accent);
+    box-shadow: 0 4px 12px rgba(31,45,79,.25);
+  }
+  .client-picker {
+    background: white; border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 8px 16px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .client-picker .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .85rem;
+  }
+  .client-picker .name { font-weight: 600; font-size: .92rem; }
+
+  /* ── Compact Summary Bar ── */
+  .summary-bar {
+    max-width: 1080px; margin: 0 auto 24px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 18px; padding: 20px 28px;
+    color: white;
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 24px;
+    align-items: center;
+    box-shadow: 0 8px 24px rgba(31,45,79,.18);
+  }
+  .summary-block .lbl {
+    font-size: .72rem; opacity: .7; text-transform: uppercase;
+    letter-spacing: .12em; margin-bottom: 4px;
+  }
+  .summary-block .val {
+    font-size: 1.5rem; font-weight: 800; line-height: 1;
+  }
+  .summary-block.main .val {
+    font-size: 2.2rem;
+    background: linear-gradient(135deg, #FFF, var(--accent));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .summary-block .sub {
+    font-size: .76rem; opacity: .7; margin-top: 3px;
+  }
+  .summary-block .sub.green { color: #6FCF97; opacity: 1; font-weight: 600; }
+
+  /* ── Filter chips ── */
+  .filter-bar {
+    max-width: 1080px; margin: 0 auto 20px;
+    display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-chip {
+    padding: 8px 18px; border-radius: 50px;
+    background: white; border: 1.5px solid var(--border);
+    font-family: 'Prompt', sans-serif; font-weight: 600; font-size: .88rem;
+    color: var(--text-muted); cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .filter-chip:hover { border-color: var(--primary); color: var(--text); }
+  .filter-chip.active {
+    background: var(--primary); border-color: var(--primary); color: white;
+    box-shadow: 0 4px 12px rgba(31,45,79,.2);
+  }
+  .filter-chip .count {
+    background: rgba(255,255,255,.2); padding: 1px 8px;
+    border-radius: 50px; font-size: .72rem;
+  }
+  .filter-chip:not(.active) .count {
+    background: var(--bg); color: var(--text-muted);
+  }
+  .filter-spacer { flex: 1; }
+  .filter-search {
+    padding: 8px 16px; border-radius: 50px; border: 1.5px solid var(--border);
+    background: white; font-family: 'Prompt', sans-serif; font-size: .88rem;
+    width: 200px; outline: none; transition: all .2s;
+  }
+  .filter-search:focus { border-color: var(--primary); width: 240px; }
+
+  /* ── Asset List ── */
+  .asset-list {
+    max-width: 1080px; margin: 0 auto;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .asset-card {
+    background: var(--surface); border-radius: 16px; padding: 20px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    border: 1px solid var(--border); border-left: 4px solid var(--text-muted);
+    display: grid; grid-template-columns: 64px 1fr auto;
+    gap: 20px; align-items: center;
+    transition: all .25s cubic-bezier(.2,.9,.3,1.05);
+  }
+  .asset-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+  }
+  .asset-card.liquid { border-left-color: var(--liquid); }
+  .asset-card.invest { border-left-color: var(--invest); }
+  .asset-card.personal { border-left-color: var(--personal); }
+
+  .asset-emoji-lg {
+    width: 64px; height: 64px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1);
+  }
+  .asset-card.liquid .asset-emoji-lg { background: var(--liquid-grad); }
+  .asset-card.invest .asset-emoji-lg { background: var(--invest-grad); }
+  .asset-card.personal .asset-emoji-lg { background: var(--personal-grad); }
+
+  .asset-body { min-width: 0; }
+  .asset-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .asset-card-name {
+    font-size: 1.15rem; font-weight: 700; color: var(--text);
+  }
+  .asset-card-badge {
+    padding: 2px 10px; border-radius: 50px;
+    font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  .asset-card.liquid .asset-card-badge { background: var(--liquid-soft); color: var(--liquid); }
+  .asset-card.invest .asset-card-badge { background: var(--invest-soft); color: var(--invest); }
+  .asset-card.personal .asset-card-badge { background: var(--personal-soft); color: var(--personal); }
+
+  .asset-card-meta {
+    font-size: .86rem; color: var(--text-muted);
+    display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .asset-card-meta span { display: flex; align-items: center; gap: 4px; }
+  .asset-card-meta .meta-key { color: var(--text-muted); }
+  .asset-card-meta .meta-val { color: var(--text); font-weight: 600; }
+
+  .asset-share {
+    height: 6px; background: var(--bg); border-radius: 3px;
+    overflow: hidden; max-width: 320px;
+  }
+  .asset-share-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 1.2s cubic-bezier(.2,.9,.3,1.05);
+  }
+  .asset-card.liquid .asset-share-fill { background: var(--liquid-grad); }
+  .asset-card.invest .asset-share-fill { background: var(--invest-grad); }
+  .asset-card.personal .asset-share-fill { background: var(--personal-grad); }
+  .asset-share-label {
+    font-size: .76rem; color: var(--text-muted); margin-top: 4px;
+    display: flex; justify-content: space-between; max-width: 320px;
+  }
+  .asset-share-label .pct { font-weight: 700; color: var(--text); }
+
+  .asset-right {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+  }
+  .asset-value-lg {
+    font-size: 1.5rem; font-weight: 800; color: var(--text);
+    line-height: 1;
+  }
+  .asset-fv {
+    font-size: .82rem; color: var(--text-muted);
+  }
+  .asset-fv b { color: #27AE60; font-weight: 700; }
+  .asset-actions {
+    display: flex; gap: 6px; margin-top: 4px;
+  }
+  .asset-action-btn {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: var(--bg); border: none; cursor: pointer;
+    font-size: 1rem; transition: all .2s;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
+  }
+  .asset-action-btn:hover {
+    background: var(--primary); color: white; transform: scale(1.05);
+  }
+  .asset-action-btn.delete:hover { background: #E74C3C; }
+
+  /* ── Floating Action Button ── */
+  .fab {
+    position: fixed; bottom: 32px; right: 32px; z-index: 100;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border: 3px solid var(--accent);
+    color: white; font-size: 1.8rem; cursor: pointer;
+    box-shadow: 0 8px 24px rgba(31,45,79,.3);
+    display: flex; align-items: center; justify-content: center;
+    transition: all .25s;
+    font-family: inherit;
+  }
+  .fab:hover {
+    transform: scale(1.08) rotate(90deg);
+    box-shadow: 0 12px 32px rgba(31,45,79,.4);
+  }
+
+  .mockup-note {
+    max-width: 1080px; margin: 28px auto 0;
+    text-align: center; color: var(--text-muted); font-size: .82rem;
+  }
+  .mockup-note .tag {
+    display: inline-block; padding: 4px 12px; border-radius: 50px;
+    background: var(--accent); color: white; font-weight: 700;
+    margin-right: 8px; font-size: .72rem;
+  }
+
+  @media (max-width: 720px) {
+    .summary-bar { grid-template-columns: 1fr 1fr; }
+    .asset-card { grid-template-columns: 56px 1fr; }
+    .asset-right { grid-column: 1 / -1; align-items: stretch; }
+    .asset-value-lg { text-align: right; }
+  }
+
+  /* fade-up animation */
+  .fade-up {
+    opacity: 0; transform: translateY(20px);
+    animation: fadeUp .6s cubic-bezier(.2,.9,.3,1.05) forwards;
+  }
+  .fade-up.d1 { animation-delay: .1s; }
+  .fade-up.d2 { animation-delay: .2s; }
+  .fade-up.d3 { animation-delay: .3s; }
+  .fade-up.d4 { animation-delay: .4s; }
+  .fade-up.d5 { animation-delay: .5s; }
+  .fade-up.d6 { animation-delay: .6s; }
+  .fade-up.d7 { animation-delay: .7s; }
+  .fade-up.d8 { animation-delay: .8s; }
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header fade-up">
+  <div class="page-title">
+    <div class="gem">💎</div>
+    <span>Wealth Stack</span>
+  </div>
+  <div class="client-picker">
+    <div class="avatar">H</div>
+    <div class="name">คุณ HAN ⌄</div>
+  </div>
+</div>
+
+<!-- Compact Summary -->
+<div class="summary-bar fade-up d1">
+  <div class="summary-block main">
+    <div class="lbl">ความมั่งคั่งสุทธิ</div>
+    <div class="val" id="total-display">฿0</div>
+    <div class="sub green">+12.4% YTD ↗</div>
+  </div>
+  <div class="summary-block">
+    <div class="lbl">FV ปี 2046</div>
+    <div class="val">฿15.2M</div>
+    <div class="sub">อีก 20 ปี</div>
+  </div>
+  <div class="summary-block">
+    <div class="lbl">รายการ</div>
+    <div class="val">8</div>
+    <div class="sub">รายการสินทรัพย์</div>
+  </div>
+  <div class="summary-block">
+    <div class="lbl">ผลตอบแทนเฉลี่ย</div>
+    <div class="val">5.2%</div>
+    <div class="sub">ต่อปี</div>
+  </div>
+</div>
+
+<!-- Filter Bar -->
+<div class="filter-bar fade-up d2">
+  <button class="filter-chip active">
+    ทั้งหมด <span class="count">8</span>
+  </button>
+  <button class="filter-chip">
+    💧 Liquid <span class="count">3</span>
+  </button>
+  <button class="filter-chip">
+    📈 Investment <span class="count">3</span>
+  </button>
+  <button class="filter-chip">
+    🏠 Personal <span class="count">2</span>
+  </button>
+  <div class="filter-spacer"></div>
+  <input class="filter-search" placeholder="🔍 ค้นหาสินทรัพย์...">
+</div>
+
+<!-- Asset Cards -->
+<div class="asset-list">
+
+  <!-- Liquid: Cash -->
+  <div class="asset-card liquid fade-up d3">
+    <div class="asset-emoji-lg">💵</div>
+    <div class="asset-body">
+      <div class="asset-head">
+        <div class="asset-card-name">เงินสด</div>
+        <div class="asset-card-badge">Liquid</div>
+      </div>
+      <div class="asset-card-meta">
+        <span><span class="meta-key">ผลตอบแทน:</span> <span class="meta-val">0%</span></span>
+        <span><span class="meta-key">เพิ่มต่อเดือน:</span> <span class="meta-val">฿0</span></span>
+      </div>
+      <div class="asset-share"><div class="asset-share-fill" style="width:5.9%"></div></div>
+      <div class="asset-share-label">
+        <span>สัดส่วนของรวม</span>
+        <span class="pct">5.9%</span>
+      </div>
+    </div>
+    <div class="asset-right">
+      <div class="asset-value-lg">฿500,000</div>
+      <div class="asset-fv">FV: <b>฿500,000</b></div>
+      <div class="asset-actions">
+        <button class="asset-action-btn" title="แก้ไข">✏️</button>
+        <button class="asset-action-btn" title="ใช้กับแผน">🎯</button>
+        <button class="asset-action-btn delete" title="ลบ">🗑️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Liquid: Deposit -->
+  <div class="asset-card liquid fade-up d4">
+    <div class="asset-emoji-lg">🐷</div>
+    <div class="asset-body">
+      <div class="asset-head">
+        <div class="asset-card-name">เงินฝากออมทรัพย์</div>
+        <div class="asset-card-badge">Liquid</div>
+      </div>
+      <div class="asset-card-meta">
+        <span><span class="meta-key">ผลตอบแทน:</span> <span class="meta-val">1.5%</span></span>
+        <span><span class="meta-key">ฝากเพิ่ม:</span> <span class="meta-val">฿5,000/เดือน</span></span>
+      </div>
+      <div class="asset-share"><div class="asset-share-fill" style="width:23.5%"></div></div>
+      <div class="asset-share-label">
+        <span>สัดส่วนของรวม</span>
+        <span class="pct">23.5%</span>
+      </div>
+    </div>
+    <div class="asset-right">
+      <div class="asset-value-lg">฿2,000,000</div>
+      <div class="asset-fv">FV: <b>฿3,150,000</b></div>
+      <div class="asset-actions">
+        <button class="asset-action-btn">✏️</button>
+        <button class="asset-action-btn">🎯</button>
+        <button class="asset-action-btn delete">🗑️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Investment: PVD -->
+  <div class="asset-card invest fade-up d5">
+    <div class="asset-emoji-lg">📊</div>
+    <div class="asset-body">
+      <div class="asset-head">
+        <div class="asset-card-name">PVD (กองทุนสำรองเลี้ยงชีพ)</div>
+        <div class="asset-card-badge">Investment</div>
+      </div>
+      <div class="asset-card-meta">
+        <span><span class="meta-key">ผลตอบแทน:</span> <span class="meta-val">5%</span></span>
+        <span><span class="meta-key">สมทบ:</span> <span class="meta-val">฿15,000/เดือน</span></span>
+        <span><span class="meta-key">ระยะเวลา:</span> <span class="meta-val">20 ปี</span></span>
+      </div>
+      <div class="asset-share"><div class="asset-share-fill" style="width:14.1%"></div></div>
+      <div class="asset-share-label">
+        <span>สัดส่วนของรวม</span>
+        <span class="pct">14.1%</span>
+      </div>
+    </div>
+    <div class="asset-right">
+      <div class="asset-value-lg">฿1,200,000</div>
+      <div class="asset-fv">FV: <b>฿4,150,000</b></div>
+      <div class="asset-actions">
+        <button class="asset-action-btn">✏️</button>
+        <button class="asset-action-btn">🎯</button>
+        <button class="asset-action-btn delete">🗑️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Investment: Stocks -->
+  <div class="asset-card invest fade-up d6">
+    <div class="asset-emoji-lg">📈</div>
+    <div class="asset-body">
+      <div class="asset-head">
+        <div class="asset-card-name">หุ้นไทย/ต่างประเทศ</div>
+        <div class="asset-card-badge">Investment</div>
+      </div>
+      <div class="asset-card-meta">
+        <span><span class="meta-key">ผลตอบแทน:</span> <span class="meta-val">8%</span></span>
+        <span><span class="meta-key">DCA:</span> <span class="meta-val">฿20,000/เดือน</span></span>
+      </div>
+      <div class="asset-share"><div class="asset-share-fill" style="width:21.2%"></div></div>
+      <div class="asset-share-label">
+        <span>สัดส่วนของรวม</span>
+        <span class="pct">21.2%</span>
+      </div>
+    </div>
+    <div class="asset-right">
+      <div class="asset-value-lg">฿1,800,000</div>
+      <div class="asset-fv">FV: <b>฿5,200,000</b></div>
+      <div class="asset-actions">
+        <button class="asset-action-btn">✏️</button>
+        <button class="asset-action-btn">🎯</button>
+        <button class="asset-action-btn delete">🗑️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal: House -->
+  <div class="asset-card personal fade-up d7">
+    <div class="asset-emoji-lg">🏡</div>
+    <div class="asset-body">
+      <div class="asset-head">
+        <div class="asset-card-name">บ้าน/คอนโด</div>
+        <div class="asset-card-badge">Personal</div>
+      </div>
+      <div class="asset-card-meta">
+        <span><span class="meta-key">ประเภท:</span> <span class="meta-val">อสังหาริมทรัพย์</span></span>
+        <span><span class="meta-key">เพิ่มมูลค่า:</span> <span class="meta-val">2% ต่อปี</span></span>
+      </div>
+      <div class="asset-share"><div class="asset-share-fill" style="width:17.6%"></div></div>
+      <div class="asset-share-label">
+        <span>สัดส่วนของรวม</span>
+        <span class="pct">17.6%</span>
+      </div>
+    </div>
+    <div class="asset-right">
+      <div class="asset-value-lg">฿1,500,000</div>
+      <div class="asset-fv">FV: <b>฿2,230,000</b></div>
+      <div class="asset-actions">
+        <button class="asset-action-btn">✏️</button>
+        <button class="asset-action-btn">🎯</button>
+        <button class="asset-action-btn delete">🗑️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Personal: Other -->
+  <div class="asset-card personal fade-up d8">
+    <div class="asset-emoji-lg">📦</div>
+    <div class="asset-body">
+      <div class="asset-head">
+        <div class="asset-card-name">อื่น ๆ (ของมีค่า)</div>
+        <div class="asset-card-badge">Personal</div>
+      </div>
+      <div class="asset-card-meta">
+        <span><span class="meta-key">ประเภท:</span> <span class="meta-val">ทรัพย์สินส่วนตัว</span></span>
+      </div>
+      <div class="asset-share"><div class="asset-share-fill" style="width:2.4%"></div></div>
+      <div class="asset-share-label">
+        <span>สัดส่วนของรวม</span>
+        <span class="pct">2.4%</span>
+      </div>
+    </div>
+    <div class="asset-right">
+      <div class="asset-value-lg">฿200,000</div>
+      <div class="asset-fv">FV: <b>฿200,000</b></div>
+      <div class="asset-actions">
+        <button class="asset-action-btn">✏️</button>
+        <button class="asset-action-btn">🎯</button>
+        <button class="asset-action-btn delete">🗑️</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Floating Add Button -->
+<button class="fab" title="เพิ่มสินทรัพย์">+</button>
+
+<div class="mockup-note">
+  <span class="tag">MOCKUP B</span>
+  Card Stack + Filter chips + FAB · ลอง hover การ์ด/ปุ่ม FAB ดูเอฟเฟกต์
+</div>
+
+<script>
+/* Number counter */
+window.addEventListener('load', () => {
+  const totalEl = document.getElementById('total-display');
+  const target = 8500000;
+  const duration = 1600;
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    totalEl.textContent = '฿' + Math.round(target * eased).toLocaleString('th-TH');
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  setTimeout(() => requestAnimationFrame(tick), 300);
+
+  /* Filter chip click demo */
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    });
+  });
+});
+</script>
+
+</body>
+</html>

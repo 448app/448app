@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>448 Wealth Studio — สินทรัพย์</title>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
+      authDomain: "app-d83ab.firebaseapp.com",
+      projectId: "app-d83ab",
+      storageBucket: "app-d83ab.firebasestorage.app",
+      messagingSenderId: "2200674251",
+      appId: "1:2200674251:web:0b240a123df2e5b86ea04e"
+    });
+    const fbAuth = firebase.auth();
+  </script>
+  <style>
+    /* ════════════════════════════════════════════════
+       WEALTH STUDIO — Premium Modern Design
+       Override font family for this page
+    ═══════════════════════════════════════════════ */
+    body, .app-main, input, button, select, textarea {
+      font-family: 'Prompt', 'Sarabun', sans-serif;
+    }
+    .ws-num { font-family: 'Inter', 'Prompt', sans-serif; font-variant-numeric: tabular-nums; }
+
+    /* ── Studio shell ── */
+    .ws-app {
+      background:
+        radial-gradient(circle at 0% 0%, rgba(201,169,97,.08), transparent 50%),
+        radial-gradient(circle at 100% 100%, rgba(45,156,219,.06), transparent 50%),
+        linear-gradient(180deg, #FAFBFC 0%, #F5F7FB 100%);
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+
+    /* ── Hero with gradient mesh ── */
+    .ws-hero {
+      position: relative;
+      background:
+        radial-gradient(ellipse 80% 60% at 20% 30%, rgba(201,169,97,.22), transparent 60%),
+        radial-gradient(ellipse 60% 80% at 80% 70%, rgba(86,204,242,.15), transparent 60%),
+        linear-gradient(135deg, #1F2D4F 0%, #2C3E61 50%, #1A2540 100%);
+      padding: 36px 40px 60px;
+      color: white;
+      border-radius: 0 0 32px 32px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(31,45,79,.18);
+    }
+    /* Animated floating orbs */
+    .ws-hero::before, .ws-hero::after {
+      content: ''; position: absolute; border-radius: 50%;
+      filter: blur(60px); opacity: .35;
+      pointer-events: none;
+    }
+    .ws-hero::before {
+      width: 300px; height: 300px;
+      background: #C9A961; top: -100px; right: 10%;
+      animation: orb1 14s ease-in-out infinite;
+    }
+    .ws-hero::after {
+      width: 240px; height: 240px;
+      background: #56CCF2; bottom: -80px; left: 20%;
+      animation: orb2 18s ease-in-out infinite;
+    }
+    @keyframes orb1 {
+      0%,100% { transform: translate(0,0); }
+      50%     { transform: translate(-40px,30px); }
+    }
+    @keyframes orb2 {
+      0%,100% { transform: translate(0,0); }
+      50%     { transform: translate(50px,-30px); }
+    }
+
+    .ws-hero-top {
+      display: flex; justify-content: space-between; align-items: center;
+      position: relative; z-index: 2;
+      flex-wrap: wrap; gap: 12px;
+      margin-bottom: 28px;
+    }
+    .ws-greeting {
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .ws-greet-time {
+      font-size: .78rem; opacity: .7; letter-spacing: .1em;
+      text-transform: uppercase; font-weight: 600;
+    }
+    .ws-greet-text {
+      font-size: 1.2rem; font-weight: 700;
+    }
+    .ws-greet-text b { color: #C9A961; }
+    .ws-client-pill {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(255,255,255,.2);
+      border-radius: 14px; padding: 6px 8px 6px 14px;
+    }
+    .ws-client-pill .av {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #C9A961, #B8924A);
+      color: white; font-weight: 800; font-size: .9rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ws-client-pill select {
+      background: rgba(255,255,255,.95); color: #1F2D4F;
+      border: none; border-radius: 10px; padding: 7px 12px;
+      font-family: inherit; font-weight: 700; font-size: .88rem;
+      cursor: pointer; min-width: 160px;
+    }
+
+    /* Hero center — Donut + Total */
+    .ws-hero-main {
+      display: grid; grid-template-columns: auto 1fr; gap: 44px;
+      align-items: center; position: relative; z-index: 2;
+    }
+    @media (max-width: 820px) {
+      .ws-hero-main { grid-template-columns: 1fr; gap: 28px; justify-items: center; text-align: center; }
+    }
+
+    /* Donut chart with 3D feel */
+    .ws-donut {
+      position: relative; width: 220px; height: 220px;
+      filter: drop-shadow(0 12px 28px rgba(0,0,0,.3));
+    }
+    .ws-donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .ws-donut-arc {
+      fill: none; stroke-width: 22; stroke-linecap: round;
+      transition: stroke-dashoffset 1.6s cubic-bezier(.2,.9,.3,1.05);
+    }
+    .ws-donut-center {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; text-align: center;
+    }
+    .ws-donut-emoji {
+      font-size: 2.4rem; line-height: 1;
+      animation: gem 3s ease-in-out infinite;
+    }
+    @keyframes gem {
+      0%,100% { transform: scale(1) rotate(0deg); }
+      50%     { transform: scale(1.08) rotate(3deg); }
+    }
+    .ws-donut-mini-label {
+      font-size: .68rem; opacity: .8; letter-spacing: .15em;
+      text-transform: uppercase; margin-top: 6px; font-weight: 700;
+    }
+
+    /* Hero total */
+    .ws-total-block { min-width: 0; }
+    .ws-total-lbl {
+      font-size: .82rem; opacity: .7; letter-spacing: .15em;
+      text-transform: uppercase; font-weight: 700; margin-bottom: 6px;
+    }
+    .ws-total-amt {
+      font-size: 3.4rem; font-weight: 800; line-height: 1; letter-spacing: -.02em;
+      background: linear-gradient(135deg, #FFFFFF 0%, #C9A961 100%);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 600px) { .ws-total-amt { font-size: 2.4rem; } }
+    .ws-total-meta {
+      display: flex; gap: 18px; flex-wrap: wrap;
+      font-size: .9rem;
+    }
+    .ws-meta-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px; background: rgba(255,255,255,.1);
+      border-radius: 50px; backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.15);
+    }
+    .ws-meta-item .dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .ws-meta-item .val { font-weight: 700; }
+    .ws-meta-item.savings .dot { background: #FFD580; }
+    .ws-meta-item.invest  .dot { background: #56CCF2; }
+    .ws-meta-item.custom  .dot { background: #C792EA; }
+
+    /* ── Filter / search bar ── */
+    .ws-toolbar {
+      max-width: 1280px; margin: 24px auto 0;
+      padding: 0 30px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .ws-segmented {
+      display: inline-flex; background: white;
+      border-radius: 14px; padding: 5px;
+      border: 1px solid #E5E7EB;
+      box-shadow: 0 2px 10px rgba(0,0,0,.04);
+      position: relative;
+    }
+    .ws-seg {
+      padding: 9px 18px; border-radius: 10px; border: none;
+      background: transparent; cursor: pointer;
+      font-family: inherit; font-weight: 600; font-size: .88rem;
+      color: #6B7280; transition: all .25s;
+      display: flex; align-items: center; gap: 8px;
+      white-space: nowrap;
+    }
+    .ws-seg:hover { color: #1F2D4F; }
+    .ws-seg.active {
+      background: linear-gradient(135deg, #1F2D4F, #2C3E61);
+      color: white; box-shadow: 0 4px 12px rgba(31,45,79,.25);
+    }
+    .ws-seg .count {
+      background: rgba(0,0,0,.08); padding: 1px 8px;
+      border-radius: 50px; font-size: .7rem;
+    }
+    .ws-seg.active .count { background: rgba(255,255,255,.25); }
+
+    .ws-search {
+      flex: 1; min-width: 200px; max-width: 320px;
+      position: relative;
+    }
+    .ws-search input {
+      width: 100%; padding: 11px 16px 11px 42px;
+      background: white; border: 1px solid #E5E7EB; border-radius: 12px;
+      font-family: inherit; font-size: .9rem;
+      outline: none; transition: all .2s;
+      box-shadow: 0 2px 10px rgba(0,0,0,.04);
+    }
+    .ws-search input:focus {
+      border-color: #C9A961;
+      box-shadow: 0 4px 16px rgba(201,169,97,.18);
+    }
+    .ws-search::before {
+      content: '🔍'; position: absolute; left: 14px; top: 50%;
+      transform: translateY(-50%); opacity: .5; font-size: .9rem;
+      pointer-events: none;
+    }
+
+    /* ── Grid of cards ── */
+    .ws-grid-wrap {
+      max-width: 1280px; margin: 20px auto 0;
+      padding: 0 30px;
+    }
+    .ws-cat-label {
+      display: flex; align-items: center; gap: 10px;
+      margin: 24px 0 14px;
+      font-size: .92rem; font-weight: 700; color: #1F2D4F;
+      letter-spacing: .02em;
+    }
+    .ws-cat-label .cat-icon {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+    }
+    .ws-cat-label.savings .cat-icon {
+      background: linear-gradient(135deg, #FFD580, #C9A961); color: white;
+    }
+    .ws-cat-label.invest .cat-icon {
+      background: linear-gradient(135deg, #56CCF2, #2D9CDB); color: white;
+    }
+    .ws-cat-label.custom .cat-icon {
+      background: linear-gradient(135deg, #C792EA, #8E44AD); color: white;
+    }
+    .ws-cat-line {
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, #E5E7EB, transparent);
+    }
+    .ws-cat-total {
+      font-family: 'Inter', 'Prompt', sans-serif;
+      font-weight: 700; color: #6B7280; font-size: .9rem;
+    }
+    .ws-cat-total b { color: #1F2D4F; }
+
+    .ws-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    /* ── Asset Card (the WOW element) ── */
+    .ws-card {
+      background: white; border-radius: 18px;
+      padding: 20px;
+      box-shadow:
+        0 1px 3px rgba(0,0,0,.04),
+        0 8px 24px rgba(0,0,0,.04);
+      border: 1px solid rgba(229,231,235,.6);
+      transition: all .35s cubic-bezier(.2,.9,.3,1.05);
+      position: relative; overflow: hidden;
+      cursor: pointer;
+    }
+    .ws-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px; opacity: 0;
+      transition: opacity .35s;
+      background: linear-gradient(90deg, transparent, currentColor, transparent);
+    }
+    .ws-card:hover {
+      transform: translateY(-4px);
+      box-shadow:
+        0 4px 12px rgba(0,0,0,.06),
+        0 16px 40px rgba(0,0,0,.08);
+      border-color: rgba(201,169,97,.3);
+    }
+    .ws-card:hover::before { opacity: 1; }
+    .ws-card.savings { color: #C9A961; }
+    .ws-card.invest  { color: #2D9CDB; }
+    .ws-card.custom  { color: #8E44AD; }
+    .ws-card.empty { opacity: .85; }
+    .ws-card.empty:hover { opacity: 1; }
+    .ws-card.expanded {
+      transform: none;
+      box-shadow:
+        0 4px 12px rgba(0,0,0,.06),
+        0 24px 60px rgba(31,45,79,.12);
+      border-color: #C9A961;
+      grid-column: 1 / -1;
+    }
+
+    .ws-card-head {
+      display: flex; align-items: flex-start; gap: 14px;
+    }
+    .ws-card-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; color: white; flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,.1);
+      transition: transform .35s cubic-bezier(.2,.9,.3,1.05);
+    }
+    .ws-card:hover .ws-card-icon { transform: scale(1.08) rotate(-3deg); }
+    .ws-card.savings .ws-card-icon {
+      background: linear-gradient(135deg, #FFD580, #C9A961);
+    }
+    .ws-card.invest .ws-card-icon {
+      background: linear-gradient(135deg, #56CCF2, #2D9CDB);
+    }
+    .ws-card.custom .ws-card-icon {
+      background: linear-gradient(135deg, #C792EA, #8E44AD);
+    }
+
+    .ws-card-meta { flex: 1; min-width: 0; }
+    .ws-card-name {
+      font-size: 1rem; font-weight: 700; color: #1F2D4F;
+      line-height: 1.25; margin-bottom: 4px;
+      overflow: hidden; text-overflow: ellipsis;
+      display: -webkit-box; -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .ws-card-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+    .ws-card-badge {
+      padding: 2px 8px; border-radius: 50px;
+      font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .03em;
+    }
+    .ws-card.savings .ws-card-badge { background: rgba(201,169,97,.12); color: #B8924A; }
+    .ws-card.invest .ws-card-badge { background: rgba(45,156,219,.12); color: #2D9CDB; }
+    .ws-card.custom .ws-card-badge { background: rgba(142,68,173,.12); color: #8E44AD; }
+    .ws-card-badge.applied {
+      background: linear-gradient(135deg, #1F2D4F, #2C3E61);
+      color: white;
+    }
+
+    /* Card value display */
+    .ws-card-value {
+      margin-top: 18px;
+      display: flex; align-items: baseline; gap: 8px;
+    }
+    .ws-card-cv {
+      font-family: 'Inter', 'Prompt', sans-serif;
+      font-size: 1.7rem; font-weight: 800; color: #1F2D4F;
+      line-height: 1; letter-spacing: -.02em;
+    }
+    .ws-card-cv.empty { color: #D1D5DB; font-weight: 500; font-size: 1.2rem; }
+    .ws-card-share {
+      font-size: .8rem; color: #9CA3AF; font-weight: 600;
+    }
+
+    .ws-card-progress {
+      margin-top: 10px; height: 4px;
+      background: #F3F4F6; border-radius: 2px;
+      overflow: hidden;
+    }
+    .ws-card-progress-fill {
+      height: 100%; border-radius: 2px;
+      transition: width 1.2s cubic-bezier(.2,.9,.3,1.05);
+    }
+    .ws-card.savings .ws-card-progress-fill { background: linear-gradient(90deg, #FFD580, #C9A961); }
+    .ws-card.invest  .ws-card-progress-fill { background: linear-gradient(90deg, #56CCF2, #2D9CDB); }
+    .ws-card.custom  .ws-card-progress-fill { background: linear-gradient(90deg, #C792EA, #8E44AD); }
+
+    /* Card stats grid (small) */
+    .ws-card-stats {
+      margin-top: 14px;
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      padding-top: 14px;
+      border-top: 1px dashed #E5E7EB;
+    }
+    .ws-stat-mini { text-align: left; }
+    .ws-stat-mini .l {
+      font-size: .68rem; color: #9CA3AF; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .04em;
+      margin-bottom: 3px;
+    }
+    .ws-stat-mini .v {
+      font-family: 'Inter', 'Prompt', sans-serif;
+      font-size: .92rem; font-weight: 700; color: #1F2D4F;
+    }
+    .ws-stat-mini .v.green { color: #10B981; }
+    .ws-stat-mini .v.muted { color: #D1D5DB; font-weight: 500; }
+
+    /* ── Expanded Edit Mode (inline, no modal) ── */
+    .ws-card-editor {
+      display: none;
+      margin-top: 18px; padding-top: 18px;
+      border-top: 1px solid #F3F4F6;
+      animation: editIn .35s ease-out;
+    }
+    .ws-card.expanded .ws-card-editor { display: block; }
+    .ws-card.expanded .ws-card-stats { display: none; }
+    @keyframes editIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .ws-editor-grid {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+    @media (max-width: 600px) { .ws-editor-grid { grid-template-columns: 1fr; } }
+
+    .ws-field {
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .ws-field label {
+      font-size: .72rem; color: #6B7280; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .ws-field-input {
+      position: relative;
+      display: flex; align-items: center;
+    }
+    .ws-field-input input {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid #E5E7EB; border-radius: 10px;
+      font-family: 'Inter', 'Prompt', sans-serif;
+      font-size: 1rem; font-weight: 600; color: #1F2D4F;
+      background: white; outline: none;
+      transition: all .15s; box-sizing: border-box;
+      text-align: right;
+    }
+    .ws-field-input input:focus {
+      border-color: #C9A961;
+      box-shadow: 0 0 0 4px rgba(201,169,97,.12);
+    }
+    .ws-field-input input::placeholder { color: #D1D5DB; font-weight: 400; }
+    .ws-field-input .suffix {
+      position: absolute; right: 12px; color: #9CA3AF;
+      font-size: .82rem; pointer-events: none; font-weight: 500;
+    }
+    .ws-field-input input.has-suffix { padding-right: 32px; }
+
+    /* Live FV preview */
+    .ws-fv-preview {
+      margin-top: 14px;
+      padding: 14px 18px;
+      background: linear-gradient(135deg, #ECFDF5 0%, #F0FDF4 100%);
+      border: 1px solid rgba(16,185,129,.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 14px; flex-wrap: wrap;
+    }
+    .ws-fv-preview.cf {
+      background: linear-gradient(135deg, #EFF6FF 0%, #F0F9FF 100%);
+      border-color: rgba(45,156,219,.2);
+    }
+    .ws-fv-info { min-width: 0; }
+    .ws-fv-label {
+      font-size: .76rem; color: #047857; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .ws-fv-preview.cf .ws-fv-label { color: #1D4ED8; }
+    .ws-fv-amount {
+      font-family: 'Inter', 'Prompt', sans-serif;
+      font-size: 1.6rem; font-weight: 800; color: #065F46;
+      letter-spacing: -.02em; line-height: 1.1;
+      transition: all .3s;
+    }
+    .ws-fv-preview.cf .ws-fv-amount { color: #1E40AF; }
+    .ws-fv-pulse { animation: pulse .4s ease-out; }
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+      100% { transform: scale(1); }
+    }
+
+    /* Editor actions */
+    .ws-editor-actions {
+      margin-top: 14px;
+      display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;
+    }
+    .ws-btn {
+      padding: 10px 18px; border-radius: 10px; border: none;
+      font-family: inherit; font-weight: 700; font-size: .88rem;
+      cursor: pointer; transition: all .15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .ws-btn.ghost {
+      background: white; color: #6B7280; border: 1.5px solid #E5E7EB;
+    }
+    .ws-btn.ghost:hover { color: #1F2D4F; border-color: #1F2D4F; }
+    .ws-btn.primary {
+      background: linear-gradient(135deg, #1F2D4F, #2C3E61); color: white;
+      box-shadow: 0 4px 12px rgba(31,45,79,.25);
+    }
+    .ws-btn.primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(31,45,79,.35);
+    }
+    .ws-btn.danger {
+      background: white; color: #DC2626; border: 1.5px solid #FECACA;
+    }
+    .ws-btn.danger:hover { background: #FEE2E2; }
+
+    /* Apply-to inline pills */
+    .ws-apply-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 14px; padding-top: 14px;
+      border-top: 1px dashed #E5E7EB;
+      flex-wrap: wrap;
+    }
+    .ws-apply-row > label {
+      font-size: .76rem; color: #6B7280; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .04em;
+    }
+    .ws-pill {
+      padding: 6px 14px; border-radius: 50px;
+      border: 1.5px solid #E5E7EB; background: white;
+      font-family: inherit; font-weight: 600; font-size: .82rem;
+      color: #6B7280; cursor: pointer; transition: all .15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .ws-pill:hover { color: #1F2D4F; border-color: #1F2D4F; }
+    .ws-pill.active {
+      background: linear-gradient(135deg, #1F2D4F, #2C3E61);
+      color: white; border-color: transparent;
+      box-shadow: 0 3px 10px rgba(31,45,79,.25);
+    }
+
+    /* Card custom name input */
+    .ws-cust-name {
+      width: 100%; padding: 8px 12px;
+      border: 1.5px dashed #D1D5DB; border-radius: 8px;
+      font-family: inherit; font-size: .95rem; font-weight: 600;
+      color: #1F2D4F; background: white;
+      outline: none; transition: all .15s;
+    }
+    .ws-cust-name:focus {
+      border-style: solid; border-color: #C9A961;
+      box-shadow: 0 0 0 3px rgba(201,169,97,.12);
+    }
+
+    /* ── Add custom buttons ── */
+    .ws-add-area {
+      max-width: 1280px; margin: 28px auto 0;
+      padding: 0 30px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+    }
+    @media (max-width: 600px) { .ws-add-area { grid-template-columns: 1fr; } }
+    .ws-add-btn {
+      padding: 18px 22px;
+      background: white;
+      border: 2px dashed #E5E7EB;
+      border-radius: 16px; cursor: pointer;
+      font-family: inherit; font-weight: 700; font-size: .95rem;
+      color: #6B7280; transition: all .25s cubic-bezier(.2,.9,.3,1.05);
+      display: flex; align-items: center; gap: 14px;
+    }
+    .ws-add-btn .icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      background: #F3F4F6;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; transition: all .25s;
+    }
+    .ws-add-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+      border-style: solid; color: #1F2D4F;
+    }
+    .ws-add-btn.fv:hover { border-color: #10B981; color: #047857; }
+    .ws-add-btn.fv:hover .icon { background: #ECFDF5; color: #047857; }
+    .ws-add-btn.cf:hover { border-color: #2D9CDB; color: #1E40AF; }
+    .ws-add-btn.cf:hover .icon { background: #EFF6FF; color: #1E40AF; }
+    .ws-add-btn .text {
+      display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+    }
+    .ws-add-btn .text .t1 { font-size: .98rem; font-weight: 700; }
+    .ws-add-btn .text .t2 { font-size: .76rem; opacity: .7; font-weight: 500; }
+
+    /* ── Floating bottom dock ── */
+    .ws-dock {
+      position: fixed; bottom: 16px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(31,45,79,.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 50px; padding: 8px 8px 8px 24px;
+      box-shadow: 0 20px 50px rgba(31,45,79,.4);
+      display: flex; align-items: center; gap: 24px;
+      z-index: 90;
+      max-width: calc(100vw - 40px);
+      overflow-x: auto;
+    }
+    .ws-dock-item {
+      display: flex; flex-direction: column; gap: 1px;
+      color: white; white-space: nowrap;
+    }
+    .ws-dock-item .l {
+      font-size: .66rem; opacity: .65; letter-spacing: .08em;
+      text-transform: uppercase; font-weight: 600;
+    }
+    .ws-dock-item .v {
+      font-family: 'Inter', 'Prompt', sans-serif;
+      font-size: 1rem; font-weight: 800; letter-spacing: -.01em;
+    }
+    .ws-dock-item .v.gold { color: #C9A961; }
+    .ws-dock-item .v.green { color: #6EE7B7; }
+    .ws-dock-divider {
+      width: 1px; height: 26px;
+      background: rgba(255,255,255,.15);
+    }
+    .ws-dock-actions {
+      display: flex; gap: 6px; margin-left: auto;
+    }
+    .ws-dock-btn {
+      padding: 9px 16px; border-radius: 50px;
+      border: none; cursor: pointer;
+      font-family: inherit; font-weight: 700; font-size: .82rem;
+      transition: all .15s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .ws-dock-btn.next {
+      background: linear-gradient(135deg, #C9A961, #B8924A); color: white;
+    }
+    .ws-dock-btn.next:hover { transform: scale(1.04); }
+    .ws-dock-btn.ghost {
+      background: rgba(255,255,255,.1); color: white;
+    }
+    .ws-dock-btn.ghost:hover { background: rgba(255,255,255,.18); }
+
+    @media (max-width: 600px) {
+      .ws-dock { padding: 8px 16px; gap: 14px; bottom: 12px; }
+      .ws-dock-item .v { font-size: .88rem; }
+      .ws-dock-divider { display: none; }
+    }
+
+    /* No client state */
+    .ws-empty {
+      max-width: 540px; margin: 80px auto 0;
+      background: white; border-radius: 20px;
+      padding: 50px 30px; text-align: center;
+      box-shadow: 0 12px 32px rgba(0,0,0,.06);
+    }
+    .ws-empty .ico { font-size: 3.5rem; margin-bottom: 14px; }
+    .ws-empty h3 { font-size: 1.2rem; color: #1F2D4F; margin-bottom: 6px; font-weight: 800; }
+    .ws-empty p { color: #6B7280; margin-bottom: 20px; }
+    .ws-empty a {
+      display: inline-block; padding: 12px 28px;
+      background: linear-gradient(135deg, #C9A961, #B8924A); color: white;
+      text-decoration: none; border-radius: 50px; font-weight: 700;
+      transition: all .2s;
+    }
+    .ws-empty a:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(201,169,97,.4); }
+
+    /* Animations */
+    .ws-fade {
+      opacity: 0; transform: translateY(20px);
+      animation: wsFade .6s cubic-bezier(.2,.9,.3,1.05) forwards;
+    }
+    .ws-fade.d1 { animation-delay: .08s; }
+    .ws-fade.d2 { animation-delay: .16s; }
+    .ws-fade.d3 { animation-delay: .24s; }
+    @keyframes wsFade { to { opacity: 1; transform: translateY(0); } }
+
+    /* Hidden state for filter */
+    .ws-card.hidden { display: none; }
+    .ws-cat-section.hidden { display: none; }
+  </style>
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F2D4F">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="448 Wealth">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="app-layout">
+  <aside class="app-sidebar">
+    <div class="sb-top-accent"></div>
+    <div class="sb-logo-area">
+      <div class="sb-brand">448</div>
+      <div class="sb-tagline">Wealth Management</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เมนูหลัก</div>
+      <div class="app-sb-item" onclick="location.href='dashboard.html'"><span class="sb-ico">🏠</span> หน้าแรก</div>
+      <div class="app-sb-item" onclick="location.href='clients.html'"><span class="sb-ico">👥</span> รายชื่อลูกค้า</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='financial.html'"><span class="sb-ico">💰</span> กระแสเงินสด</div>
+      <div class="app-sb-item active"><span class="sb-ico">💎</span> สินทรัพย์</div>
+      <div class="app-sb-item" onclick="location.href='networth.html'"><span class="sb-ico">⚖️</span> งบการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='ratios.html'"><span class="sb-ico">📐</span> อัตราส่วนการเงิน</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='education.html'"><span class="sb-ico">🎓</span> การศึกษาบุตร</div>
+      <div class="app-sb-item" onclick="location.href='retirement.html'"><span class="sb-ico">🛋️</span> วางแผนเกษียณ</div>
+      <div class="app-sb-item" onclick="location.href='goals.html'"><span class="sb-ico">🎯</span> เป้าหมายชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='life-insurance.html'"><span class="sb-ico">☂️</span> ประกันชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='health-insurance.html'"><span class="sb-ico">⚕️</span> ประกันสุขภาพ</div>
+      <div class="app-sb-item" onclick="location.href='policies_summary.html'"><span class="sb-ico">📊</span> สรุปกรมธรรม์</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วิเคราะห์และแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='priority.html'"><span class="sb-ico">⭐</span> ลำดับความสำคัญ</div>
+      <div class="app-sb-item" onclick="location.href='portfolio.html'"><span class="sb-ico">📈</span> พอร์ตแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='plan_summary.html'"><span class="sb-ico">📋</span> สรุปแผน</div>
+      <div class="app-sb-item" onclick="location.href='timeline.html'"><span class="sb-ico">⏳</span> Life Timeline</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เครื่องมือ</div>
+      <div class="app-sb-item" onclick="location.href='tax2.html'"><span class="sb-ico">🧾</span> คำนวณภาษี</div>
+      <div class="app-sb-item" onclick="location.href='appointments.html'"><span class="sb-ico">📅</span> นัดหมาย</div>
+      <div class="app-sb-item" onclick="location.href='guide.html'"><span class="sb-ico">📖</span> คู่มือการใช้งาน</div>
+    </div>
+    <div class="sb-bottom-area">
+      <div class="sb-profile-row" onclick="location.href='profile.html'">
+        <div class="sb-avatar-box" id="sb-avatar">A</div>
+        <div>
+          <div class="sb-profile-name" id="sb-name">Agent</div>
+          <div class="sb-profile-role">AIA · ดูโปรไฟล์</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main ws-app" style="overflow-y:auto;">
+    <!-- Hero -->
+    <div class="ws-hero ws-fade">
+      <div class="ws-hero-top">
+        <div class="ws-greeting">
+          <div class="ws-greet-time" id="ws-greet-time">WEALTH STUDIO</div>
+          <div class="ws-greet-text" id="ws-greet-text">สวัสดี · <b>จัดการสินทรัพย์ลูกค้า</b></div>
+        </div>
+        <div class="ws-client-pill">
+          <div class="av" id="ws-client-av">👤</div>
+          <select id="client-select" onchange="onClientChange(this.value)"></select>
+        </div>
+      </div>
+
+      <div class="ws-hero-main">
+        <div class="ws-donut">
+          <svg viewBox="0 0 220 220">
+            <circle cx="110" cy="110" r="90" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="22"/>
+            <circle class="ws-donut-arc" cx="110" cy="110" r="90"
+                    stroke="url(#grad-sav)"
+                    stroke-dasharray="565.5"
+                    stroke-dashoffset="565.5"
+                    id="ws-arc-sav"/>
+            <circle class="ws-donut-arc" cx="110" cy="110" r="90"
+                    stroke="url(#grad-inv)"
+                    stroke-dasharray="565.5"
+                    stroke-dashoffset="565.5"
+                    id="ws-arc-inv"
+                    transform="rotate(0 110 110)"/>
+            <circle class="ws-donut-arc" cx="110" cy="110" r="90"
+                    stroke="url(#grad-cust)"
+                    stroke-dasharray="565.5"
+                    stroke-dashoffset="565.5"
+                    id="ws-arc-cust"
+                    transform="rotate(0 110 110)"/>
+            <defs>
+              <linearGradient id="grad-sav" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FFD580"/>
+                <stop offset="100%" stop-color="#C9A961"/>
+              </linearGradient>
+              <linearGradient id="grad-inv" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#56CCF2"/>
+                <stop offset="100%" stop-color="#2D9CDB"/>
+              </linearGradient>
+              <linearGradient id="grad-cust" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#C792EA"/>
+                <stop offset="100%" stop-color="#8E44AD"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="ws-donut-center">
+            <div class="ws-donut-emoji">💎</div>
+            <div class="ws-donut-mini-label">Net Worth</div>
+          </div>
+        </div>
+
+        <div class="ws-total-block">
+          <div class="ws-total-lbl">ความมั่งคั่งสุทธิ</div>
+          <div class="ws-total-amt ws-num" id="ws-total">฿0</div>
+          <div class="ws-total-meta">
+            <div class="ws-meta-item savings">
+              <span class="dot"></span>
+              <span>เงินออม</span>
+              <span class="val ws-num" id="ws-meta-sav">฿0</span>
+            </div>
+            <div class="ws-meta-item invest">
+              <span class="dot"></span>
+              <span>เงินลงทุน</span>
+              <span class="val ws-num" id="ws-meta-inv">฿0</span>
+            </div>
+            <div class="ws-meta-item custom" id="ws-meta-cust-wrap" style="display:none;">
+              <span class="dot"></span>
+              <span>เพิ่มเอง</span>
+              <span class="val ws-num" id="ws-meta-cust">฿0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="ws-toolbar ws-fade d1">
+      <div class="ws-segmented">
+        <button class="ws-seg active" data-filter="all">ทั้งหมด <span class="count" id="ws-count-all">0</span></button>
+        <button class="ws-seg" data-filter="savings">💰 เงินออม <span class="count" id="ws-count-sav">0</span></button>
+        <button class="ws-seg" data-filter="investment">📈 เงินลงทุน <span class="count" id="ws-count-inv">0</span></button>
+        <button class="ws-seg" data-filter="custom">📦 เพิ่มเอง <span class="count" id="ws-count-cust">0</span></button>
+      </div>
+      <div class="ws-search">
+        <input type="search" id="ws-search" placeholder="ค้นหาสินทรัพย์..." oninput="applyFilters()">
+      </div>
+    </div>
+
+    <!-- Grid wrap -->
+    <div id="content-wrap"></div>
+  </main>
+</div>
+
+<!-- Floating bottom dock -->
+<div class="ws-dock" id="ws-dock" style="display:none;">
+  <div class="ws-dock-item">
+    <div class="l">มูลค่ารวม</div>
+    <div class="v ws-num" id="ws-dock-cv">฿0</div>
+  </div>
+  <div class="ws-dock-divider"></div>
+  <div class="ws-dock-item">
+    <div class="l">FV รวม</div>
+    <div class="v green ws-num" id="ws-dock-fv">฿0</div>
+  </div>
+  <div class="ws-dock-divider"></div>
+  <div class="ws-dock-item">
+    <div class="l">กระแสเงินสด/ปี</div>
+    <div class="v gold ws-num" id="ws-dock-cf">฿0</div>
+  </div>
+  <div class="ws-dock-actions">
+    <button class="ws-dock-btn ghost" onclick="location.href='clients.html'">← ลูกค้า</button>
+    <button class="ws-dock-btn next" onclick="location.href='retirement.html'">เกษียณ →</button>
+  </div>
+</div>
+
+<script>
+const _uid = localStorage.getItem('aia_currentUser');
+if (!_uid) location.href = 'login.html';
+
+/* ── Data layer (same schema as assets.html / assets2.html) ── */
+function getUser() {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const u = users.find(x => x.id === _uid);
+  if (!u) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; return {}; }
+  return u;
+}
+function updateUser(fn) {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const idx = users.findIndex(x => x.id === _uid);
+  if (idx === -1) return;
+  if (!users[idx].data) users[idx].data = {};
+  fn(users[idx]);
+  localStorage.setItem('aia_users', JSON.stringify(users));
+}
+function getClients() { return (getUser().data && getUser().data.clients) || []; }
+function getCurrentClient() { return getClients().find(c => c.id === selectedClientId) || null; }
+function getAssets() { const c = getCurrentClient(); return (c && c.assets) ? c.assets : []; }
+
+const ASSET_TYPES = {
+  deposit:    { icon:'💰', svg:'deposit',    label:'เงินฝาก',                  info:'เงินฝากธนาคาร ออมทรัพย์ ฝากประจำ' },
+  bond:       { icon:'📜', svg:'bond',       label:'ตราสารหนี้',              info:'พันธบัตรรัฐบาล / หุ้นกู้เอกชน' },
+  annuity:    { icon:'🛡️', svg:'shield',     label:'ประกันบำนาญ',           info:'จ่ายบำนาญหลังเกษียณ ลดหย่อนภาษีได้' },
+  pvd:        { icon:'🏢', svg:'building',   label:'กองทุนสำรองเลี้ยงชีพ',   info:'นายจ้างจ่ายสมทบ ลดหย่อนภาษีได้' },
+  rmf:        { icon:'🌱', svg:'seedling',   label:'RMF',                     info:'ถือ ≥5 ปี ขายตอนอายุ 55+ ลดหย่อนได้' },
+  ltf:        { icon:'📈', svg:'trendingUp', label:'LTF',                     info:'สิทธิลดหย่อนสิ้นสุดปี 2562' },
+  ssf:        { icon:'🌿', svg:'leaf',       label:'SSF',                     info:'ถือ ≥10 ปี ลดหย่อนได้' },
+  thaiesg:    { icon:'🌍', svg:'globe',      label:'ThaiESG',                 info:'ลดหย่อนได้ ≤30% รายได้' },
+  mutual:     { icon:'🏦', svg:'bank',       label:'กองทุนรวม',              info:'กองทุนรวมทั่วไป' },
+  unitlinked: { icon:'🔗', svg:'link',       label:'Unit Linked',             info:'ประกันชีวิตควบการลงทุน' },
+  realestate: { icon:'🏠', svg:'house',      label:'ค่าเช่าอสังหาริมทรัพย์',   info:'อสังหาที่ปล่อยเช่า' },
+  stock:      { icon:'📊', svg:'chartBar',   label:'หุ้นสามัญ',                info:'หุ้นในตลาดหลักทรัพย์' },
+  other:      { icon:'📦', svg:'box',        label:'อื่นๆ',                   info:'' },
+};
+function _renderIcon(t) {
+  if (window.IconLib && t.svg) return window.IconLib.getIcon(t.svg, { size: 22 });
+  return t.icon;
+}
+
+const SAVINGS_TYPES = ['deposit','bond','annuity'];
+const INVESTMENT_TYPES = ['pvd','rmf','ltf','ssf','thaiesg','mutual','unitlinked','realestate','stock'];
+
+const ROW_FIELDS_BY_TYPE = {
+  _default:   { contrib: true,  term: true,  fv: true,  cashFlow: false },
+  annuity:    { contrib: true,  term: false, fv: false, cashFlow: true  },
+  realestate: { contrib: true,  term: false, fv: false, cashFlow: true  },
+  pvd:        { contrib: false, term: true,  fv: true,  cashFlow: false },
+};
+function _rowFields(type) {
+  return Object.assign({}, ROW_FIELDS_BY_TYPE._default, ROW_FIELDS_BY_TYPE[type] || {});
+}
+
+let selectedClientId = null;
+let expandedId = null;
+
+/* FV */
+function calcFV(pv, rate, years, pmt, freq) {
+  pv = Number(pv) || 0;
+  rate = (Number(rate) || 0) / 100;
+  years = Number(years) || 0;
+  pmt = Number(pmt) || 0;
+  if (years <= 0) return pv;
+  if (freq === 'monthly' && pmt > 0) {
+    const r_m = rate / 12; const n_m = years * 12;
+    const factor_m = Math.pow(1 + r_m, n_m);
+    if (r_m === 0) return pv + pmt * n_m;
+    return pv * Math.pow(1 + rate, years) + pmt * (factor_m - 1) / r_m * (1 + r_m);
+  }
+  const factor = Math.pow(1 + rate, years);
+  if (rate === 0) return pv + pmt * years;
+  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
+}
+function fmt(n) { return '฿' + Math.round(n).toLocaleString('th-TH'); }
+function fmtShort(n) {
+  if (Math.abs(n) >= 1e6) return '฿' + (n/1e6).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1e3) return '฿' + Math.round(n/1e3) + 'K';
+  return '฿' + Math.round(n).toLocaleString('th-TH');
+}
+function _parseNum(s) {
+  if (s == null) return 0;
+  const n = Number(String(s).replace(/[^\d.\-]/g,''));
+  return isFinite(n) ? n : 0;
+}
+function _fmtInputNum(n) {
+  if (!n || !isFinite(n)) return '';
+  return Math.round(Number(n)).toLocaleString('th-TH');
+}
+function _annualContrib(a) {
+  const v = Number(a.contribution || 0);
+  return a.contribFreq === 'monthly' ? v * 12 : v;
+}
+
+/* Get primary asset of a type (single asset for predefined row) */
+function getOrCreate(type) {
+  let assets = getAssets();
+  let a = assets.find(x => x.type === type && !x.customCategory);
+  return a; /* may be null */
+}
+
+function ensureAsset(type) {
+  let a = getOrCreate(type);
+  if (a) return a.id;
+  let newId;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!c.assets) c.assets = [];
+    const t = ASSET_TYPES[type] || ASSET_TYPES.other;
+    newId = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    c.assets.push({
+      id: newId, type, name: t.label,
+      currentValue: 0, contribution: 0, contribFreq: 'annual',
+      expectedReturn: 0, term: 0, cashFlow: 0,
+      createdAt: new Date().toISOString(),
+    });
+  });
+  return newId;
+}
+
+function onFieldChange(id, field, value) {
+  let v;
+  if (field === 'expectedReturn' || field === 'term') v = Number(value) || 0;
+  else if (field === 'name') v = String(value || '');
+  else v = _parseNum(value);
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.assets) return;
+    const a = c.assets.find(x => x.id === id);
+    if (!a) return;
+    a[field] = v;
+    if (!a.contribFreq) a.contribFreq = 'annual';
+  });
+  updateLiveFV(id);
+  updateTotalsAndDock();
+  updateCardDisplay(id);
+}
+
+function updateLiveFV(id) {
+  const a = getAssets().find(x => x.id === id);
+  if (!a) return;
+  const fv = calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq || 'annual');
+  const fvEl = document.querySelector(`[data-fv-id="${id}"]`);
+  if (fvEl) {
+    fvEl.textContent = fmt(fv);
+    fvEl.classList.add('ws-fv-pulse');
+    setTimeout(() => fvEl.classList.remove('ws-fv-pulse'), 400);
+  }
+}
+
+function updateCardDisplay(id) {
+  const a = getAssets().find(x => x.id === id);
+  if (!a) return;
+  const card = document.querySelector(`[data-card-id="${id}"]`);
+  if (!card) return;
+  /* Update header value */
+  const cvEl = card.querySelector('[data-display-cv]');
+  if (cvEl) {
+    if (a.currentValue) {
+      cvEl.textContent = fmt(a.currentValue);
+      cvEl.classList.remove('empty');
+    } else {
+      cvEl.textContent = 'ยังไม่ระบุ';
+      cvEl.classList.add('empty');
+    }
+  }
+}
+
+function setApplyTo(id, value) {
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.assets) return;
+    const a = c.assets.find(x => x.id === id);
+    if (!a) return;
+    if (value === null) delete a.appliedTo;
+    else a.appliedTo = value;
+  });
+  /* Re-render expanded card to refresh pills */
+  renderAll();
+}
+
+/* Custom rows */
+function addCustomRow(category) {
+  if (!selectedClientId) return;
+  let newId;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!c.assets) c.assets = [];
+    newId = 'cust-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    c.assets.push({
+      id: newId, type:'other', customCategory: category, name:'',
+      currentValue: 0, contribution: 0, contribFreq: 'annual',
+      expectedReturn: 0, term: 0, cashFlow: 0,
+      createdAt: new Date().toISOString(),
+    });
+  });
+  expandedId = newId;
+  renderAll();
+}
+function deleteAsset(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (c && c.assets) c.assets = c.assets.filter(a => a.id !== id);
+  });
+  if (expandedId === id) expandedId = null;
+  renderAll();
+}
+
+/* Toggle expand */
+function toggleExpand(id) {
+  expandedId = (expandedId === id) ? null : id;
+  renderAll();
+}
+
+/* Filter */
+let currentFilter = 'all';
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.ws-seg').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
+  applyFilters();
+}
+function applyFilters() {
+  const q = (document.getElementById('ws-search')?.value || '').toLowerCase().trim();
+  document.querySelectorAll('.ws-card').forEach(card => {
+    const cat = card.dataset.category;
+    const name = (card.dataset.name || '').toLowerCase();
+    const matchFilter = currentFilter === 'all' || cat === currentFilter;
+    const matchSearch = !q || name.includes(q);
+    card.classList.toggle('hidden', !(matchFilter && matchSearch));
+  });
+  /* Hide empty section labels */
+  document.querySelectorAll('.ws-cat-section').forEach(sec => {
+    const visibleCards = sec.querySelectorAll('.ws-card:not(.hidden)');
+    sec.classList.toggle('hidden', visibleCards.length === 0);
+  });
+}
+
+/* ── Render ── */
+function initClientSelect() {
+  const sel = document.getElementById('client-select');
+  const clients = getClients();
+  if (clients.length === 0) {
+    sel.innerHTML = '<option value="">— ไม่มีลูกค้า —</option>';
+    return;
+  }
+  const stored = localStorage.getItem('aia_selectedClient');
+  selectedClientId = (stored && clients.find(c => c.id === stored)) ? stored : clients[0].id;
+  localStorage.setItem('aia_selectedClient', selectedClientId);
+  sel.innerHTML = clients.map(c =>
+    `<option value="${c.id}" ${c.id === selectedClientId ? 'selected':''}>${c.firstName||''} ${c.lastName||''}</option>`
+  ).join('');
+  /* Update avatar initial */
+  const cur = clients.find(c => c.id === selectedClientId);
+  const av = document.getElementById('ws-client-av');
+  if (av && cur) av.textContent = (cur.firstName||'?').charAt(0).toUpperCase();
+}
+function onClientChange(cid) {
+  selectedClientId = cid;
+  localStorage.setItem('aia_selectedClient', cid);
+  expandedId = null;
+  renderAll();
+}
+
+function getOrEmpty(type) {
+  const a = getOrCreate(type);
+  if (a) return a;
+  /* Return a stub object for display (won't be saved until user edits) */
+  const t = ASSET_TYPES[type] || ASSET_TYPES.other;
+  return {
+    id: '__stub:' + type, type, name: t.label,
+    currentValue: 0, contribution: 0, contribFreq: 'annual',
+    expectedReturn: 0, term: 0, cashFlow: 0,
+    isStub: true,
+  };
+}
+
+function renderCard(a, category, totalCV) {
+  const isCustom = !!a.customCategory;
+  const isStub = a.isStub;
+  const t = ASSET_TYPES[a.type] || ASSET_TYPES.other;
+  const fields = isCustom ? { contrib: true, term: a.customCategory === 'fv', fv: a.customCategory === 'fv', cashFlow: a.customCategory === 'cf' } : _rowFields(a.type);
+  const cv = a.currentValue || 0;
+  const co = a.contribution || 0;
+  const er = a.expectedReturn || 0;
+  const tm = a.term || 0;
+  const cf = a.cashFlow || 0;
+  const annualCo = _annualContrib(a);
+  const fv = calcFV(cv, er, tm, co, a.contribFreq || 'annual');
+  const expanded = expandedId === a.id;
+  const sharePct = totalCV > 0 ? (cv / totalCV) * 100 : 0;
+  const appliedLabel = a.appliedTo === 'retire' ? '🛋️ เกษียณ' : a.appliedTo === 'education' ? '🎓 การศึกษา' : '';
+  const displayName = isCustom ? (a.name || (a.customCategory === 'fv' ? 'รายการ FV' : 'รายการ Cash Flow')) : t.label;
+  const subBadge = a.type === 'pvd' ? 'PVD' : (isCustom ? (a.customCategory === 'fv' ? 'FV' : 'CF') : '');
+
+  return `
+    <div class="ws-card ${category} ${expanded?'expanded':''} ${cv?'':'empty'}"
+         data-card-id="${a.id}"
+         data-category="${category}"
+         data-name="${displayName.replace(/"/g,'&quot;').toLowerCase()}"
+         onclick="if(!event.target.closest('.ws-card-editor, .ws-apply-row, .ws-editor-actions, input, button')) toggleExpand('${a.id}')">
+      <div class="ws-card-head">
+        <div class="ws-card-icon">${_renderIcon(t)}</div>
+        <div class="ws-card-meta">
+          <div class="ws-card-name">${displayName}</div>
+          <div class="ws-card-badges">
+            ${subBadge ? `<span class="ws-card-badge">${subBadge}</span>` : ''}
+            ${appliedLabel ? `<span class="ws-card-badge applied">${appliedLabel}</span>` : ''}
+          </div>
+        </div>
+      </div>
+
+      <div class="ws-card-value">
+        <span class="ws-card-cv ws-num ${cv?'':'empty'}" data-display-cv>${cv ? fmt(cv) : 'ยังไม่ระบุ'}</span>
+        ${cv > 0 && totalCV > 0 ? `<span class="ws-card-share">${sharePct.toFixed(1)}%</span>` : ''}
+      </div>
+      <div class="ws-card-progress"><div class="ws-card-progress-fill" style="width:${Math.min(sharePct,100)}%"></div></div>
+
+      <div class="ws-card-stats">
+        ${fields.fv ? `
+          <div class="ws-stat-mini">
+            <div class="l">FV</div>
+            <div class="v ${fv?'green':'muted'} ws-num">${fv ? fmtShort(fv) : '—'}</div>
+          </div>` : ''}
+        ${fields.contrib ? `
+          <div class="ws-stat-mini">
+            <div class="l">ออม/ปี</div>
+            <div class="v ${annualCo?'':'muted'} ws-num">${annualCo ? fmtShort(annualCo) : '—'}</div>
+          </div>` : ''}
+        ${fields.cashFlow ? `
+          <div class="ws-stat-mini">
+            <div class="l">CF/ปี</div>
+            <div class="v ${cf?'green':'muted'} ws-num">${cf ? fmtShort(cf) : '—'}</div>
+          </div>` : ''}
+        <div class="ws-stat-mini">
+          <div class="l">ผลตอบแทน</div>
+          <div class="v ${er?'':'muted'} ws-num">${er ? er.toFixed(1)+'%' : '—'}</div>
+        </div>
+      </div>
+
+      <!-- Inline editor (shown when expanded) -->
+      <div class="ws-card-editor">
+        ${isCustom ? `
+          <div class="ws-field" style="margin-bottom:14px;">
+            <label>ชื่อรายการ</label>
+            <input type="text" class="ws-cust-name"
+                   value="${(a.name||'').replace(/"/g,'&quot;')}"
+                   placeholder="เช่น เงินบำเหน็จ, ค่าเช่ารายเดือน"
+                   onchange="onAssetFieldChange('${a.id}','name',this.value, '${category}')">
+          </div>
+        ` : ''}
+
+        <div class="ws-editor-grid">
+          <div class="ws-field">
+            <label>มูลค่าปัจจุบัน</label>
+            <div class="ws-field-input">
+              <input type="text" inputmode="decimal" class="has-suffix"
+                     value="${cv ? _fmtInputNum(cv) : ''}" placeholder="0"
+                     onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                     onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onAssetFieldChange('${a.id}','currentValue',this.value, '${category}');">
+              <span class="suffix">฿</span>
+            </div>
+          </div>
+
+          ${fields.contrib ? `
+            <div class="ws-field">
+              <label>ออมเพิ่ม/ปี</label>
+              <div class="ws-field-input">
+                <input type="text" inputmode="decimal" class="has-suffix"
+                       value="${co ? _fmtInputNum(co) : ''}" placeholder="0"
+                       onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                       onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onAssetFieldChange('${a.id}','contribution',this.value, '${category}');">
+                <span class="suffix">฿</span>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="ws-field">
+            <label>ผลตอบแทน/ปี</label>
+            <div class="ws-field-input">
+              <input type="number" step="0.01" class="has-suffix"
+                     value="${er || ''}" placeholder="0"
+                     onchange="onAssetFieldChange('${a.id}','expectedReturn',this.value, '${category}')">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+
+          ${fields.term ? `
+            <div class="ws-field">
+              <label>ระยะเวลา</label>
+              <div class="ws-field-input">
+                <input type="number" min="0" step="1" class="has-suffix"
+                       value="${tm || ''}" placeholder="0"
+                       onchange="onAssetFieldChange('${a.id}','term',this.value, '${category}')">
+                <span class="suffix">ปี</span>
+              </div>
+            </div>
+          ` : ''}
+
+          ${fields.cashFlow ? `
+            <div class="ws-field">
+              <label>กระแสเงินสด/ปี</label>
+              <div class="ws-field-input">
+                <input type="text" inputmode="decimal" class="has-suffix"
+                       value="${cf ? _fmtInputNum(cf) : ''}" placeholder="0"
+                       onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                       onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onAssetFieldChange('${a.id}','cashFlow',this.value, '${category}');">
+                <span class="suffix">฿</span>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        ${fields.fv ? `
+          <div class="ws-fv-preview">
+            <div class="ws-fv-info">
+              <div class="ws-fv-label">📈 มูลค่าอนาคต (FV)</div>
+              <div class="ws-fv-amount ws-num" data-fv-id="${a.id}">${fv ? fmt(fv) : '฿0'}</div>
+            </div>
+            <div style="font-size:.78rem;color:#047857;font-weight:600;">
+              เมื่อครบ ${tm || 0} ปี
+            </div>
+          </div>
+        ` : fields.cashFlow ? `
+          <div class="ws-fv-preview cf">
+            <div class="ws-fv-info">
+              <div class="ws-fv-label">💵 กระแสเงินสด/ปี</div>
+              <div class="ws-fv-amount ws-num">${cf ? fmt(cf) : '฿0'}</div>
+            </div>
+            <div style="font-size:.78rem;color:#1D4ED8;font-weight:600;">
+              รายได้ประจำต่อปี
+            </div>
+          </div>
+        ` : ''}
+
+        <div class="ws-apply-row">
+          <label>นำไปใช้กับ:</label>
+          <button class="ws-pill ${a.appliedTo==='retire'?'active':''}"
+                  onclick="setApplyTo('${a.id}','retire')">🛋️ แผนเกษียณ</button>
+          <button class="ws-pill ${a.appliedTo==='education'?'active':''}"
+                  onclick="setApplyTo('${a.id}','education')">🎓 แผนการศึกษาบุตร</button>
+          <button class="ws-pill ${!a.appliedTo?'active':''}"
+                  onclick="setApplyTo('${a.id}',null)">− ไม่ระบุ</button>
+        </div>
+
+        <div class="ws-editor-actions">
+          ${!isStub ? `<button class="ws-btn danger" onclick="deleteAsset('${a.id}')">🗑️ ลบ</button>` : ''}
+          <button class="ws-btn primary" onclick="expandedId=null; renderAll();">✓ เสร็จสิ้น</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+/* Wrapper to ensure stub assets are created on first edit */
+function onAssetFieldChange(id, field, value, category) {
+  if (id.startsWith('__stub:')) {
+    /* This is a stub — create the real asset and re-render with new ID expanded */
+    const type = id.slice(7);
+    const newId = ensureAsset(type);
+    expandedId = newId;
+    /* Apply the field change to the new asset */
+    onFieldChange(newId, field, value);
+    renderAll();
+    /* Re-focus on the input after re-render */
+    setTimeout(() => {
+      const card = document.querySelector(`[data-card-id="${newId}"]`);
+      if (card) card.querySelector('input')?.focus();
+    }, 30);
+    return;
+  }
+  onFieldChange(id, field, value);
+}
+
+function renderAll() {
+  const wrap = document.getElementById('content-wrap');
+  if (!selectedClientId) {
+    wrap.innerHTML = `
+      <div class="ws-empty">
+        <div class="ico">👤</div>
+        <h3>ยังไม่มีลูกค้า</h3>
+        <p>กรุณาเพิ่มลูกค้าก่อนเริ่มจัดการสินทรัพย์</p>
+        <a href="clients.html">→ เพิ่มลูกค้า</a>
+      </div>`;
+    document.getElementById('ws-dock').style.display = 'none';
+    return;
+  }
+
+  /* Compute totals */
+  const allAssets = getAssets();
+  const savingsAssets = SAVINGS_TYPES.map(getOrEmpty);
+  const investAssets = INVESTMENT_TYPES.map(getOrEmpty);
+  const customAssets = allAssets.filter(a => a.customCategory);
+
+  const sumCV = (list) => list.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const sumFV = (list) => list.reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const sumCF = (list) => list.reduce((s,a) => s + Number(a.cashFlow||0), 0);
+
+  const cvSav = sumCV(savingsAssets);
+  const cvInv = sumCV(investAssets);
+  const cvCust = sumCV(customAssets);
+  const totalCV = cvSav + cvInv + cvCust;
+  const totalFV = sumFV(allAssets);
+  const totalCF = sumCF(allAssets);
+
+  /* Build sections */
+  let html = '<div class="ws-grid-wrap">';
+
+  /* Savings section */
+  html += `
+    <div class="ws-cat-section" data-cat="savings">
+      <div class="ws-cat-label savings">
+        <div class="cat-icon">💰</div>
+        <span>เงินออม</span>
+        <div class="ws-cat-line"></div>
+        <span class="ws-cat-total ws-num">รวม <b>${fmt(cvSav)}</b></span>
+      </div>
+      <div class="ws-grid">
+        ${savingsAssets.map(a => renderCard(a, 'savings', totalCV)).join('')}
+      </div>
+    </div>
+  `;
+
+  /* Investment section */
+  html += `
+    <div class="ws-cat-section" data-cat="investment">
+      <div class="ws-cat-label invest">
+        <div class="cat-icon">📈</div>
+        <span>เงินลงทุน</span>
+        <div class="ws-cat-line"></div>
+        <span class="ws-cat-total ws-num">รวม <b>${fmt(cvInv)}</b></span>
+      </div>
+      <div class="ws-grid">
+        ${investAssets.map(a => renderCard(a, 'investment', totalCV)).join('')}
+      </div>
+    </div>
+  `;
+
+  /* Custom section */
+  if (customAssets.length > 0) {
+    html += `
+      <div class="ws-cat-section" data-cat="custom">
+        <div class="ws-cat-label custom">
+          <div class="cat-icon">📦</div>
+          <span>รายการที่เพิ่มเอง</span>
+          <div class="ws-cat-line"></div>
+          <span class="ws-cat-total ws-num">รวม <b>${fmt(cvCust)}</b></span>
+        </div>
+        <div class="ws-grid">
+          ${customAssets.map(a => renderCard(a, 'custom', totalCV)).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  /* Add custom area */
+  html += `
+    </div>
+    <div class="ws-add-area">
+      <button class="ws-add-btn fv" onclick="addCustomRow('fv')">
+        <div class="icon">📈</div>
+        <div class="text">
+          <div class="t1">＋ เพิ่มมูลค่าอนาคต</div>
+          <div class="t2">รายการที่จะคำนวณ FV เพิ่มเติม</div>
+        </div>
+      </button>
+      <button class="ws-add-btn cf" onclick="addCustomRow('cf')">
+        <div class="icon">💵</div>
+        <div class="text">
+          <div class="t1">＋ เพิ่มกระแสเงินสดรับ</div>
+          <div class="t2">รายได้ประจำที่ได้รับเป็นเงินสด</div>
+        </div>
+      </button>
+    </div>
+  `;
+
+  wrap.innerHTML = html;
+
+  /* Update hero totals */
+  animateNumber('ws-total', totalCV);
+  document.getElementById('ws-meta-sav').textContent = fmt(cvSav);
+  document.getElementById('ws-meta-inv').textContent = fmt(cvInv);
+  if (customAssets.length > 0) {
+    document.getElementById('ws-meta-cust-wrap').style.display = 'flex';
+    document.getElementById('ws-meta-cust').textContent = fmt(cvCust);
+  } else {
+    document.getElementById('ws-meta-cust-wrap').style.display = 'none';
+  }
+
+  /* Update donut */
+  updateDonut(cvSav, cvInv, cvCust, totalCV);
+
+  /* Update counts */
+  document.getElementById('ws-count-all').textContent = SAVINGS_TYPES.length + INVESTMENT_TYPES.length + customAssets.length;
+  document.getElementById('ws-count-sav').textContent = SAVINGS_TYPES.length;
+  document.getElementById('ws-count-inv').textContent = INVESTMENT_TYPES.length;
+  document.getElementById('ws-count-cust').textContent = customAssets.length;
+
+  /* Update dock */
+  const dock = document.getElementById('ws-dock');
+  dock.style.display = 'flex';
+  document.getElementById('ws-dock-cv').textContent = fmt(totalCV);
+  document.getElementById('ws-dock-fv').textContent = fmt(totalFV);
+  document.getElementById('ws-dock-cf').textContent = fmt(totalCF);
+
+  applyFilters();
+}
+
+function updateTotalsAndDock() {
+  const allAssets = getAssets();
+  const customAssets = allAssets.filter(a => a.customCategory);
+  const sumCV = (list) => list.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const sumFV = (list) => list.reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const sumCF = (list) => list.reduce((s,a) => s + Number(a.cashFlow||0), 0);
+  const savingsAssets = SAVINGS_TYPES.map(getOrEmpty);
+  const investAssets = INVESTMENT_TYPES.map(getOrEmpty);
+  const cvSav = sumCV(savingsAssets);
+  const cvInv = sumCV(investAssets);
+  const cvCust = sumCV(customAssets);
+  const totalCV = cvSav + cvInv + cvCust;
+  const totalFV = sumFV(allAssets);
+  const totalCF = sumCF(allAssets);
+  document.getElementById('ws-total').textContent = fmt(totalCV);
+  document.getElementById('ws-meta-sav').textContent = fmt(cvSav);
+  document.getElementById('ws-meta-inv').textContent = fmt(cvInv);
+  document.getElementById('ws-meta-cust').textContent = fmt(cvCust);
+  document.getElementById('ws-dock-cv').textContent = fmt(totalCV);
+  document.getElementById('ws-dock-fv').textContent = fmt(totalFV);
+  document.getElementById('ws-dock-cf').textContent = fmt(totalCF);
+  updateDonut(cvSav, cvInv, cvCust, totalCV);
+}
+
+/* Donut animation */
+function updateDonut(sav, inv, cust, total) {
+  const C = 565.5; // 2 * π * 90
+  if (total === 0) {
+    document.getElementById('ws-arc-sav').style.strokeDashoffset = C;
+    document.getElementById('ws-arc-inv').style.strokeDashoffset = C;
+    document.getElementById('ws-arc-cust').style.strokeDashoffset = C;
+    return;
+  }
+  const pSav = sav / total;
+  const pInv = inv / total;
+  const pCust = cust / total;
+  document.getElementById('ws-arc-sav').style.strokeDashoffset = C * (1 - pSav);
+  document.getElementById('ws-arc-inv').style.strokeDashoffset = C * (1 - pInv);
+  document.getElementById('ws-arc-inv').setAttribute('transform', `rotate(${360 * pSav} 110 110)`);
+  document.getElementById('ws-arc-cust').style.strokeDashoffset = C * (1 - pCust);
+  document.getElementById('ws-arc-cust').setAttribute('transform', `rotate(${360 * (pSav + pInv)} 110 110)`);
+}
+
+/* Animate number counter */
+function animateNumber(elId, target) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const current = Number((el.textContent || '0').replace(/[^\d.\-]/g,'')) || 0;
+  if (current === target) { el.textContent = fmt(target); return; }
+  const duration = 800;
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3);
+    const v = current + (target - current) * eased;
+    el.textContent = fmt(v);
+    if (t < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* Init */
+function initSidebar() {
+  try {
+    const u = getUser();
+    const p = u.profile || {};
+    const name = ((u.firstName||'') + (u.lastName ? ' '+u.lastName : '')).trim() || 'Agent';
+    const initial = (u.firstName || 'A').charAt(0).toUpperCase();
+    const sbAv = document.getElementById('sb-avatar');
+    const sbNm = document.getElementById('sb-name');
+    if (sbNm) sbNm.textContent = name;
+    if (sbAv) {
+      if (p.photo) {
+        sbAv.style.backgroundImage = `url('${p.photo}')`;
+        sbAv.style.backgroundSize = 'cover'; sbAv.style.backgroundPosition = 'center';
+        sbAv.classList.add('has-photo'); sbAv.textContent = '';
+      } else {
+        sbAv.textContent = initial;
+      }
+    }
+  } catch(e){}
+}
+
+function initGreeting() {
+  const hour = new Date().getHours();
+  let greet = 'สวัสดี';
+  if (hour < 12) greet = 'อรุณสวัสดิ์';
+  else if (hour < 17) greet = 'สวัสดี ตอนบ่าย';
+  else greet = 'สวัสดี ตอนเย็น';
+  const c = getCurrentClient();
+  const name = c ? (c.firstName || 'ลูกค้า') : 'ลูกค้า';
+  document.getElementById('ws-greet-text').innerHTML = `${greet} · <b>คุณ${name}</b>`;
+}
+
+fbAuth.onAuthStateChanged(user => {
+  if (!user) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; }
+});
+
+(function init() {
+  initSidebar();
+  initClientSelect();
+  initGreeting();
+  renderAll();
+  /* Filter chip events */
+  document.querySelectorAll('.ws-seg').forEach(btn => {
+    btn.addEventListener('click', () => setFilter(btn.dataset.filter));
+  });
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'aia_users') { initClientSelect(); renderAll(); }
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>สินทรัพย์ลูกค้า · 448</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
+    authDomain: "app-d83ab.firebaseapp.com",
+    projectId: "app-d83ab",
+    storageBucket: "app-d83ab.firebasestorage.app",
+    messagingSenderId: "2200674251",
+    appId: "1:2200674251:web:0b240a123df2e5b86ea04e"
+  });
+  const fbAuth = firebase.auth();
+</script>
+<style>
+  /* ════════════════════════════════════════════════
+     MINIMAL — เรียบ ใช้ง่าย
+  ═══════════════════════════════════════════════ */
+  :root {
+    --bg: #FAFAFA;
+    --surface: #FFFFFF;
+    --border: #E8E8EA;
+    --border-2: #DDDFE3;
+    --text: #1A1A1A;
+    --text-2: #555;
+    --muted: #999;
+    --accent: #1F2D4F;
+    --gold: #C9A961;
+    --green: #16A34A;
+    --red: #DC2626;
+  }
+  .v5 {
+    background: var(--bg); min-height: 100vh;
+    color: var(--text); font-family: 'Sarabun', sans-serif;
+    padding-bottom: 80px;
+  }
+  .v5 * { box-sizing: border-box; }
+
+  /* Container — wider, breathable */
+  .v5-wrap {
+    max-width: 1100px; margin: 0 auto;
+    padding: 28px 32px;
+  }
+  @media (max-width: 600px) { .v5-wrap { padding: 20px 16px; } }
+
+  /* Top header */
+  .v5-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 28px; gap: 12px; flex-wrap: wrap;
+  }
+  .v5-title {
+    font-size: 1.6rem; font-weight: 800; color: var(--text);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .v5-title .ico {
+    width: 42px; height: 42px; border-radius: 11px;
+    background: var(--accent); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.25rem;
+  }
+  .v5-client {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px;
+  }
+  .v5-client select {
+    background: transparent; border: none; font-family: inherit;
+    font-weight: 600; font-size: .92rem; color: var(--text);
+    cursor: pointer; outline: none; padding: 2px 4px;
+    min-width: 140px;
+  }
+
+  /* Total banner — 3-column layout (CV / FV / CF) */
+  .v5-total {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+    display: grid; grid-template-columns: 2fr 1fr 1fr;
+    gap: 28px; align-items: center;
+  }
+  @media (max-width: 700px) {
+    .v5-total { grid-template-columns: 1fr; gap: 16px; padding: 20px; }
+  }
+  .v5-total-info { min-width: 0; }
+  .v5-total-lbl {
+    font-size: .82rem; color: var(--muted);
+    font-weight: 600; margin-bottom: 6px;
+  }
+  .v5-total-amt {
+    font-size: 2.6rem; font-weight: 800;
+    color: var(--text); line-height: 1; letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .v5-total-side {
+    border-left: 1px solid var(--border);
+    padding-left: 28px;
+  }
+  @media (max-width: 700px) {
+    .v5-total-side { border-left: none; border-top: 1px solid var(--border); padding: 16px 0 0 0; }
+  }
+  .v5-total-side .lbl {
+    font-size: .76rem; color: var(--muted); font-weight: 600; margin-bottom: 4px;
+  }
+  .v5-total-side .val {
+    font-size: 1.35rem; font-weight: 800; color: var(--text);
+    font-variant-numeric: tabular-nums;
+  }
+  .v5-total-side .val.green { color: var(--green); }
+  .v5-total-side .val.accent { color: var(--accent); }
+  .v5-total-side .sub { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+
+  /* Section */
+  .v5-section { margin-bottom: 32px; }
+  .v5-section-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 0 8px 12px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  .v5-section-name {
+    font-size: 1.1rem; font-weight: 700; color: var(--text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .v5-section-name .count {
+    font-size: .76rem; padding: 2px 9px; border-radius: 50px;
+    background: #F0F2F5; color: var(--muted); font-weight: 600;
+  }
+  .v5-section-total {
+    font-size: .92rem; font-weight: 600; color: var(--text-2);
+  }
+  .v5-section-total b { color: var(--text); font-weight: 800; font-size: 1.05rem; }
+
+  /* Row (each asset) */
+  .v5-row {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    transition: background .12s;
+    cursor: pointer;
+  }
+  .v5-row:first-child { border-radius: 10px 10px 0 0; }
+  .v5-row:last-child {
+    border-radius: 0 0 10px 10px;
+    border-bottom: none;
+  }
+  .v5-row:only-child { border-radius: 10px; }
+  .v5-row:hover { background: #FCFCFD; }
+
+  .v5-row-main {
+    display: grid;
+    grid-template-columns: 44px 1.5fr 1fr 1fr 36px;
+    gap: 18px; align-items: center;
+    padding: 16px 22px;
+  }
+  @media (max-width: 700px) {
+    .v5-row-main {
+      grid-template-columns: 40px 1fr auto 32px;
+      gap: 14px; padding: 14px 16px;
+    }
+    .v5-col-meta { display: none; }
+  }
+  .v5-row-emoji {
+    width: 44px; height: 44px; border-radius: 10px;
+    background: #F3F4F6;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+  }
+  .v5-row-info { min-width: 0; }
+  .v5-row-name {
+    font-size: 1rem; font-weight: 700; color: var(--text);
+    line-height: 1.25;
+  }
+  .v5-row-sub {
+    font-size: .82rem; color: var(--muted);
+    margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .v5-row-sub .applied {
+    color: var(--accent); font-weight: 600;
+    padding: 2px 8px; background: rgba(31,45,79,.08);
+    border-radius: 50px; margin-right: 4px; font-size: .75rem;
+  }
+  /* Meta column (desktop only): rate, term, contribution */
+  .v5-col-meta {
+    text-align: left; min-width: 0;
+  }
+  .v5-col-meta .row-meta-item {
+    font-size: .82rem; color: var(--text-2);
+    display: flex; align-items: center; gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .v5-col-meta .row-meta-item + .row-meta-item { margin-top: 3px; }
+  .v5-col-meta .row-meta-item .k {
+    font-size: .7rem; color: var(--muted); font-weight: 600;
+    min-width: 32px;
+  }
+  .v5-col-meta .row-meta-item .v { font-weight: 700; color: var(--text); }
+  .v5-col-meta .empty {
+    color: var(--muted); font-size: .82rem; font-style: italic;
+  }
+  .v5-row-amt {
+    text-align: right;
+  }
+  .v5-row-cv {
+    font-size: 1.2rem; font-weight: 800; color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .v5-row-cv.empty { color: var(--muted); font-weight: 500; font-size: 1rem; }
+  .v5-row-fv {
+    font-size: .82rem; color: var(--green); margin-top: 3px;
+    font-variant-numeric: tabular-nums; font-weight: 600;
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+  }
+  .v5-row-fv.empty { color: var(--muted); font-weight: 400; }
+  .v5-row-chev {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: transparent; color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; transition: all .2s;
+  }
+  .v5-row:hover .v5-row-chev { background: #F3F4F6; color: var(--text); }
+  .v5-row.expanded .v5-row-chev {
+    background: var(--accent); color: white;
+    transform: rotate(90deg);
+  }
+
+  /* Expanded editor — simple form */
+  .v5-editor {
+    display: none;
+    padding: 6px 22px 24px;
+    background: #FAFAFB;
+    border-top: 1px solid var(--border);
+    animation: slideDown .2s ease-out;
+  }
+  .v5-row.expanded .v5-editor { display: block; }
+  @keyframes slideDown {
+    from { opacity: 0; max-height: 0; }
+    to { opacity: 1; max-height: 1000px; }
+  }
+
+  .v5-name-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-2);
+    border-radius: 8px;
+    font-family: inherit; font-size: .95rem; font-weight: 600;
+    background: white; outline: none;
+    margin: 12px 0 14px;
+  }
+  .v5-name-input:focus { border-color: var(--accent); }
+
+  .v5-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+  .v5-field {
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .v5-field label {
+    font-size: .76rem; font-weight: 600; color: var(--text-2);
+  }
+  .v5-field-input {
+    position: relative;
+  }
+  .v5-field-input input {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--border-2);
+    border-radius: 8px;
+    font-family: inherit; font-size: .95rem; font-weight: 600;
+    color: var(--text); background: white; outline: none;
+    text-align: right; box-sizing: border-box;
+    font-variant-numeric: tabular-nums;
+    transition: border-color .12s;
+  }
+  .v5-field-input input:focus { border-color: var(--accent); }
+  .v5-field-input input::placeholder { color: #CCC; font-weight: 400; }
+  .v5-field-input .suffix {
+    position: absolute; right: 12px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted); font-size: .82rem;
+    pointer-events: none;
+  }
+  .v5-field-input input.has-suffix { padding-right: 28px; }
+
+  /* FV preview line */
+  .v5-fv-line {
+    margin-top: 14px;
+    padding: 12px 14px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; flex-wrap: wrap;
+    font-size: .9rem;
+  }
+  .v5-fv-line .l { color: var(--text-2); font-weight: 600; }
+  .v5-fv-line .v {
+    font-size: 1.05rem; font-weight: 800;
+    color: var(--green); font-variant-numeric: tabular-nums;
+    transition: color .2s;
+  }
+  .v5-fv-line.cf .v { color: var(--accent); }
+
+  /* Apply-to row */
+  .v5-apply {
+    margin-top: 12px;
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .v5-apply > label {
+    font-size: .76rem; font-weight: 600; color: var(--text-2);
+    margin-right: 4px;
+  }
+  .v5-pill {
+    padding: 6px 12px; border-radius: 50px;
+    background: white; border: 1px solid var(--border-2);
+    font-family: inherit; font-weight: 600; font-size: .82rem;
+    color: var(--text-2); cursor: pointer;
+    transition: all .12s;
+  }
+  .v5-pill:hover { color: var(--text); border-color: var(--text-2); }
+  .v5-pill.active {
+    background: var(--accent); color: white; border-color: transparent;
+  }
+
+  /* Editor actions */
+  .v5-actions {
+    margin-top: 14px;
+    display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+  }
+  .v5-btn {
+    padding: 8px 16px; border-radius: 8px;
+    border: 1px solid var(--border-2); background: white;
+    font-family: inherit; font-weight: 600; font-size: .85rem;
+    color: var(--text-2); cursor: pointer; transition: all .12s;
+  }
+  .v5-btn:hover { color: var(--text); border-color: var(--text-2); }
+  .v5-btn.primary {
+    background: var(--accent); color: white; border-color: transparent;
+  }
+  .v5-btn.primary:hover { background: #2C3E61; }
+  .v5-btn.danger { color: var(--red); border-color: rgba(220,38,38,.3); }
+  .v5-btn.danger:hover { background: #FEF2F2; border-color: var(--red); }
+
+  /* Add custom row */
+  .v5-add-section {
+    margin-top: 28px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  @media (max-width: 500px) { .v5-add-section { grid-template-columns: 1fr; } }
+  .v5-add {
+    padding: 14px 18px;
+    background: white; border: 1.5px dashed var(--border-2);
+    border-radius: 10px; cursor: pointer;
+    font-family: inherit; font-weight: 600; font-size: .9rem;
+    color: var(--text-2); transition: all .15s;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .v5-add:hover {
+    border-color: var(--accent); color: var(--accent);
+    background: #F7F8FA;
+  }
+  .v5-add .plus {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #F3F4F6;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1rem;
+  }
+  .v5-add:hover .plus { background: var(--accent); color: white; }
+
+  /* Bottom nav */
+  .v5-nav {
+    margin-top: 28px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 10px;
+  }
+  .v5-nav-btn {
+    padding: 11px 22px; border-radius: 10px;
+    border: 1px solid var(--border-2); background: white;
+    font-family: inherit; font-weight: 700; font-size: .92rem;
+    color: var(--text); cursor: pointer; transition: all .15s;
+  }
+  .v5-nav-btn:hover { border-color: var(--accent); }
+  .v5-nav-btn.primary {
+    background: var(--accent); color: white; border-color: transparent;
+  }
+  .v5-nav-btn.primary:hover { background: #2C3E61; }
+
+  /* No client */
+  .v5-empty {
+    background: white; border: 1px solid var(--border);
+    border-radius: 14px; padding: 50px 30px;
+    text-align: center;
+  }
+  .v5-empty .ico { font-size: 2.5rem; margin-bottom: 12px; opacity: .5; }
+  .v5-empty h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 6px; }
+  .v5-empty p { color: var(--muted); margin-bottom: 16px; }
+  .v5-empty a {
+    display: inline-block; padding: 9px 20px;
+    background: var(--accent); color: white; text-decoration: none;
+    border-radius: 8px; font-weight: 700;
+  }
+</style>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1F2D4F">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="448 Wealth">
+<meta name="mobile-web-app-capable" content="yes">
+<script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
+</head>
+<body>
+
+<div class="app-layout">
+  <aside class="app-sidebar">
+    <div class="sb-top-accent"></div>
+    <div class="sb-logo-area">
+      <div class="sb-brand">448</div>
+      <div class="sb-tagline">Wealth Management</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เมนูหลัก</div>
+      <div class="app-sb-item" onclick="location.href='dashboard.html'"><span class="sb-ico">🏠</span> หน้าแรก</div>
+      <div class="app-sb-item" onclick="location.href='clients.html'"><span class="sb-ico">👥</span> รายชื่อลูกค้า</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='financial.html'"><span class="sb-ico">💰</span> กระแสเงินสด</div>
+      <div class="app-sb-item active"><span class="sb-ico">💎</span> สินทรัพย์</div>
+      <div class="app-sb-item" onclick="location.href='networth.html'"><span class="sb-ico">⚖️</span> งบการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='ratios.html'"><span class="sb-ico">📐</span> อัตราส่วนการเงิน</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='education.html'"><span class="sb-ico">🎓</span> การศึกษาบุตร</div>
+      <div class="app-sb-item" onclick="location.href='retirement.html'"><span class="sb-ico">🛋️</span> วางแผนเกษียณ</div>
+      <div class="app-sb-item" onclick="location.href='goals.html'"><span class="sb-ico">🎯</span> เป้าหมายชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='life-insurance.html'"><span class="sb-ico">☂️</span> ประกันชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='health-insurance.html'"><span class="sb-ico">⚕️</span> ประกันสุขภาพ</div>
+      <div class="app-sb-item" onclick="location.href='policies_summary.html'"><span class="sb-ico">📊</span> สรุปกรมธรรม์</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วิเคราะห์และแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='priority.html'"><span class="sb-ico">⭐</span> ลำดับความสำคัญ</div>
+      <div class="app-sb-item" onclick="location.href='portfolio.html'"><span class="sb-ico">📈</span> พอร์ตแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='plan_summary.html'"><span class="sb-ico">📋</span> สรุปแผน</div>
+      <div class="app-sb-item" onclick="location.href='timeline.html'"><span class="sb-ico">⏳</span> Life Timeline</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เครื่องมือ</div>
+      <div class="app-sb-item" onclick="location.href='tax2.html'"><span class="sb-ico">🧾</span> คำนวณภาษี</div>
+      <div class="app-sb-item" onclick="location.href='appointments.html'"><span class="sb-ico">📅</span> นัดหมาย</div>
+      <div class="app-sb-item" onclick="location.href='guide.html'"><span class="sb-ico">📖</span> คู่มือการใช้งาน</div>
+    </div>
+    <div class="sb-bottom-area">
+      <div class="sb-profile-row" onclick="location.href='profile.html'">
+        <div class="sb-avatar-box" id="sb-avatar">A</div>
+        <div>
+          <div class="sb-profile-name" id="sb-name">Agent</div>
+          <div class="sb-profile-role">AIA · ดูโปรไฟล์</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main v5" style="overflow-y:auto;">
+    <div class="v5-wrap">
+      <!-- Header -->
+      <div class="v5-head">
+        <div class="v5-title">
+          <div class="ico">💎</div>
+          <span>สินทรัพย์ลูกค้า</span>
+        </div>
+        <div class="v5-client">
+          <span>👤</span>
+          <select id="client-select" onchange="onClientChange(this.value)"></select>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div id="content-wrap"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const _uid = localStorage.getItem('aia_currentUser');
+if (!_uid) location.href = 'login.html';
+
+function getUser() {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const u = users.find(x => x.id === _uid);
+  if (!u) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; return {}; }
+  return u;
+}
+function updateUser(fn) {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const idx = users.findIndex(x => x.id === _uid);
+  if (idx === -1) return;
+  if (!users[idx].data) users[idx].data = {};
+  fn(users[idx]);
+  localStorage.setItem('aia_users', JSON.stringify(users));
+}
+function getClients() { return (getUser().data && getUser().data.clients) || []; }
+function getCurrentClient() { return getClients().find(c => c.id === selectedClientId) || null; }
+function getAssets() { const c = getCurrentClient(); return (c && c.assets) ? c.assets : []; }
+
+const ASSET_TYPES = {
+  deposit:    { icon:'💰', label:'เงินฝาก' },
+  bond:       { icon:'📜', label:'ตราสารหนี้' },
+  annuity:    { icon:'🛡️', label:'ประกันบำนาญ' },
+  pvd:        { icon:'🏢', label:'PVD กองทุนสำรองฯ' },
+  rmf:        { icon:'🌱', label:'RMF' },
+  ltf:        { icon:'📈', label:'LTF' },
+  ssf:        { icon:'🌿', label:'SSF' },
+  thaiesg:    { icon:'🌍', label:'ThaiESG' },
+  mutual:     { icon:'🏦', label:'กองทุนรวม' },
+  unitlinked: { icon:'🔗', label:'Unit Linked' },
+  realestate: { icon:'🏠', label:'อสังหาฯ ปล่อยเช่า' },
+  stock:      { icon:'📊', label:'หุ้นสามัญ' },
+  other:      { icon:'📦', label:'อื่นๆ' },
+};
+const SAVINGS = ['deposit','bond','annuity'];
+const INVEST  = ['pvd','rmf','ltf','ssf','thaiesg','mutual','unitlinked','realestate','stock'];
+
+const FIELD_TYPES = {
+  _default:   { contrib: true,  term: true,  fv: true,  cashFlow: false },
+  annuity:    { contrib: true,  term: false, fv: false, cashFlow: true  },
+  realestate: { contrib: true,  term: false, fv: false, cashFlow: true  },
+  pvd:        { contrib: false, term: true,  fv: true,  cashFlow: false },
+};
+function fieldsFor(type) {
+  return Object.assign({}, FIELD_TYPES._default, FIELD_TYPES[type] || {});
+}
+
+let selectedClientId = null;
+let expandedId = null;
+
+function calcFV(pv, rate, years, pmt, freq) {
+  pv = Number(pv) || 0; rate = (Number(rate) || 0) / 100;
+  years = Number(years) || 0; pmt = Number(pmt) || 0;
+  if (years <= 0) return pv;
+  if (freq === 'monthly' && pmt > 0) {
+    const r_m = rate / 12; const n_m = years * 12;
+    const factor_m = Math.pow(1 + r_m, n_m);
+    if (r_m === 0) return pv + pmt * n_m;
+    return pv * Math.pow(1 + rate, years) + pmt * (factor_m - 1) / r_m * (1 + r_m);
+  }
+  const factor = Math.pow(1 + rate, years);
+  if (rate === 0) return pv + pmt * years;
+  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
+}
+function fmt(n) { return '฿' + Math.round(n).toLocaleString('th-TH'); }
+function fmtInput(n) { if (!n) return ''; return Math.round(Number(n)).toLocaleString('th-TH'); }
+function parseNum(s) { if (s == null) return 0; const n = Number(String(s).replace(/[^\d.\-]/g,'')); return isFinite(n) ? n : 0; }
+function annualContrib(a) { const v = Number(a.contribution || 0); return a.contribFreq === 'monthly' ? v * 12 : v; }
+
+function getOrEmpty(type) {
+  const a = getAssets().find(x => x.type === type && !x.customCategory);
+  if (a) return a;
+  const t = ASSET_TYPES[type] || ASSET_TYPES.other;
+  return { id: '__stub:' + type, type, name: t.label, isStub: true,
+    currentValue: 0, contribution: 0, contribFreq: 'annual',
+    expectedReturn: 0, term: 0, cashFlow: 0 };
+}
+function ensureAsset(type) {
+  const existing = getAssets().find(x => x.type === type && !x.customCategory);
+  if (existing) return existing.id;
+  let newId;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!c.assets) c.assets = [];
+    const t = ASSET_TYPES[type] || ASSET_TYPES.other;
+    newId = 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    c.assets.push({ id:newId, type, name:t.label,
+      currentValue:0, contribution:0, contribFreq:'annual',
+      expectedReturn:0, term:0, cashFlow:0,
+      createdAt: new Date().toISOString() });
+  });
+  return newId;
+}
+function onFieldChange(id, field, value) {
+  let v;
+  if (field === 'expectedReturn' || field === 'term') v = Number(value) || 0;
+  else if (field === 'name') v = String(value || '');
+  else v = parseNum(value);
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.assets) return;
+    const a = c.assets.find(x => x.id === id);
+    if (!a) return;
+    a[field] = v;
+    if (!a.contribFreq) a.contribFreq = 'annual';
+  });
+  updateLiveFV(id);
+  updateTotals();
+}
+function onAssetFieldChange(id, field, value) {
+  if (id.startsWith('__stub:')) {
+    const type = id.slice(7);
+    const newId = ensureAsset(type);
+    expandedId = newId;
+    onFieldChange(newId, field, value);
+    render();
+    setTimeout(() => {
+      const row = document.querySelector(`[data-id="${newId}"]`);
+      if (row) row.querySelector('input')?.focus();
+    }, 30);
+    return;
+  }
+  onFieldChange(id, field, value);
+}
+function updateLiveFV(id) {
+  const a = getAssets().find(x => x.id === id);
+  if (!a) return;
+  const fv = calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual');
+  const el = document.querySelector(`[data-fv-id="${id}"]`);
+  if (el) el.textContent = fmt(fv);
+  /* update the row's collapsed view too */
+  const fvCollapsed = document.querySelector(`[data-fv-row="${id}"]`);
+  if (fvCollapsed) {
+    fvCollapsed.textContent = fv > 0 ? '↗ ' + fmt(fv) : '';
+    fvCollapsed.classList.toggle('empty', fv === 0);
+  }
+  const cvCollapsed = document.querySelector(`[data-cv-row="${id}"]`);
+  if (cvCollapsed) {
+    if (a.currentValue) {
+      cvCollapsed.textContent = fmt(a.currentValue);
+      cvCollapsed.classList.remove('empty');
+    } else {
+      cvCollapsed.textContent = '—';
+      cvCollapsed.classList.add('empty');
+    }
+  }
+}
+function setApplyTo(id, value) {
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.assets) return;
+    const a = c.assets.find(x => x.id === id);
+    if (!a) return;
+    if (value === null) delete a.appliedTo;
+    else a.appliedTo = value;
+  });
+  render();
+}
+function addCustomRow(category) {
+  if (!selectedClientId) return;
+  let newId;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!c.assets) c.assets = [];
+    newId = 'cust-' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+    c.assets.push({ id:newId, type:'other', customCategory:category, name:'',
+      currentValue:0, contribution:0, contribFreq:'annual',
+      expectedReturn:0, term:0, cashFlow:0,
+      createdAt: new Date().toISOString() });
+  });
+  expandedId = newId;
+  render();
+}
+function deleteAsset(id) {
+  if (!confirm('ลบรายการนี้?')) return;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (c && c.assets) c.assets = c.assets.filter(a => a.id !== id);
+  });
+  if (expandedId === id) expandedId = null;
+  render();
+}
+function toggleExpand(id) {
+  expandedId = (expandedId === id) ? null : id;
+  render();
+}
+
+function initClientSelect() {
+  const sel = document.getElementById('client-select');
+  const clients = getClients();
+  if (clients.length === 0) {
+    sel.innerHTML = '<option value="">— ไม่มีลูกค้า —</option>';
+    return;
+  }
+  const stored = localStorage.getItem('aia_selectedClient');
+  selectedClientId = (stored && clients.find(c => c.id === stored)) ? stored : clients[0].id;
+  localStorage.setItem('aia_selectedClient', selectedClientId);
+  sel.innerHTML = clients.map(c =>
+    `<option value="${c.id}" ${c.id === selectedClientId ? 'selected':''}>${c.firstName||''} ${c.lastName||''}</option>`
+  ).join('');
+}
+function onClientChange(cid) {
+  selectedClientId = cid;
+  localStorage.setItem('aia_selectedClient', cid);
+  expandedId = null;
+  render();
+}
+
+function rowSub(a, fields) {
+  /* Brief sub — applied + a hint when no data */
+  const parts = [];
+  if (a.appliedTo === 'retire') parts.push('<span class="applied">🛋️ เกษียณ</span>');
+  if (a.appliedTo === 'education') parts.push('<span class="applied">🎓 การศึกษา</span>');
+  const ASSET_HINT = {
+    deposit: 'เงินฝากธนาคาร', bond: 'พันธบัตร / หุ้นกู้',
+    annuity: 'ประกันบำนาญ', pvd: 'นายจ้างจ่ายสมทบ',
+    rmf: 'ลดหย่อนภาษีได้', ltf: 'legacy 2562',
+    ssf: 'ลดหย่อนภาษีได้', thaiesg: 'ลดหย่อนภาษีได้',
+    mutual: 'กองทุนรวมทั่วไป', unitlinked: 'ประกัน + ลงทุน',
+    realestate: 'อสังหาฯ ปล่อยเช่า', stock: 'หุ้นในตลาด',
+  };
+  if (ASSET_HINT[a.type]) parts.push(ASSET_HINT[a.type]);
+  return parts.join(' · ') || '<span style="color:#BBB;">ยังไม่มีข้อมูล</span>';
+}
+function rowMeta(a, fields) {
+  /* Detailed meta in 3rd column (desktop) */
+  const items = [];
+  if (a.expectedReturn) items.push(`<div class="row-meta-item"><span class="k">อัตรา</span><span class="v">${a.expectedReturn}%</span></div>`);
+  if (fields.term && a.term) items.push(`<div class="row-meta-item"><span class="k">เวลา</span><span class="v">${a.term} ปี</span></div>`);
+  if (fields.contrib && annualContrib(a) > 0) items.push(`<div class="row-meta-item"><span class="k">ออม</span><span class="v">${fmt(annualContrib(a))}/ปี</span></div>`);
+  if (fields.cashFlow && a.cashFlow) items.push(`<div class="row-meta-item"><span class="k">CF</span><span class="v">${fmt(a.cashFlow)}/ปี</span></div>`);
+  return items.length > 0 ? items.join('') : '<div class="empty">—</div>';
+}
+
+function renderRow(a) {
+  const isCustom = !!a.customCategory;
+  const isStub = a.isStub;
+  const t = ASSET_TYPES[a.type] || ASSET_TYPES.other;
+  const fields = isCustom
+    ? { contrib: true, term: a.customCategory === 'fv', fv: a.customCategory === 'fv', cashFlow: a.customCategory === 'cf' }
+    : fieldsFor(a.type);
+  const cv = a.currentValue || 0;
+  const co = a.contribution || 0;
+  const er = a.expectedReturn || 0;
+  const tm = a.term || 0;
+  const cf = a.cashFlow || 0;
+  const fv = calcFV(cv, er, tm, co, a.contribFreq||'annual');
+  const expanded = expandedId === a.id;
+  const displayName = isCustom ? (a.name || (a.customCategory==='fv' ? 'รายการมูลค่าอนาคต' : 'รายการกระแสเงินสด')) : t.label;
+
+  return `
+    <div class="v5-row ${expanded?'expanded':''}" data-id="${a.id}">
+      <div class="v5-row-main" onclick="if(!event.target.closest('.v5-editor')) toggleExpand('${a.id}')">
+        <div class="v5-row-emoji">${t.icon}</div>
+        <div class="v5-row-info">
+          <div class="v5-row-name">${displayName}</div>
+          <div class="v5-row-sub">${rowSub(a, fields)}</div>
+        </div>
+        <div class="v5-col-meta">
+          ${rowMeta(a, fields)}
+        </div>
+        <div class="v5-row-amt">
+          <div class="v5-row-cv ${cv?'':'empty'}" data-cv-row="${a.id}">${cv ? fmt(cv) : '—'}</div>
+          ${fields.fv ? `<div class="v5-row-fv ${fv?'':'empty'}" data-fv-row="${a.id}">${fv > 0 ? '↗ ' + fmt(fv) : ''}</div>` : ''}
+          ${fields.cashFlow && cf ? `<div class="v5-row-fv" style="color:#1F2D4F">CF ${fmt(cf)}/ปี</div>` : ''}
+        </div>
+        <div class="v5-row-chev">›</div>
+      </div>
+
+      <div class="v5-editor">
+        ${isCustom ? `
+          <input type="text" class="v5-name-input"
+                 value="${(a.name||'').replace(/"/g,'&quot;')}"
+                 placeholder="${a.customCategory==='fv' ? 'ชื่อรายการ' : 'ชื่อรายการ'}"
+                 onchange="onAssetFieldChange('${a.id}','name',this.value)">
+        ` : ''}
+
+        <div class="v5-fields">
+          <div class="v5-field">
+            <label>มูลค่าปัจจุบัน</label>
+            <div class="v5-field-input">
+              <input type="text" inputmode="decimal" class="has-suffix"
+                     value="${cv ? fmtInput(cv) : ''}" placeholder="0"
+                     onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                     onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onAssetFieldChange('${a.id}','currentValue',this.value);">
+              <span class="suffix">฿</span>
+            </div>
+          </div>
+
+          ${fields.contrib ? `
+            <div class="v5-field">
+              <label>ออมเพิ่ม/ปี</label>
+              <div class="v5-field-input">
+                <input type="text" inputmode="decimal" class="has-suffix"
+                       value="${co ? fmtInput(co) : ''}" placeholder="0"
+                       onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                       onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onAssetFieldChange('${a.id}','contribution',this.value);">
+                <span class="suffix">฿</span>
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="v5-field">
+            <label>ผลตอบแทน/ปี</label>
+            <div class="v5-field-input">
+              <input type="number" step="0.01" class="has-suffix"
+                     value="${er || ''}" placeholder="0"
+                     onchange="onAssetFieldChange('${a.id}','expectedReturn',this.value)">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+
+          ${fields.term ? `
+            <div class="v5-field">
+              <label>ระยะเวลา</label>
+              <div class="v5-field-input">
+                <input type="number" min="0" step="1" class="has-suffix"
+                       value="${tm || ''}" placeholder="0"
+                       onchange="onAssetFieldChange('${a.id}','term',this.value)">
+                <span class="suffix">ปี</span>
+              </div>
+            </div>
+          ` : ''}
+
+          ${fields.cashFlow ? `
+            <div class="v5-field">
+              <label>กระแสเงินสด/ปี</label>
+              <div class="v5-field-input">
+                <input type="text" inputmode="decimal" class="has-suffix"
+                       value="${cf ? fmtInput(cf) : ''}" placeholder="0"
+                       onfocus="this.value=this.value.replace(/,/g,''); this.select();"
+                       onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onAssetFieldChange('${a.id}','cashFlow',this.value);">
+                <span class="suffix">฿</span>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        ${fields.fv ? `
+          <div class="v5-fv-line">
+            <span class="l">มูลค่าอนาคต (FV)</span>
+            <span class="v" data-fv-id="${a.id}">${fv ? fmt(fv) : '฿0'}</span>
+          </div>
+        ` : fields.cashFlow ? `
+          <div class="v5-fv-line cf">
+            <span class="l">กระแสเงินสดต่อปี</span>
+            <span class="v">${cf ? fmt(cf) : '฿0'}</span>
+          </div>
+        ` : ''}
+
+        <div class="v5-apply">
+          <label>นำไปใช้กับ:</label>
+          <button class="v5-pill ${a.appliedTo==='retire'?'active':''}" onclick="setApplyTo('${a.id}','retire')">🛋️ เกษียณ</button>
+          <button class="v5-pill ${a.appliedTo==='education'?'active':''}" onclick="setApplyTo('${a.id}','education')">🎓 การศึกษา</button>
+          <button class="v5-pill ${!a.appliedTo?'active':''}" onclick="setApplyTo('${a.id}',null)">− ไม่ระบุ</button>
+        </div>
+
+        <div class="v5-actions">
+          ${!isStub ? `<button class="v5-btn danger" onclick="deleteAsset('${a.id}')">ลบ</button>` : ''}
+          <button class="v5-btn primary" onclick="expandedId=null; render();">เสร็จสิ้น</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  const wrap = document.getElementById('content-wrap');
+  if (!selectedClientId) {
+    wrap.innerHTML = `
+      <div class="v5-empty">
+        <div class="ico">👤</div>
+        <h3>ยังไม่มีลูกค้า</h3>
+        <p>กรุณาเพิ่มลูกค้าก่อนเริ่มต้น</p>
+        <a href="clients.html">→ ไปเพิ่มลูกค้า</a>
+      </div>`;
+    return;
+  }
+
+  const allAssets = getAssets();
+  const savings = SAVINGS.map(getOrEmpty);
+  const invest = INVEST.map(getOrEmpty);
+  const custom = allAssets.filter(a => a.customCategory);
+
+  const sumCV = (list) => list.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const sumFV = (list) => list.reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const sumCF = (list) => list.reduce((s,a) => s + Number(a.cashFlow||0), 0);
+
+  const cvSav = sumCV(savings);
+  const cvInv = sumCV(invest);
+  const cvCust = sumCV(custom);
+  const totalCV = cvSav + cvInv + cvCust;
+  const totalFV = sumFV(allAssets);
+  const totalCF = sumCF(allAssets);
+
+  wrap.innerHTML = `
+    <!-- Total summary -->
+    <div class="v5-total">
+      <div class="v5-total-info">
+        <div class="v5-total-lbl">ความมั่งคั่งรวม</div>
+        <div class="v5-total-amt" id="total-amt">${fmt(totalCV)}</div>
+      </div>
+      <div class="v5-total-side">
+        <div class="lbl">มูลค่าอนาคต (FV)</div>
+        <div class="val green" id="total-fv">${fmt(totalFV)}</div>
+        <div class="sub">เมื่อครบระยะเวลา</div>
+      </div>
+      <div class="v5-total-side">
+        <div class="lbl">กระแสเงินสด/ปี</div>
+        <div class="val accent" id="total-cf">${fmt(totalCF)}</div>
+        <div class="sub">รายได้ประจำ</div>
+      </div>
+    </div>
+
+    <!-- Savings -->
+    <div class="v5-section">
+      <div class="v5-section-head">
+        <div class="v5-section-name">เงินออม <span class="count">${SAVINGS.length} รายการ</span></div>
+        <div class="v5-section-total">รวม <b>${fmt(cvSav)}</b></div>
+      </div>
+      <div>${savings.map(renderRow).join('')}</div>
+    </div>
+
+    <!-- Investment -->
+    <div class="v5-section">
+      <div class="v5-section-head">
+        <div class="v5-section-name">เงินลงทุน <span class="count">${INVEST.length} รายการ</span></div>
+        <div class="v5-section-total">รวม <b>${fmt(cvInv)}</b></div>
+      </div>
+      <div>${invest.map(renderRow).join('')}</div>
+    </div>
+
+    ${custom.length > 0 ? `
+      <div class="v5-section">
+        <div class="v5-section-head">
+          <div class="v5-section-name">รายการที่เพิ่มเอง <span class="count">${custom.length} รายการ</span></div>
+          <div class="v5-section-total">รวม <b>${fmt(cvCust)}</b></div>
+        </div>
+        <div>${custom.map(renderRow).join('')}</div>
+      </div>
+    ` : ''}
+
+    <div class="v5-add-section">
+      <button class="v5-add" onclick="addCustomRow('fv')">
+        <div class="plus">+</div>
+        <span>เพิ่มมูลค่าอนาคต</span>
+      </button>
+      <button class="v5-add" onclick="addCustomRow('cf')">
+        <div class="plus">+</div>
+        <span>เพิ่มกระแสเงินสด</span>
+      </button>
+    </div>
+
+    <div class="v5-nav">
+      <button class="v5-nav-btn" onclick="location.href='clients.html'">← ลูกค้า</button>
+      <button class="v5-nav-btn primary" onclick="location.href='retirement.html'">เกษียณ →</button>
+    </div>
+  `;
+}
+
+function updateTotals() {
+  const allAssets = getAssets();
+  const sumCV = allAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const sumFV = allAssets.reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  const sumCF = allAssets.reduce((s,a) => s + Number(a.cashFlow||0), 0);
+  const ea = document.getElementById('total-amt');  if (ea) ea.textContent = fmt(sumCV);
+  const ef = document.getElementById('total-fv');   if (ef) ef.textContent = fmt(sumFV);
+  const ec = document.getElementById('total-cf');   if (ec) ec.textContent = fmt(sumCF);
+  /* update section totals */
+  const savings = SAVINGS.map(getOrEmpty);
+  const invest = INVEST.map(getOrEmpty);
+  const sumList = list => list.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const sects = document.querySelectorAll('.v5-section-total');
+  if (sects[0]) sects[0].innerHTML = `รวม <b>${fmt(sumList(savings))}</b>`;
+  if (sects[1]) sects[1].innerHTML = `รวม <b>${fmt(sumList(invest))}</b>`;
+}
+
+function initSidebar() {
+  try {
+    const u = getUser();
+    const p = u.profile || {};
+    const name = ((u.firstName||'') + (u.lastName ? ' '+u.lastName : '')).trim() || 'Agent';
+    const initial = (u.firstName || 'A').charAt(0).toUpperCase();
+    const sbAv = document.getElementById('sb-avatar');
+    const sbNm = document.getElementById('sb-name');
+    if (sbNm) sbNm.textContent = name;
+    if (sbAv) {
+      if (p.photo) {
+        sbAv.style.backgroundImage = `url('${p.photo}')`;
+        sbAv.style.backgroundSize = 'cover'; sbAv.style.backgroundPosition = 'center';
+        sbAv.classList.add('has-photo'); sbAv.textContent = '';
+      } else { sbAv.textContent = initial; }
+    }
+  } catch(e){}
+}
+
+fbAuth.onAuthStateChanged(user => {
+  if (!user) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; }
+});
+
+(function init() {
+  initSidebar();
+  initClientSelect();
+  render();
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'aia_users') { initClientSelect(); render(); }
+  });
+})();
+</script>
+
+</body>
+</html>
