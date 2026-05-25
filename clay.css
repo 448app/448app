@@ -751,3 +751,483 @@
   border-radius: 14px; font-weight: 800;
   box-shadow: 0 6px 14px rgba(168,138,79,.4);
 }
+
+/* ════════════════════════════════════════════════
+   AGGRESSIVE GLOBAL CLAY OVERRIDES
+   Apply assets6.html visual language across all pages
+═══════════════════════════════════════════════ */
+
+/* ── Universal card-like elements → clay gradient surface ── */
+.clay-app .ast-wrap,
+.clay-app .ast-section,
+.clay-app .ast-card,
+.clay-app .ast-summary,
+.clay-app .ms-card,
+.clay-app .timeline-card,
+.clay-app .tl-toolbar,
+.clay-app .tl-filter-bar,
+.clay-app .tl-legend,
+.clay-app .ms-overlay .ms-modal,
+.clay-app .msd-modal,
+.clay-app .py-card,
+.clay-app .nw-card,
+.clay-app .nw-section,
+.clay-app .ratio-card,
+.clay-app .ratio-section,
+.clay-app .ed-card,
+.clay-app .ed-section,
+.clay-app .ed-summary,
+.clay-app .ret-card,
+.clay-app .ret-section,
+.clay-app .ret-summary,
+.clay-app .g-card,
+.clay-app .li-card,
+.clay-app .li-section,
+.clay-app .li2-card,
+.clay-app .li2-section,
+.clay-app .hi-card,
+.clay-app .hi-section,
+.clay-app .hi2-card,
+.clay-app .hi2-section,
+.clay-app .pol-wrap,
+.clay-app .pol-card,
+.clay-app .pol-section,
+.clay-app .ps-card,
+.clay-app .ps-section,
+.clay-app .ps2-card,
+.clay-app .ps2-section,
+.clay-app .p-card,
+.clay-app .p-section,
+.clay-app .p2-card,
+.clay-app .p2-section,
+.clay-app .pri-card,
+.clay-app .pri-section,
+.clay-app .pf-card,
+.clay-app .pf-section,
+.clay-app .t3-table,
+.clay-app .t3-bracket-card,
+.clay-app .t3-compare,
+.clay-app .t3-sum,
+.clay-app .tax-wrap,
+.clay-app .tax-card,
+.clay-app .tax-section,
+.clay-app .apt-card,
+.clay-app .apt-section,
+.clay-app .pf-summary,
+.clay-app .info-card,
+.clay-app .summary-card,
+.clay-app .pol-summary,
+.clay-app .ed-summary-card,
+.clay-app .ret-summary-card,
+.clay-app .nw-summary,
+.clay-app .table-wrap,
+.clay-app .data-table,
+.clay-app .form-card,
+.clay-app .form-section,
+.clay-app .toolbar,
+.clay-app .panel,
+.clay-app .summary-panel,
+.clay-app .activity-card,
+.clay-app .quick-actions {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF9E8 100%) !important;
+  border-radius: 20px !important;
+  border: none !important;
+  box-shadow:
+    0 10px 22px rgba(60,40,15,.12),
+    0 2px 6px rgba(60,40,15,.06),
+    inset 1.5px 1.5px 0 rgba(255,255,255,.9) !important;
+}
+
+/* ── Lighter clay surfaces (sub-sections) ── */
+.clay-app .ast-row,
+.clay-app .ms-item,
+.clay-app .ms-age-section,
+.clay-app .nw-row,
+.clay-app .ed-row,
+.clay-app .ret-row,
+.clay-app .li-row,
+.clay-app .li2-row,
+.clay-app .hi-row,
+.clay-app .hi2-row,
+.clay-app .pol-row,
+.clay-app .ps-row,
+.clay-app .ps2-row,
+.clay-app .pri-row,
+.clay-app .apt-row,
+.clay-app .ratio-row,
+.clay-app .t3-row,
+.clay-app .tax-row,
+.clay-app .data-row,
+.clay-app .row-item {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF9E8 100%) !important;
+  border-radius: 14px !important;
+  border-bottom: none !important;
+  box-shadow:
+    0 4px 10px rgba(60,40,15,.08),
+    inset 1px 1px 0 rgba(255,255,255,.9) !important;
+  margin-bottom: 8px !important;
+  transition: all .25s cubic-bezier(.2,.9,.3,1.05) !important;
+}
+.clay-app .ast-row:hover,
+.clay-app .ms-item:hover,
+.clay-app .nw-row:hover,
+.clay-app .ed-row:hover,
+.clay-app .ret-row:hover,
+.clay-app .li-row:hover,
+.clay-app .li2-row:hover,
+.clay-app .hi-row:hover,
+.clay-app .hi2-row:hover,
+.clay-app .pol-row:hover,
+.clay-app .ps-row:hover,
+.clay-app .ps2-row:hover,
+.clay-app .pri-row:hover,
+.clay-app .apt-row:hover,
+.clay-app .data-row:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 10px 20px rgba(60,40,15,.14),
+    inset 1px 1px 0 rgba(255,255,255,.9) !important;
+}
+
+/* ── Section headers / titles → tilted gold badge feel ── */
+.clay-app .ast-section-header,
+.clay-app .nw-section-header,
+.clay-app .ed-section-header,
+.clay-app .ret-section-header,
+.clay-app .li-section-header,
+.clay-app .li2-section-header,
+.clay-app .hi-section-header,
+.clay-app .hi2-section-header,
+.clay-app .pol-section-header,
+.clay-app .ps-section-header,
+.clay-app .ps2-section-header,
+.clay-app .pri-section-header,
+.clay-app .pf-section-header,
+.clay-app .section-header,
+.clay-app .ast-summary-row,
+.clay-app .ed-summary-row,
+.clay-app .ret-summary-row {
+  border-bottom: 2px dashed var(--clay-paper-dark) !important;
+  border-top: none !important;
+}
+
+.clay-app .ast-section-icon,
+.clay-app .nw-section-icon,
+.clay-app .ed-section-icon,
+.clay-app .ret-section-icon,
+.clay-app .li-section-icon,
+.clay-app .li2-head-icon,
+.clay-app .hi-section-icon,
+.clay-app .hi2-head-icon,
+.clay-app .pol-section-icon,
+.clay-app .ps-section-icon,
+.clay-app .ps2-head-icon,
+.clay-app .pri-section-icon,
+.clay-app .pf-section-icon,
+.clay-app .e2-head-icon,
+.clay-app .e3-head-icon,
+.clay-app .r2-section-icon,
+.clay-app .r3-head-icon,
+.clay-app .g2-head-icon,
+.clay-app .p2-head-icon {
+  background: linear-gradient(160deg, var(--clay-gold-l) 0%, var(--clay-gold-d) 100%) !important;
+  border: none !important;
+  color: white !important;
+  border-radius: 14px !important;
+  box-shadow:
+    0 8px 18px rgba(168,138,79,.4),
+    0 2px 6px rgba(168,138,79,.25),
+    inset 1.5px 1.5px 0 rgba(255,255,255,.4),
+    inset -1px -2px 3px rgba(107,68,35,.2) !important;
+  transform: rotate(-3deg);
+}
+
+/* ── Cards in dashboards / lists → clay card with hover lift ── */
+.clay-app .dash-card,
+.clay-app .feature-card,
+.clay-app .quick-card,
+.clay-app .action-card,
+.clay-app .menu-card,
+.clay-app .activity-item,
+.clay-app .nw-asset-card,
+.clay-app .nw-liability-card,
+.clay-app .ed-child-card,
+.clay-app .ret-goal-card,
+.clay-app .li-policy-card,
+.clay-app .li2-policy-card,
+.clay-app .hi-policy-card,
+.clay-app .pol-policy-card,
+.clay-app .ps-policy-card,
+.clay-app .pri-item-card,
+.clay-app .pf-card {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF9E8 100%) !important;
+  border: none !important;
+  border-radius: 18px !important;
+  box-shadow:
+    0 8px 18px rgba(60,40,15,.12),
+    0 2px 6px rgba(60,40,15,.06),
+    inset 1.5px 1.5px 0 rgba(255,255,255,.9) !important;
+  transition: all .3s cubic-bezier(.2,.9,.3,1.05) !important;
+}
+.clay-app .dash-card:hover,
+.clay-app .feature-card:hover,
+.clay-app .activity-item:hover,
+.clay-app .nw-asset-card:hover,
+.clay-app .ed-child-card:hover,
+.clay-app .ret-goal-card:hover,
+.clay-app .li-policy-card:hover,
+.clay-app .pol-policy-card:hover,
+.clay-app .pri-item-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow:
+    0 16px 32px rgba(60,40,15,.16),
+    0 4px 10px rgba(60,40,15,.1) !important;
+}
+
+/* ── Icon glyphs / circle icons → clay rotated tiles ── */
+.clay-app .ast-icon-wrap,
+.clay-app .nw-icon,
+.clay-app .ed-icon,
+.clay-app .ret-icon,
+.clay-app .li-icon,
+.clay-app .hi-icon,
+.clay-app .pol-icon,
+.clay-app .ps-icon,
+.clay-app .pri-icon,
+.clay-app .pf-icon,
+.clay-app .child-icon,
+.clay-app .goal-icon,
+.clay-app .policy-icon {
+  background: linear-gradient(160deg, #FFF1C9 0%, #F2D7A7 100%) !important;
+  color: var(--clay-gold-d) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 4px 10px rgba(168,138,79,.25),
+    inset 1px 1px 0 rgba(255,255,255,.5) !important;
+  transform: rotate(-4deg);
+  transition: transform .3s cubic-bezier(.2,.9,.3,1.5);
+}
+.clay-app .dash-card:hover .dash-icon,
+.clay-app .ast-row:hover .ast-icon-wrap,
+.clay-app .nw-row:hover .nw-icon,
+.clay-app .pol-row:hover .pol-icon {
+  transform: rotate(0deg) scale(1.06);
+}
+
+/* ── Buttons (more aggressive) ── */
+.clay-app button:not(.fmenu-toggle):not(.sb-collapse-btn):not(.sb-reopen-handle):not(.btn-app-primary):not(.btn-app-ghost):not(.tab):not(.filter-chip):not(.fm-item):not(.apply-pill):not(.clay-pill):not(.v5-pill):not(.fab):not(.dock-btn):not(.tl-chip):not(.cs-link):not(.act-badge):not(.cc-badge):not(.cs-empty a) {
+  border-radius: 12px !important;
+  font-weight: 700;
+  transition: all .2s;
+}
+.clay-app .btn-primary,
+.clay-app .btn-save,
+.clay-app .btn-add,
+.clay-app .btn-confirm,
+.clay-app .btn-next,
+.clay-app .btn-finish {
+  background: linear-gradient(160deg, var(--clay-gold-l) 0%, var(--clay-gold-d) 100%) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow:
+    0 6px 14px rgba(168,138,79,.4),
+    inset 1.5px 1.5px 0 rgba(255,255,255,.4) !important;
+}
+.clay-app .btn-primary:hover,
+.clay-app .btn-save:hover,
+.clay-app .btn-add:hover { transform: translateY(-2px) !important; }
+.clay-app .btn-secondary,
+.clay-app .btn-cancel,
+.clay-app .btn-back,
+.clay-app .btn-prev {
+  background: linear-gradient(160deg, #FFFFFF 0%, #F0E6D0 100%) !important;
+  color: var(--clay-text) !important;
+  border: none !important;
+  box-shadow:
+    0 4px 10px rgba(60,40,15,.1),
+    inset 1px 1px 0 rgba(255,255,255,.9) !important;
+}
+
+/* ── Tables → clay surface ── */
+.clay-app table {
+  background: transparent !important;
+  border-collapse: separate !important;
+  border-spacing: 0 6px !important;
+}
+.clay-app table thead th,
+.clay-app .table-header,
+.clay-app .ast-thead,
+.clay-app .pol-thead {
+  background: linear-gradient(160deg, #FFF9E8 0%, var(--clay-paper) 100%) !important;
+  color: var(--clay-text-2) !important;
+  border-bottom: 2px dashed var(--clay-paper-dark) !important;
+  font-weight: 800 !important;
+}
+.clay-app table tbody tr {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF9E8 100%) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 3px 8px rgba(60,40,15,.07),
+    inset 1px 1px 0 rgba(255,255,255,.9) !important;
+}
+.clay-app table tbody tr:hover {
+  background: linear-gradient(160deg, #FFFFFF 0%, #F0E6D0 100%) !important;
+}
+.clay-app table td {
+  border-bottom: 1px solid var(--clay-paper-dark) !important;
+}
+
+/* ── Modals (overlay forms) → clay-stylish ── */
+.clay-app .ms-modal,
+.clay-app .msd-modal,
+.clay-app .modal-content,
+.clay-app .dialog,
+.clay-app .ast-modal,
+.clay-app .pol-modal,
+.clay-app .ed-modal,
+.clay-app .ret-modal {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF9E8 100%) !important;
+  border: none !important;
+  border-radius: 22px !important;
+  box-shadow:
+    0 24px 60px rgba(15,32,58,.35),
+    0 8px 20px rgba(60,40,15,.18),
+    inset 1.5px 1.5px 0 rgba(255,255,255,.9) !important;
+}
+
+/* ── Pills / chips / badges ── */
+.clay-app .tl-chip,
+.clay-app .filter-chip,
+.clay-app .cat-chip {
+  border: none !important;
+  border-radius: 50px !important;
+  background: linear-gradient(160deg, #FFFFFF 0%, #F0E6D0 100%) !important;
+  color: var(--clay-text-2) !important;
+  font-weight: 700 !important;
+  box-shadow:
+    0 4px 8px rgba(60,40,15,.1),
+    inset 1px 1px 0 rgba(255,255,255,.9) !important;
+}
+.clay-app .tl-chip.active,
+.clay-app .filter-chip.active {
+  background: linear-gradient(160deg, var(--clay-navy-l) 0%, var(--clay-navy-d) 100%) !important;
+  color: white !important;
+  box-shadow:
+    0 6px 14px rgba(15,32,58,.4),
+    inset 1.5px 1.5px 0 rgba(255,255,255,.18) !important;
+}
+
+/* ── Progress bars → clay tan/gold ── */
+.clay-app .progress-bar,
+.clay-app .progress-track,
+.clay-app .bar-track {
+  background: var(--clay-paper-dark) !important;
+  border-radius: 50px !important;
+  overflow: hidden;
+}
+.clay-app .progress-fill,
+.clay-app .bar-fill {
+  background: linear-gradient(90deg, var(--clay-gold-l) 0%, var(--clay-gold-d) 100%) !important;
+  border-radius: 50px !important;
+  box-shadow: 0 1px 2px rgba(168,138,79,.4);
+}
+
+/* ── Number / amount displays → tabular + text shadow ── */
+.clay-app .amount,
+.clay-app .big-num,
+.clay-app .total-amt,
+.clay-app .stat-value,
+.clay-app .summary-value {
+  font-weight: 900 !important;
+  color: var(--clay-navy) !important;
+  font-variant-numeric: tabular-nums !important;
+  letter-spacing: -.01em;
+  text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+}
+
+/* ── Subtle section title text ── */
+.clay-app h2:not(.feature-hero h2):not(.brand),
+.clay-app h3:not(.feature-hero h3) {
+  color: var(--clay-text) !important;
+  font-weight: 900 !important;
+  text-shadow: 1px 1px 0 rgba(255,255,255,.5);
+}
+
+/* ── Page content wrap → wider + paper padding ── */
+.clay-app .app-content {
+  padding: 22px 30px 80px !important;
+  background: transparent !important;
+}
+@media (max-width: 600px) {
+  .clay-app .app-content { padding: 16px 14px 80px !important; }
+}
+
+/* ── Sticky bottom flow nav → paper-cream tinted ── */
+.clay-app .flow-nav,
+.clay-app .bottom-actions,
+.clay-app .page-actions {
+  background: linear-gradient(160deg, var(--clay-paper-light) 0%, var(--clay-paper) 100%) !important;
+  border-top: 2px dashed var(--clay-paper-dark) !important;
+  border-radius: 20px 20px 0 0 !important;
+  box-shadow: 0 -8px 20px rgba(60,40,15,.06);
+}
+
+/* ── Lists / chart legend dots get warm tones ── */
+.clay-app .legend-dot,
+.clay-app .leg-dot,
+.clay-app .color-dot {
+  box-shadow: 0 2px 4px rgba(60,40,15,.15), inset 1px 1px 0 rgba(255,255,255,.3);
+}
+
+/* ── Reduce excessive white background on inner divs ── */
+.clay-app [class$="-card"],
+.clay-app [class*="-card "],
+.clay-app [class$="-panel"],
+.clay-app [class*="-panel "],
+.clay-app [class$="-box"],
+.clay-app [class*="-box "] {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF9E8 100%);
+  border-color: transparent;
+}
+/* But not the sidebar profile box */
+.clay-app .sb-avatar-box,
+.clay-app .cp-avatar { background: revert; }
+
+/* ── Hero pin decoration on all section icons ── */
+.clay-app .section-icon-wrap,
+.clay-app .ico-circle {
+  position: relative;
+}
+
+/* ── Force smooth transitions on most interactives ── */
+.clay-app a,
+.clay-app button,
+.clay-app [role="button"],
+.clay-app .clickable {
+  transition: all .2s cubic-bezier(.2,.9,.3,1.05);
+}
+
+/* ── Reduce contrast of borders → clay-tan ── */
+.clay-app [style*="border:"],
+.clay-app .bordered {
+  border-color: var(--clay-paper-dark) !important;
+}
+
+/* ── Override gray/light backgrounds within content → clay paper ── */
+.clay-app *[style*="background: #f"],
+.clay-app *[style*="background:#f"],
+.clay-app *[style*="background: white"],
+.clay-app *[style*="background:white"] {
+  background: linear-gradient(160deg, #FFFFFF 0%, #FFF9E8 100%) !important;
+}
+
+/* ── Make all dividers dashed clay-paper ── */
+.clay-app hr,
+.clay-app .divider,
+.clay-app .separator {
+  border: none !important;
+  border-top: 2px dashed var(--clay-paper-dark) !important;
+  background: transparent !important;
+  height: 0 !important;
+  margin: 18px 0 !important;
+}
