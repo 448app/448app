@@ -54,25 +54,7 @@
       border-radius: 50px;
     }
 
-    /* ─── Recent Activity ─── */
-    .activity-list { display: flex; flex-direction: column; gap: 12px; }
-    .activity-item {
-      display: flex; align-items: center; gap: 14px;
-      background: white; border-radius: var(--radius-sm); padding: 14px 18px;
-      box-shadow: var(--shadow-sm);
-    }
-    .act-icon {
-      width: 44px; height: 44px; border-radius: 50%;
-      background: var(--red-soft); display: flex; align-items: center; justify-content: center;
-      font-size: 1.2rem; flex-shrink: 0;
-    }
-    .act-info { flex: 1; }
-    .act-title { font-weight: 600; font-size: 0.95rem; }
-    .act-time  { font-size: 0.78rem; color: var(--gray-400); }
-    .act-badge {
-      font-size: 0.78rem; font-weight: 700; padding: 3px 12px;
-      border-radius: 50px; background: var(--red-soft); color: var(--red-primary);
-    }
+    /* Recent Activity removed from dashboard */
 
     /* Clickable stat card */
     #stat-card-plans:hover {
@@ -750,12 +732,6 @@
 
       </div>
 
-      <!-- ─── RECENT ACTIVITY ─── -->
-      <div style="margin-top:24px;">
-        <h3 style="margin-bottom:16px;">กิจกรรมล่าสุด</h3>
-        <div class="activity-list" id="activity-list"></div>
-      </div>
-
       <!-- ─── BACKUP BAR ─── -->
       <div class="backup-bar" style="margin-top:28px;">
         <div class="backup-bar-icon">💾</div>
@@ -993,33 +969,7 @@ function updateDashboard() {
   renderGapBars(policies);
 }
 
-/* ════════════════════════════════════════════════════
-   Activity list (user-level)
-════════════════════════════════════════════════════ */
-function renderActivity(user) {
-  const actEl = document.getElementById('activity-list');
-  if (!actEl) return;
-  const acts = (user.data && user.data.activities) ? user.data.activities : [];
-
-  if (acts.length === 0) {
-    actEl.innerHTML = `
-      <div style="text-align:center;padding:40px 20px;color:var(--gray-400);">
-        <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
-        <div style="font-weight:600;margin-bottom:6px;">ยังไม่มีกิจกรรม</div>
-        <div style="font-size:.88rem;">เริ่มใช้งานฟีเจอร์ต่าง ๆ เพื่อบันทึกกิจกรรมของคุณ</div>
-      </div>`;
-    return;
-  }
-  actEl.innerHTML = acts.slice(-5).reverse().map(a => `
-    <div class="activity-item">
-      <div class="act-icon">${a.icon || '📌'}</div>
-      <div class="act-info">
-        <div class="act-title">${a.title || ''}</div>
-        <div class="act-time">${a.time || ''}</div>
-      </div>
-      <div class="act-badge">เสร็จสิ้น</div>
-    </div>`).join('');
-}
+/* Activity list removed from dashboard — function no longer needed */
 
 /* ════════════════════════════════════════════════════
    Calendar (dynamic, current month)
@@ -1235,7 +1185,6 @@ function confirmImport() {
   selectedClientId = clients.length > 0 ? clients[0].id : null;
   renderClientStrip();
   updateDashboard();
-  renderActivity(allUsers[idx]);
 }
 
 function closeImportModal(e) {
@@ -1692,8 +1641,7 @@ function checkUpcomingNotifications() {
   renderClientStrip();
   updateDashboard();
 
-  /* Activity, calendar, renewal reminders, appointments, birthdays, tasks */
-  renderActivity(user);
+  /* Calendar, renewal reminders, appointments, birthdays, tasks */
   renderCalendar();
   renderAppointmentsWidget();
   renderBirthdayPanel();
