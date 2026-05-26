@@ -801,12 +801,72 @@ function getSelectedClient() { return getClients().find(c => c.id === selectedCl
 /* ════════════════════════════════════════════════════
    Constants
 ════════════════════════════════════════════════════ */
-const RECOMMEND = {
-  'ชีวิต':       5000000,
-  'สุขภาพ':      1000000,
-  'โรคร้ายแรง': 2000000,
+/* Default recommendations (fallback when no client data) */
+const RECOMMEND_DEFAULT = {
+  'ชีวิต':       1000000,
+  'สุขภาพ':      500000,
+  'โรคร้ายแรง': 1000000,
   'อุบัติเหตุ':   500000
 };
+
+/* ════════════════════════════════════════════════════
+   Dynamic Coverage Recommendation
+   ใช้ข้อมูลลูกค้า (รายได้ + อายุ + หนี้สิน) คำนวณ ทุนแนะนำ
+   อิงหลักวางแผนการเงินไทย:
+   - ชีวิต   : 10× รายได้ + หนี้สิน  (DIME-like, แทนรายได้ครอบครัว 10 ปี)
+   - สุขภาพ  : ตามช่วงอายุ (ยิ่งสูง = ค่ารักษายิ่งแพง)
+   - CI      : 3× รายได้ ครอบคลุมค่ารักษา + รายได้ที่ขาด
+   - PA      : 2× รายได้ ครอบคลุมระยะฟื้นตัว
+════════════════════════════════════════════════════ */
+function recommendCoverage(client) {
+  if (!client) return Object.assign({}, RECOMMEND_DEFAULT);
+
+  /* รายได้ต่อปี — เอาจาก cashflow.income หรือ client.income */
+  const cf = client.cashflow || {};
+  const annualIncome =
+    Number(cf.income) ||
+    Number(client.income) ||
+    0;
+
+  /* อายุ — เอาจาก client.age หรือคำนวณจาก dob */
+  const age =
+    Number(client.age) ||
+    calcAge(client.dob || client.birthdate) ||
+    0;
+
+  /* รวมหนี้สิน */
+  const totalDebt = ((client.liabilities || [])
+    .reduce((s, l) => s + Number(l.principal || l.amount || 0), 0)) || 0;
+
+  /* ── ประกันชีวิต ──
+     DIME-light: 10× รายได้ + หนี้สิน
+     กรณีไม่มีรายได้ → ใช้ค่า default 1M */
+  let recLife = (annualIncome * 10) + totalDebt;
+  if (recLife < 1000000) recLife = 1000000;
+
+  /* ── ประกันสุขภาพ ── ตามอายุ
+     < 30: 500K, 30-44: 1M, 45-59: 2M, 60+: 3M */
+  let recHealth = 500000;
+  if (age >= 60)      recHealth = 3000000;
+  else if (age >= 45) recHealth = 2000000;
+  else if (age >= 30) recHealth = 1000000;
+
+  /* ── โรคร้ายแรง (CI) ── 3× รายได้ ขั้นต่ำ 1M */
+  let recCI = Math.max(annualIncome * 3, 1000000);
+
+  /* ── อุบัติเหตุ (PA) ── 2× รายได้ ขั้นต่ำ 500K */
+  let recPA = Math.max(annualIncome * 2, 500000);
+
+  return {
+    'ชีวิต':       Math.round(recLife),
+    'สุขภาพ':      Math.round(recHealth),
+    'โรคร้ายแรง': Math.round(recCI),
+    'อุบัติเหตุ':   Math.round(recPA),
+    /* meta — ใช้แสดงในรายละเอียดได้ */
+    _meta: { annualIncome, age, totalDebt }
+  };
+}
+
 const TYPE_ICONS = {
   'ชีวิต':       '🛡️',
   'สุขภาพ':      '❤️',
@@ -870,7 +930,7 @@ function selectClient(cid) {
 /* ════════════════════════════════════════════════════
    Gap bars
 ════════════════════════════════════════════════════ */
-function renderGapBars(policies) {
+function renderGapBars(policies, client) {
   const byType = {};
   policies.forEach(p => {
     const col = TYPE_TO_GAP[p.type];
@@ -887,17 +947,39 @@ function renderGapBars(policies) {
   const barsEl = document.getElementById('gap-bars');
   if (!barsEl) return;
 
-  if (policies.length === 0) {
+  if (!client) {
     barsEl.innerHTML = `<div style="text-align:center;padding:28px 16px;color:var(--gray-400);font-size:.88rem;">
       เลือกลูกค้าเพื่อดูช่องโหว่ความคุ้มครอง
     </div>`;
     return;
   }
 
-  barsEl.innerHTML = GAP_LABELS.map(g => {
+  /* คำนวณ recommended dynamic ตามข้อมูลลูกค้า */
+  const REC = recommendCoverage(client);
+  const meta = REC._meta || {};
+  const fmtK = n => {
+    if (n >= 1e6) return (n/1e6).toFixed(n%1e6===0?0:1) + 'M';
+    if (n >= 1e3) return Math.round(n/1e3) + 'K';
+    return n.toLocaleString('th-TH');
+  };
+
+  /* คำอธิบายฐานคำนวณ (เล็ก ๆ ด้านบน) */
+  const basisParts = [];
+  if (meta.annualIncome > 0) basisParts.push(`รายได้ ฿${fmtK(meta.annualIncome)}/ปี`);
+  if (meta.age > 0)          basisParts.push(`อายุ ${meta.age} ปี`);
+  if (meta.totalDebt > 0)    basisParts.push(`หนี้สิน ฿${fmtK(meta.totalDebt)}`);
+  const basisLine = basisParts.length
+    ? `<div style="font-size:.74rem;color:var(--gray-500);margin-bottom:10px;padding:6px 10px;background:var(--gray-50);border-radius:6px;border-left:3px solid var(--red-primary);">
+         📐 คำนวณจาก: ${basisParts.join(' · ')}
+       </div>`
+    : `<div style="font-size:.74rem;color:var(--gray-400);margin-bottom:10px;padding:6px 10px;background:#FFF8E1;border-radius:6px;border-left:3px solid #F39C12;">
+         ⚠️ ยังไม่มีข้อมูลรายได้/อายุ — ใช้ค่าแนะนำขั้นต่ำ
+       </div>`;
+
+  const barsHtml = GAP_LABELS.map(g => {
     const have  = byType[g.type] || 0;
-    const rec   = RECOMMEND[g.type];
-    const pct   = Math.min(Math.round((have / rec) * 100), 100);
+    const rec   = REC[g.type];
+    const pct   = rec > 0 ? Math.min(Math.round((have / rec) * 100), 100) : 0;
     const color = pct >= 100 ? '#28a745' : pct >= 50 ? '#FFA500' : '#1F2D4F';
     return `<div class="prog-item">
       <div class="prog-label">
@@ -907,8 +989,14 @@ function renderGapBars(policies) {
       <div class="prog-bar">
         <div class="prog-fill" style="width:${pct}%;background:${color}"></div>
       </div>
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--gray-500);margin-top:3px;">
+        <span>มี ฿${fmtK(have)}</span>
+        <span>แนะนำ ฿${fmtK(rec)}</span>
+      </div>
     </div>`;
   }).join('');
+
+  barsEl.innerHTML = basisLine + barsHtml;
 }
 
 /* ════════════════════════════════════════════════════
@@ -966,7 +1054,7 @@ function updateDashboard() {
   if (sbBadge) sbBadge.textContent = allC.length;
 
   /* ── Gap bars ── */
-  renderGapBars(policies);
+  renderGapBars(policies, client);
 }
 
 /* Activity list removed from dashboard — function no longer needed */
