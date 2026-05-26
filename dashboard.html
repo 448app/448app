@@ -625,10 +625,6 @@
             <div class="s-lbl">เบี้ยประกันรายปี</div>
             <div class="s-val" id="stat-premium">฿ 0</div>
           </div>
-          <div class="s-item">
-            <div class="s-lbl">ลดหย่อนภาษีได้</div>
-            <div class="s-val" id="stat-tax-deduct">฿ 0</div>
-          </div>
         </div>
       </div>
 
@@ -656,14 +652,6 @@
             <div class="mc-stat-lbl">เบี้ยรายปีรวม</div>
             <div class="mc-stat-val red" id="mc-premium-total">฿ 0</div>
             <span class="mc-stat-tag gray">บาท/ปี</span>
-          </div>
-        </div>
-        <div class="mc-stat" onclick="goToFinancial()" style="cursor:pointer;" title="วางแผนการเงิน">
-          <div class="mc-stat-ico">✂️</div>
-          <div>
-            <div class="mc-stat-lbl">ลดหย่อนภาษีได้</div>
-            <div class="mc-stat-val" id="mc-tax-total">฿ 0</div>
-            <span class="mc-stat-tag green" id="mc-tax-tag">คลิกวางแผน →</span>
           </div>
         </div>
       </div>
@@ -962,7 +950,6 @@ function updateDashboard() {
   const coverageEl = document.getElementById('stat-coverage');
   const polEl      = document.getElementById('stat-policies');
   const premEl     = document.getElementById('stat-premium');
-  const taxDEl     = document.getElementById('stat-tax-deduct');
 
   if (client) {
     const initial = (client.firstName || '?').charAt(0);
@@ -982,32 +969,21 @@ function updateDashboard() {
 
   const totalCoverage  = policies.reduce((s, p) => s + primaryCovOf(p), 0);
   const totalPremium   = policies.reduce((s, p) => s + (Number(p.premium)  || 0), 0);
-  const annuityTypes   = ['บำนาญ','เกษียณ','ลดหย่อนภาษี'];
-  const annuityPremium = policies.filter(p => annuityTypes.includes(p.type)).reduce((s,p) => s + (Number(p.premium)||0), 0);
-  const otherPremium   = policies.filter(p => !annuityTypes.includes(p.type)).reduce((s,p) => s + (Number(p.premium)||0), 0);
-  const taxDeduct      = Math.min(otherPremium, 100000) + Math.min(annuityPremium, 200000);
 
   coverageEl.textContent = '฿ ' + totalCoverage.toLocaleString('th-TH');
   polEl.textContent      = policies.length + ' ฉบับ';
   premEl.textContent     = '฿ ' + totalPremium.toLocaleString('th-TH');
-  taxDEl.textContent     = '฿ ' + taxDeduct.toLocaleString('th-TH');
 
   /* ── MC Stat cards (totals across ALL clients) ── */
   const allC          = getClients();
   const allPolicies   = allC.flatMap(c => c.policies || []);
-  const allAnnuityT   = ['บำนาญ','เกษียณ','ลดหย่อนภาษี'];
   const allPremTotal  = allPolicies.reduce((s, p) => s + (Number(p.premium) || 0), 0);
-  const allAnnuityP   = allPolicies.filter(p => allAnnuityT.includes(p.type)).reduce((s,p) => s+(Number(p.premium)||0), 0);
-  const allOtherP     = allPolicies.filter(p => !allAnnuityT.includes(p.type)).reduce((s,p) => s+(Number(p.premium)||0), 0);
-  const allTaxDeduct  = Math.min(allOtherP, 100000) + Math.min(allAnnuityP, 200000);
 
   const el = id => document.getElementById(id);
   if (el('mc-clients-total'))  el('mc-clients-total').textContent  = allC.length + ' ราย';
   if (el('mc-clients-tag'))    el('mc-clients-tag').textContent    = allC.length > 0 ? '+' + allC.length + ' ราย' : 'เพิ่มลูกค้าได้เลย';
   if (el('mc-policies-total')) el('mc-policies-total').textContent = allPolicies.length + ' ฉบับ';
   if (el('mc-premium-total'))  el('mc-premium-total').textContent  = '฿' + allPremTotal.toLocaleString('th-TH');
-  if (el('mc-tax-total'))      el('mc-tax-total').textContent      = '฿' + allTaxDeduct.toLocaleString('th-TH');
-  if (el('mc-tax-tag'))        el('mc-tax-tag').textContent        = allTaxDeduct > 0 ? 'ประหยัดได้ ~฿' + Math.round(allTaxDeduct*.2).toLocaleString('th-TH') : 'คลิกวางแผน →';
 
   /* Sidebar badge update */
   const sbBadge = el('sb-client-badge');
