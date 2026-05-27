@@ -472,7 +472,9 @@ if ('serviceWorker' in navigator
     backdrop.addEventListener('click', closeFmenu);
     document.body.appendChild(backdrop);
 
-    /* Items popup */
+    /* Items popup — use data-action + event delegation instead of inline
+       onclick (more reliable on iOS/iPad where inline handlers sometimes
+       fail to find globals if the script load order is off) */
     const items = document.createElement('div');
     items.id = 'fmenu-items';
     items.className = 'fmenu-items';
@@ -480,19 +482,34 @@ if ('serviceWorker' in navigator
       <div class="fmenu-item">
         <span class="fmenu-item-label">Timeline</span>
         <button class="fmenu-item-btn ${isTimeline ? 'active' : ''}"
-                onclick="location.href='timeline.html'" title="Timeline">${ico('map', '🗺️')}</button>
+                data-action="timeline" title="Timeline">${ico('map', '🗺️')}</button>
       </div>
       <div class="fmenu-item">
         <span class="fmenu-item-label">Pyramid · สามเหลี่ยมการเงิน</span>
         <button class="fmenu-item-btn"
-                onclick="openPyramidPopup()" title="Pyramid">${ico('pyramid', '🔺')}</button>
+                data-action="pyramid" title="Pyramid">${ico('pyramid', '🔺')}</button>
       </div>
       <div class="fmenu-item">
         <span class="fmenu-item-label">กลับหน้าแรก</span>
         <button class="fmenu-item-btn fm-exit"
-                onclick="location.href='dashboard.html'" title="Exit">${ico('exit', '🚪')}</button>
+                data-action="exit" title="Exit">${ico('exit', '🚪')}</button>
       </div>
     `;
+    /* Event delegation — single handler, doesn't depend on global function lookup */
+    items.addEventListener('click', (e) => {
+      const btn = e.target.closest('.fmenu-item-btn');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === 'timeline') {
+        closeFmenu();
+        location.href = 'timeline.html';
+      } else if (action === 'pyramid') {
+        openPyramidPopup();
+      } else if (action === 'exit') {
+        closeFmenu();
+        location.href = 'dashboard.html';
+      }
+    });
     document.body.appendChild(items);
 
     /* FAB main */
@@ -511,7 +528,7 @@ if ('serviceWorker' in navigator
       popup.id = 'pyr-popup';
       popup.className = 'pyr-popup';
       popup.innerHTML = `
-        <button class="pyr-popup-close" onclick="closePyramidPopup()" title="ปิด">✕</button>
+        <button class="pyr-popup-close" data-action="close" title="ปิด">✕</button>
         <div class="pyr-popup-inner">
           <img src="pyramid-image.jpg" alt="สามเหลี่ยมการเงิน" class="pyr-popup-img">
           <div class="pyr-popup-caption">
@@ -519,8 +536,11 @@ if ('serviceWorker' in navigator
           </div>
         </div>
       `;
+      /* Close on backdrop click OR close-button click (event delegation) */
       popup.addEventListener('click', (e) => {
-        if (e.target === popup) closePyramidPopup();
+        if (e.target === popup || e.target.closest('[data-action="close"]')) {
+          closePyramidPopup();
+        }
       });
       document.body.appendChild(popup);
     }
