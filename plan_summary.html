@@ -226,6 +226,165 @@
       .py-layer-desc { font-size: .68rem; }
     }
 
+    /* ════════════════════════════════════════════════
+       CLAYMATION-STYLE PYRAMID (modal)
+       Uses SVG polygons forming ONE continuous triangle
+       with red gradient, plus wooden 'Tax Planning' side tag
+    ═══════════════════════════════════════════════ */
+    .cm-pyramid-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 22px;
+      margin: 20px auto 8px;
+    }
+    @media (min-width: 720px) {
+      .cm-pyramid-layout {
+        grid-template-columns: 1.1fr 1fr;
+        align-items: start;
+      }
+    }
+    .cm-pyramid-col { display: flex; align-items: center; justify-content: center; }
+    .cm-pyramid-container {
+      position: relative;
+      width: 100%;
+      max-width: 460px;
+      aspect-ratio: 500 / 460;
+      padding-left: 38px;  /* room for wooden Tax Planning tag */
+      box-sizing: border-box;
+    }
+    .cm-pyramid-svg {
+      position: absolute; left: 38px; right: 0; top: 0; bottom: 0;
+      width: calc(100% - 38px); height: 100%;
+      filter: drop-shadow(0 14px 22px rgba(120,30,30,.28))
+              drop-shadow(0 3px 6px rgba(120,30,30,.18));
+    }
+    .cm-labels {
+      position: absolute; left: 38px; right: 0; top: 0; bottom: 0;
+      pointer-events: none;
+    }
+    .cm-label {
+      position: absolute;
+      left: 0; right: 0;
+      transform: translateY(-50%);
+      text-align: center;
+      color: white;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 2px;
+    }
+    .cm-l-inner {
+      display: flex; flex-direction: column;
+      align-items: center;
+      margin: 0 auto;
+    }
+    .cm-l-name {
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 800;
+      font-size: .9rem;
+      line-height: 1.2;
+      letter-spacing: .01em;
+      text-shadow: 0 2px 3px rgba(0,0,0,.35);
+      color: #FFF6E5;
+    }
+    .cm-l-status {
+      font-size: .8rem;
+      margin-top: 2px;
+      color: rgba(255,255,255,.95);
+      text-shadow: 0 1px 2px rgba(0,0,0,.3);
+    }
+    /* Top layer (L5) is narrowest — smaller font + tight word wrap */
+    .cm-l5 .cm-l-name { font-size: .72rem; line-height: 1.15; }
+    .cm-l4 .cm-l-name { font-size: .8rem; }
+
+    /* Wooden 'Tax Planning' tag on left side (like the claymation reference) */
+    .cm-tax-tag {
+      position: absolute;
+      left: -4px; top: 50%;
+      transform: translateY(-50%) rotate(-90deg);
+      transform-origin: center;
+      padding: 8px 22px;
+      background: linear-gradient(135deg, #A07555 0%, #7C5638 50%, #5F4126 100%);
+      color: #FFF1D6;
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 800;
+      font-size: .92rem;
+      letter-spacing: .08em;
+      border-radius: 4px;
+      white-space: nowrap;
+      box-shadow:
+        0 6px 14px rgba(60,40,20,.45),
+        inset 1.5px 1.5px 0 rgba(255,220,180,.25),
+        inset -1px -2px 3px rgba(0,0,0,.3);
+      border: 1px solid #4A3220;
+      z-index: 5;
+      text-shadow: 0 1px 2px rgba(0,0,0,.4);
+    }
+    /* Subtle wood grain effect — vertical streaks */
+    .cm-tax-tag::before {
+      content: ''; position: absolute; inset: 0;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent 0,
+        rgba(60,40,20,.08) 1px,
+        transparent 2px,
+        transparent 6px
+      );
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    /* Description column on the right (or below on mobile) */
+    .cm-desc-col {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 4px 6px;
+    }
+    .cm-desc-row {
+      display: grid;
+      grid-template-columns: 38px 1fr auto;
+      gap: 10px; align-items: center;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, #FAFAFA, #F2F2F2);
+      border-radius: 10px;
+      border-left: 3px solid var(--gray-300);
+      font-size: .82rem;
+      transition: background .15s;
+    }
+    .cm-desc-row.ok { border-left-color: #16A34A; background: linear-gradient(180deg, #F0FAF3, #E8F5EC); }
+    .cm-desc-row.warn { border-left-color: #C9A961; background: linear-gradient(180deg, #FCF7E8, #F8F1DA); }
+    .cm-desc-num {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #1F2D4F, #2C3E61);
+      color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: .78rem;
+      letter-spacing: .02em;
+    }
+    .cm-desc-text { min-width: 0; }
+    .cm-desc-title {
+      font-weight: 800; color: #1F2D4F;
+      font-size: .9rem; line-height: 1.25;
+    }
+    .cm-desc-th { font-weight: 500; color: #6B7280; font-size: .82rem; }
+    .cm-desc-detail {
+      font-size: .76rem; color: #6B7280;
+      margin-top: 3px; line-height: 1.4;
+    }
+    .cm-desc-status {
+      font-size: .74rem; font-weight: 800;
+      padding: 4px 10px; border-radius: 50px;
+      white-space: nowrap;
+    }
+    .cm-desc-row.ok .cm-desc-status { background: #DCFCE7; color: #15803D; }
+    .cm-desc-row.warn .cm-desc-status { background: #FEF3C7; color: #A16207; }
+
+    @media (max-width: 600px) {
+      .cm-pyramid-container { padding-left: 30px; }
+      .cm-pyramid-svg { left: 30px; width: calc(100% - 30px); }
+      .cm-labels { left: 30px; }
+      .cm-tax-tag { padding: 6px 16px; font-size: .8rem; }
+      .cm-l-name { font-size: .82rem; }
+      .cm-l5 .cm-l-name { font-size: .68rem; }
+    }
+
     .py-legend {
       background: var(--gray-50); padding: 14px 18px; border-radius: 10px;
       font-size: .82rem; color: var(--gray-600); line-height: 1.6;
@@ -1839,23 +1998,80 @@ function openPyramid() {
   const summary = computeSummary(client);
   if (!summary) return;
   const layers = computePyramid(client, summary);
-  /* 5 ชั้น (top → base) — layer 5 อยู่บนสุดในรายการ → render บนสุดของ stack */
-  const html = layers.map(l => `
-    <div class="py-layer layer-${l.layer}">
-      <span class="py-layer-icon">${l.icon}</span>
-      <div class="py-layer-text">
-        <div class="py-layer-name">${l.title}</div>
-        ${l.titleTh ? `<div class="py-layer-name-th">${l.titleTh}</div>` : ''}
-        <div class="py-layer-desc">${l.desc}</div>
+  /* layers array is in order [L5(top), L4, L3, L2, L1(base)] */
+
+  /* Polygon coordinates for continuous pyramid 500×460
+     Top width 100 (room for 'Wealth Distribution' label), base 500
+     Five trapezoids share edges → no gaps */
+  const POLYGONS = {
+    5: '200,0 300,0 340,92 160,92',
+    4: '160,92 340,92 380,184 120,184',
+    3: '120,184 380,184 420,276 80,276',
+    2: '80,276 420,276 460,368 40,368',
+    1: '40,368 460,368 500,460 0,460',
+  };
+  /* Label vertical center % within total height (460px) */
+  const LABEL_TOP = { 5: '10%', 4: '30%', 3: '50%', 2: '70%', 1: '90%' };
+  /* Max-width per layer so label fits within trapezoid */
+  const LABEL_W   = { 5: '26%', 4: '42%', 3: '56%', 2: '72%', 1: '86%' };
+
+  const svgPolys = layers.map(l => `
+    <polygon points="${POLYGONS[l.layer]}" fill="url(#cm-g${l.layer})"
+             stroke="rgba(70,15,20,.55)" stroke-width="1"/>
+  `).join('');
+
+  const labelEls = layers.map(l => `
+    <div class="cm-label cm-l${l.layer}" style="top:${LABEL_TOP[l.layer]};">
+      <div class="cm-l-inner" style="max-width:${LABEL_W[l.layer]};">
+        <div class="cm-l-name">${l.title}</div>
+        <div class="cm-l-status">${l.ok ? '✓' : '⚠'}</div>
       </div>
-      <span class="py-layer-status">${l.ok ? '✅' : '⚠️'}</span>
     </div>
   `).join('');
-  document.getElementById('pyramid-stack-container').innerHTML =
-    `<div class="pyramid-wrap">
-       <div class="pyramid-stack">${html}</div>
-       <div class="py-tax-side">Tax Planning</div>
-     </div>`;
+
+  /* Description column to the right of pyramid */
+  const descRows = layers.map(l => `
+    <div class="cm-desc-row ${l.ok?'ok':'warn'}">
+      <div class="cm-desc-num">L${l.layer}</div>
+      <div class="cm-desc-text">
+        <div class="cm-desc-title">${l.title}${l.titleTh ? ` <span class="cm-desc-th">· ${l.titleTh}</span>` : ''}</div>
+        <div class="cm-desc-detail">${l.desc}</div>
+      </div>
+      <div class="cm-desc-status">${l.ok ? '✓ ผ่าน' : '⚠ ยัง'}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('pyramid-stack-container').innerHTML = `
+    <div class="cm-pyramid-layout">
+      <div class="cm-pyramid-col">
+        <div class="cm-pyramid-container">
+          <div class="cm-tax-tag">Tax Planning</div>
+          <svg class="cm-pyramid-svg" viewBox="0 0 500 460" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="cm-g5" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#6B1F2A"/><stop offset="100%" stop-color="#7E2530"/>
+              </linearGradient>
+              <linearGradient id="cm-g4" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#7E2530"/><stop offset="100%" stop-color="#8C2A36"/>
+              </linearGradient>
+              <linearGradient id="cm-g3" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#8C2A36"/><stop offset="100%" stop-color="#9A3040"/>
+              </linearGradient>
+              <linearGradient id="cm-g2" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#9A3040"/><stop offset="100%" stop-color="#A6364A"/>
+              </linearGradient>
+              <linearGradient id="cm-g1" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#A6364A"/><stop offset="100%" stop-color="#B23D54"/>
+              </linearGradient>
+            </defs>
+            ${svgPolys}
+          </svg>
+          <div class="cm-labels">${labelEls}</div>
+        </div>
+      </div>
+      <div class="cm-desc-col">${descRows}</div>
+    </div>
+  `;
   document.getElementById('pyramid-modal').classList.add('open');
 }
 
