@@ -443,76 +443,273 @@
       color: white;
     }
 
-    /* preview content */
+    /* ════════════════════════════════════════════════
+       PREVIEW DOCUMENT — Formal/Premium financial report style
+       Navy + Gold theme, refined typography
+    ═══════════════════════════════════════════════ */
     .pf-preview-wrap {
-      background: var(--gray-50); padding: 20px; border-radius: 12px;
-      max-height: 60vh; overflow-y: auto;
+      background: linear-gradient(180deg, #E8EAF0 0%, #DFE2EA 100%);
+      padding: 28px 20px;
+      border-radius: 14px;
+      max-height: 65vh; overflow-y: auto;
     }
     .pf-document {
-      background: white; padding: 36px 40px; max-width: 780px; margin: 0 auto;
-      box-shadow: 0 2px 10px rgba(0,0,0,.08); border-radius: 4px;
-      font-family: var(--font); color: #222; line-height: 1.55;
+      background: #FFFFFF;
+      padding: 0;
+      max-width: 800px;
+      margin: 0 auto;
+      box-shadow:
+        0 4px 16px rgba(31,45,79,.10),
+        0 1px 3px rgba(31,45,79,.06);
+      border-radius: 2px;
+      font-family: var(--font);
+      color: #1A1F2E;
+      line-height: 1.6;
+      position: relative;
+      overflow: hidden;
     }
+
+    /* Document header — formal letterhead */
     .pf-doc-head {
-      display: flex; align-items: center; justify-content: space-between;
-      border-bottom: 3px solid var(--red-primary); padding-bottom: 14px; margin-bottom: 22px;
+      position: relative;
+      padding: 26px 44px 18px;
+      border-bottom: none;
+      margin-bottom: 0;
+      background: linear-gradient(135deg, #1F2D4F 0%, #2C3E61 100%);
+      color: white;
     }
-    .pf-doc-head .pf-doc-brand { font-size: 1.4rem; font-weight: 800; color: var(--red-primary); }
-    .pf-doc-head .pf-doc-tag { font-size: .85rem; color: var(--gray-500); margin-top: 2px; }
-    .pf-doc-head .pf-doc-meta { text-align: right; font-size: .82rem; color: var(--gray-600); }
+    .pf-doc-head::after {
+      content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #C9A961 0%, #E2C684 50%, #C9A961 100%);
+    }
+    .pf-doc-head-inner {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 24px;
+    }
+    .pf-doc-head .pf-doc-brand {
+      font-size: 1.6rem; font-weight: 800;
+      color: #C9A961;
+      letter-spacing: -.01em;
+      line-height: 1;
+    }
+    .pf-doc-head .pf-doc-tag {
+      font-size: .72rem;
+      color: rgba(255,255,255,.7);
+      margin-top: 5px;
+      letter-spacing: .25em;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .pf-doc-head .pf-doc-meta {
+      text-align: right;
+      font-size: .76rem;
+      color: rgba(255,255,255,.85);
+      line-height: 1.6;
+    }
+    .pf-doc-head .pf-doc-meta .meta-lbl {
+      font-size: .66rem;
+      color: rgba(201,169,97,.85);
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      font-weight: 700;
+      display: block;
+    }
+    .pf-doc-head .pf-doc-meta .meta-val {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Document body — main content area */
+    .pf-doc-body { padding: 32px 44px 28px; }
+
     .pf-doc-title {
-      font-size: 1.1rem; font-weight: 800; color: var(--gray-800);
-      margin-bottom: 14px;
+      font-size: .82rem;
+      font-weight: 700;
+      color: #6B7280;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #E5E7EB;
     }
     .pf-doc-title .pf-doc-client {
-      display: block; font-size: 1.3rem; font-weight: 800; color: var(--red-primary); margin-top: 4px;
+      display: block;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #1F2D4F;
+      margin-top: 8px;
+      letter-spacing: -.015em;
+      line-height: 1.2;
+      text-transform: none;
     }
-    .pf-doc-section { margin-bottom: 26px; page-break-inside: avoid; }
+
+    /* Section — numbered with gold accent */
+    .pf-doc-section {
+      margin-bottom: 28px;
+      page-break-inside: avoid;
+      position: relative;
+      counter-increment: section-counter;
+    }
+    .pf-doc-body { counter-reset: section-counter; }
     .pf-doc-section h4 {
-      font-size: 1.02rem; font-weight: 800; color: var(--red-primary);
-      border-left: 4px solid var(--red-primary); padding-left: 10px;
-      margin-bottom: 12px;
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #1F2D4F;
+      border-left: none;
+      padding-left: 0;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      letter-spacing: -.005em;
     }
+    .pf-doc-section h4::before {
+      content: counter(section-counter, decimal-leading-zero);
+      display: inline-flex;
+      align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #C9A961, #A88A4F);
+      color: white;
+      font-size: .78rem;
+      font-weight: 800;
+      border-radius: 6px;
+      letter-spacing: .02em;
+      flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(168,138,79,.3);
+    }
+    .pf-doc-section h4::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, #C9A961 0%, transparent 100%);
+      margin-left: 4px;
+    }
+
+    /* Tables — clean professional style */
     .pf-doc-table {
-      width: 100%; border-collapse: collapse; font-size: .88rem;
-    }
-    .pf-doc-table th, .pf-doc-table td {
-      padding: 7px 10px; border-bottom: 1px solid #E5E7EB; text-align: left;
+      width: 100%; border-collapse: collapse;
+      font-size: .88rem;
+      margin: 4px 0;
     }
     .pf-doc-table th {
-      background: #F9FAFB; font-weight: 700; color: var(--gray-700); font-size: .82rem;
+      background: #F4F6FA;
+      font-weight: 700;
+      color: #1F2D4F;
+      font-size: .74rem;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 2px solid #C9A961;
+      letter-spacing: .04em;
+      text-transform: uppercase;
     }
-    .pf-doc-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
-    .pf-doc-table td.pos { color: #28a745; font-weight: 700; }
-    .pf-doc-table td.neg { color: #DC3545; font-weight: 700; }
+    .pf-doc-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #F1F2F5;
+      text-align: left;
+      vertical-align: top;
+    }
+    .pf-doc-table tbody tr:last-child td { border-bottom: none; }
+    .pf-doc-table tbody tr:hover { background: #FAFBFD; }
+    .pf-doc-table td.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 700;
+      color: #1F2D4F;
+    }
+    .pf-doc-table td.pos { color: #16A34A; font-weight: 700; }
+    .pf-doc-table td.neg { color: #DC2626; font-weight: 700; }
+
+    /* Info grid — cards with subtle separator */
     .pf-doc-grid {
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 22px;
+      display: grid; grid-template-columns: repeat(2, 1fr);
+      gap: 0 28px;
       font-size: .9rem;
     }
-    .pf-doc-grid .pf-row { display: flex; justify-content: space-between; border-bottom: 1px dashed #E5E7EB; padding: 5px 0; }
-    .pf-doc-grid .pf-row span:first-child { color: var(--gray-600); }
-    .pf-doc-grid .pf-row span:last-child { font-weight: 700; color: var(--gray-800); }
+    .pf-doc-grid .pf-row {
+      display: flex; justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px dashed #E5E7EB;
+      padding: 9px 0;
+    }
+    .pf-doc-grid .pf-row span:first-child {
+      color: #6B7280;
+      font-size: .82rem;
+      font-weight: 600;
+    }
+    .pf-doc-grid .pf-row span:last-child {
+      font-weight: 700;
+      color: #1F2D4F;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Progress bars — premium gradient */
     .pf-doc-progress {
-      display: grid; grid-template-columns: 130px 1fr 60px; gap: 12px;
-      align-items: center; padding: 8px 0;
+      display: grid; grid-template-columns: 150px 1fr 64px;
+      gap: 14px; align-items: center;
+      padding: 11px 0;
     }
-    .pf-doc-progress + .pf-doc-progress { border-top: 1px dashed #E5E7EB; }
-    .pf-doc-progress .pdp-lbl { font-weight: 700; font-size: .9rem; color: var(--gray-800); }
-    .pf-doc-progress .pdp-bar { height: 12px; background: #E5E7EB; border-radius: 6px; overflow: hidden; }
-    .pf-doc-progress .pdp-fill { height: 100%; border-radius: 6px; }
-    .pf-doc-progress .pdp-fill.s-good { background: #28a745; }
-    .pf-doc-progress .pdp-fill.s-med  { background: #F39C12; }
-    .pf-doc-progress .pdp-fill.s-bad  { background: #DC3545; }
-    .pf-doc-progress .pdp-pct { text-align: right; font-weight: 800; font-size: .9rem; }
-    .pf-doc-progress .pdp-pct.s-good { color: #28a745; }
-    .pf-doc-progress .pdp-pct.s-med  { color: #F39C12; }
-    .pf-doc-progress .pdp-pct.s-bad  { color: #DC3545; }
+    .pf-doc-progress + .pf-doc-progress { border-top: 1px solid #F1F2F5; }
+    .pf-doc-progress .pdp-lbl {
+      font-weight: 700; font-size: .88rem; color: #1F2D4F;
+    }
+    .pf-doc-progress .pdp-bar {
+      height: 10px; background: #EEF0F4;
+      border-radius: 6px; overflow: hidden;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.05);
+    }
+    .pf-doc-progress .pdp-fill {
+      height: 100%; border-radius: 6px;
+      transition: width .8s ease;
+    }
+    .pf-doc-progress .pdp-fill.s-good { background: linear-gradient(90deg, #34D399, #10B981); }
+    .pf-doc-progress .pdp-fill.s-med  { background: linear-gradient(90deg, #FCD34D, #F59E0B); }
+    .pf-doc-progress .pdp-fill.s-bad  { background: linear-gradient(90deg, #FCA5A5, #DC2626); }
+    .pf-doc-progress .pdp-pct {
+      text-align: right; font-weight: 800; font-size: .92rem;
+      font-variant-numeric: tabular-nums;
+    }
+    .pf-doc-progress .pdp-pct.s-good { color: #10B981; }
+    .pf-doc-progress .pdp-pct.s-med  { color: #F59E0B; }
+    .pf-doc-progress .pdp-pct.s-bad  { color: #DC2626; }
+
+    /* Footer — formal closing */
     .pf-doc-foot {
-      margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--gray-200);
-      font-size: .76rem; color: var(--gray-500); text-align: center;
+      margin-top: 0;
+      padding: 18px 44px 26px;
+      border-top: 1px solid #E5E7EB;
+      background: linear-gradient(180deg, #FAFBFD 0%, #F4F6FA 100%);
+      font-size: .72rem;
+      color: #6B7280;
+      text-align: center;
+      letter-spacing: .04em;
     }
-    .pf-doc-radar { display: block; margin: 0 auto; max-width: 360px; }
-    .pf-empty { padding: 30px; text-align: center; color: var(--gray-500); font-style: italic; font-size: .88rem; }
+    .pf-doc-foot::before {
+      content: 'CONFIDENTIAL · FOR CLIENT USE ONLY';
+      display: block;
+      color: #C9A961;
+      font-weight: 800;
+      letter-spacing: .25em;
+      font-size: .68rem;
+      margin-bottom: 6px;
+    }
+    .pf-doc-radar { display: block; margin: 0 auto; max-width: 380px; }
+    .pf-empty {
+      padding: 30px; text-align: center;
+      color: #9CA3AF; font-style: italic; font-size: .88rem;
+      background: #FAFBFD;
+      border: 1px dashed #E5E7EB; border-radius: 8px;
+    }
+
+    /* Print: ensure header colors print */
+    @media print {
+      .pf-doc-head,
+      .pf-doc-foot,
+      .pf-doc-section h4::before {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
 
     /* ════ COVER PAGE ════ */
     .pf-cover {
@@ -1529,26 +1726,39 @@ function renderPlanPreview(client) {
 
   /* Body — render only if any non-cover/non-agent section is selected */
   const hasBody = sections.length > 0;
+  /* Generate document number — formal feel */
+  const docNo = 'DOC-' + today.getFullYear() + '-' +
+    String(today.getMonth()+1).padStart(2,'0') +
+    String(today.getDate()).padStart(2,'0') +
+    '-' + (client.id || '').slice(-4).toUpperCase();
   const bodyHtml = hasBody ? `
     <div class="pf-document">
       <div class="pf-doc-head">
-        <div>
-          <div class="pf-doc-brand">448 Wealth Management Plan</div>
-          <div class="pf-doc-tag">สรุปแผนการเงินส่วนบุคคล</div>
-        </div>
-        <div class="pf-doc-meta">
-          วันที่: ${dateStr}<br>
-          ที่ปรึกษา: ${agentName}
+        <div class="pf-doc-head-inner">
+          <div>
+            <div class="pf-doc-brand">448 Wealth Management</div>
+            <div class="pf-doc-tag">Financial Plan Summary</div>
+          </div>
+          <div class="pf-doc-meta">
+            <span class="meta-lbl">Document</span>
+            <span class="meta-val">${docNo}</span><br>
+            <span class="meta-lbl" style="margin-top:5px;">Issued</span>
+            <span class="meta-val">${dateStr}</span><br>
+            <span class="meta-lbl" style="margin-top:5px;">Advisor</span>
+            <span class="meta-val">${agentName}</span>
+          </div>
         </div>
       </div>
-      <div class="pf-doc-title">
-        แผนการเงินสำหรับ
-        <span class="pf-doc-client">${clientName}</span>
+      <div class="pf-doc-body">
+        <div class="pf-doc-title">
+          Personal Financial Plan · แผนการเงินส่วนบุคคล สำหรับ
+          <span class="pf-doc-client">${clientName}</span>
+        </div>
+        ${sections}
       </div>
-      ${sections}
       <div class="pf-doc-foot">
-        เอกสารฉบับนี้สรุปจากข้อมูลที่บันทึกในระบบ ณ วันที่ ${dateStr} เท่านั้น
-        — ใช้เพื่อการประกอบการวางแผนการเงิน
+        เอกสารฉบับนี้สรุปจากข้อมูลที่บันทึกในระบบ ณ วันที่ ${dateStr}<br>
+        ใช้เพื่อประกอบการวางแผนการเงินส่วนบุคคล · เป็นข้อมูลลับเฉพาะลูกค้า
       </div>
     </div>
   ` : '';
