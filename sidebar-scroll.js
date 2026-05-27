@@ -202,13 +202,13 @@ if ('serviceWorker' in navigator
         background: linear-gradient(135deg, #1F2D4F 0%, #2C3E61 100%);
         color: white; border: none; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
-        font-size: 1.5rem; font-weight: 700;
         box-shadow:
           0 8px 22px rgba(31,45,79,.4),
           0 2px 6px rgba(31,45,79,.2);
-        transition: all .3s cubic-bezier(.2,.9,.3,1.05);
+        transition: background .3s, box-shadow .3s, transform .3s cubic-bezier(.2,.9,.3,1.05);
         font-family: 'Sarabun', sans-serif;
         padding: 0; line-height: 1;
+        overflow: hidden;
       }
       .fmenu-fab:hover {
         transform: translateY(-2px) scale(1.05);
@@ -218,14 +218,39 @@ if ('serviceWorker' in navigator
       }
       .fmenu-fab.open {
         background: linear-gradient(135deg, #C9A961 0%, #A88A4F 100%);
-        transform: rotate(135deg);
         box-shadow:
           0 12px 28px rgba(201,169,97,.45),
           0 4px 10px rgba(201,169,97,.25);
       }
+      /* Cross-fade between ⋯ (default) and × (open) */
       .fmenu-fab-icon {
+        position: relative;
+        width: 24px; height: 24px;
         display: flex; align-items: center; justify-content: center;
-        transition: transform .35s cubic-bezier(.2,.9,.3,1.05);
+      }
+      .fmenu-fab-icon .ic-dots,
+      .fmenu-fab-icon .ic-close {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        line-height: 1;
+        transition: opacity .25s, transform .35s cubic-bezier(.2,.9,.3,1.05);
+      }
+      /* ⋯ — three dots, font-size large for visibility */
+      .fmenu-fab-icon .ic-dots {
+        font-size: 2rem; font-weight: 900;
+        letter-spacing: -.05em;
+        opacity: 1; transform: scale(1) rotate(0deg);
+      }
+      /* × — close icon */
+      .fmenu-fab-icon .ic-close {
+        font-size: 2rem; font-weight: 400;
+        opacity: 0; transform: scale(.5) rotate(-90deg);
+      }
+      .fmenu-fab.open .fmenu-fab-icon .ic-dots {
+        opacity: 0; transform: scale(.5) rotate(90deg);
+      }
+      .fmenu-fab.open .fmenu-fab-icon .ic-close {
+        opacity: 1; transform: scale(1) rotate(0deg);
       }
 
       /* ── Popup items ── */
@@ -333,13 +358,13 @@ if ('serviceWorker' in navigator
       }
       return emoji;
     };
-    const plusIco = () => {
-      if (window.IconLib && window.IconLib.getIcon) {
-        const svg = window.IconLib.getIcon('plus', { size: 22 });
-        if (svg) return svg;
-      }
-      return '+';
-    };
+    /* FAB shows ⋯ (closed) ↔ × (open) — cross-fade */
+    const fabIconHTML = `
+      <span class="fmenu-fab-icon">
+        <span class="ic-dots">⋯</span>
+        <span class="ic-close">×</span>
+      </span>
+    `;
 
     /* Backdrop */
     const backdrop = document.createElement('div');
@@ -376,7 +401,7 @@ if ('serviceWorker' in navigator
     fab.id = 'fmenu-fab';
     fab.className = 'fmenu-fab';
     fab.title = 'เมนูลัด';
-    fab.innerHTML = `<span class="fmenu-fab-icon">${plusIco()}</span>`;
+    fab.innerHTML = fabIconHTML;
     fab.addEventListener('click', toggleFmenu);
     document.body.appendChild(fab);
 
