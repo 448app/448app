@@ -439,12 +439,13 @@
     .ph-overlay { position: absolute; inset: 0; pointer-events: none; }
     .ph-layer {
       position: absolute;
-      /* Box CENTER sits at (top, left). Compact name+badge so total height
-         stays well under tier height (~11.1% of image, ~50px in modal). */
+      /* ROW layout — badge + name on ONE line so box height = badge height only.
+         Eliminates the "name spills into tier above" problem entirely.
+         Box CENTER sits at (top, left) → badge sits at tier center. */
       transform: translate(-50%, -50%);
-      display: flex; flex-direction: column;
-      align-items: center; gap: 1px;
-      text-align: center; line-height: 1;
+      display: flex; flex-direction: row;
+      align-items: center; gap: 5px;
+      line-height: 1;
     }
     .ph-name {
       font-family: 'Sarabun', sans-serif;
@@ -454,50 +455,53 @@
       white-space: nowrap;
       line-height: 1;
       text-shadow:
-        0 1.5px 3px rgba(0,0,0,.7),
-        0 0 6px rgba(80,15,25,.5);
+        0 1.5px 3px rgba(0,0,0,.75),
+        0 0 6px rgba(80,15,25,.55);
     }
     .ph-badge {
+      flex: 0 0 auto;
       width: 18px; height: 18px;
       border-radius: 50%;
       font-size: .68rem;
       display: inline-flex; align-items: center; justify-content: center;
       font-weight: 800; line-height: 1;
-      box-shadow: 0 1px 3px rgba(0,0,0,.35);
+      box-shadow: 0 1px 3px rgba(0,0,0,.4);
     }
     .ph-badge.ok { background: #6EE7B7; color: #064E3B; }
     .ph-badge.warn { background: #FCD34D; color: #783A11; }
 
     /* Tier centers (pixel-measured from pyramid-blank.jpg):
-       apex Y=28%, base Y=83.5%, axis X=33%, each tier ≈11.1% tall */
+       apex Y=28%, base Y=83.5%, axis X=33%, each tier ≈11.1% tall.
+       Row label is centered at axis; long names overflow into the
+       cream backdrop — that's expected and matches the reference image. */
     .ph-layer-5 { top: 33.6%; left: 33%; }
     .ph-layer-4 { top: 44.7%; left: 33%; }
     .ph-layer-3 { top: 55.8%; left: 33%; }
     .ph-layer-2 { top: 66.9%; left: 33%; }
     .ph-layer-1 { top: 77.9%; left: 33%; }
 
-    /* Phone (default) — keep name+badge compact so box fits inside tier */
-    .ph-layer-5 .ph-name { font-size: .5rem; }
-    .ph-layer-4 .ph-name { font-size: .6rem; }
-    .ph-layer-3 .ph-name { font-size: .7rem; }
-    .ph-layer-2 .ph-name { font-size: .8rem; }
-    .ph-layer-1 .ph-name { font-size: .88rem; }
+    /* Default (≥481px) — readable sizing */
+    .ph-layer-5 .ph-name { font-size: .65rem; }
+    .ph-layer-4 .ph-name { font-size: .75rem; }
+    .ph-layer-3 .ph-name { font-size: .82rem; }
+    .ph-layer-2 .ph-name { font-size: .9rem; }
+    .ph-layer-1 .ph-name { font-size: .95rem; }
 
     @media (min-width: 768px) {
-      .ph-layer-5 .ph-name { font-size: .62rem; }
-      .ph-layer-4 .ph-name { font-size: .76rem; }
-      .ph-layer-3 .ph-name { font-size: .88rem; }
-      .ph-layer-2 .ph-name { font-size: .96rem; }
-      .ph-layer-1 .ph-name { font-size: 1.05rem; }
-      .ph-badge { width: 22px; height: 22px; font-size: .8rem; }
+      .ph-layer-5 .ph-name { font-size: .75rem; }
+      .ph-layer-4 .ph-name { font-size: .88rem; }
+      .ph-layer-3 .ph-name { font-size: .96rem; }
+      .ph-layer-2 .ph-name { font-size: 1.04rem; }
+      .ph-layer-1 .ph-name { font-size: 1.12rem; }
+      .ph-badge { width: 22px; height: 22px; font-size: .82rem; }
     }
     @media (max-width: 480px) {
-      .ph-layer-5 .ph-name { font-size: .44rem; }
-      .ph-layer-4 .ph-name { font-size: .52rem; }
-      .ph-layer-3 .ph-name { font-size: .6rem; }
-      .ph-layer-2 .ph-name { font-size: .7rem; }
-      .ph-layer-1 .ph-name { font-size: .78rem; }
-      .ph-badge { width: 15px; height: 15px; font-size: .58rem; }
+      .ph-layer-5 .ph-name { font-size: .52rem; }
+      .ph-layer-4 .ph-name { font-size: .58rem; }
+      .ph-layer-3 .ph-name { font-size: .66rem; }
+      .ph-layer-2 .ph-name { font-size: .74rem; }
+      .ph-layer-1 .ph-name { font-size: .8rem; }
+      .ph-badge { width: 15px; height: 15px; font-size: .58rem; gap: 3px; }
     }
 
     /* Status summary row below image — compact bar */
@@ -2160,10 +2164,11 @@ function openPyramid() {
 
   /* Tier name overlays — positioned over the empty pyramid bands in pyramid-blank.jpg.
      Layer order from API: [5 top → 1 base]. Tier positions handled by CSS class. */
+  /* Row layout: badge first, then name on the same line */
   const layerLabels = layers.map(l => `
     <div class="ph-layer ph-layer-${l.layer}">
-      <div class="ph-name">${l.title}</div>
       <div class="ph-badge ${l.ok?'ok':'warn'}">${l.ok?'✓':'⚠'}</div>
+      <div class="ph-name">${l.title}</div>
     </div>
   `).join('');
 
