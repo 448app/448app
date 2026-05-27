@@ -123,9 +123,9 @@
     }
     .pyramid-overlay.open { display: flex; }
     .pyramid-modal {
-      background: white; border-radius: 18px; max-width: 580px; width: 100%;
+      background: white; border-radius: 18px; max-width: 820px; width: 100%;
       max-height: 92vh; overflow-y: auto;
-      padding: 30px 32px; position: relative;
+      padding: 24px 26px; position: relative;
     }
     .pyramid-modal h3 { font-size: 1.3rem; font-weight: 800; color: var(--gray-800); margin-bottom: 4px; text-align: center; }
     .pyramid-modal .pm-subtitle {
@@ -421,6 +421,123 @@
       .cm-l-name { font-size: .82rem; }
       .cm-l5 .cm-l-name { font-size: .66rem; }
       .cm-l4 .cm-l-name { font-size: .74rem; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       PYRAMID HERO — image-based (claymation reference)
+       Hero image: pyramid-blank.jpg (text removed from pyramid layers)
+       Overlay text labels for 5 tiers + status badges
+    ═══════════════════════════════════════════════ */
+    .ph-wrap {
+      position: relative; width: 100%; max-width: 760px;
+      margin: 14px auto 4px;
+      border-radius: 14px; overflow: hidden;
+      box-shadow: 0 6px 18px rgba(0,0,0,.12);
+      background: #DDD5C8;
+    }
+    .ph-img { display: block; width: 100%; height: auto; }
+    .ph-overlay { position: absolute; inset: 0; pointer-events: none; }
+    .ph-layer {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      text-align: center;
+    }
+    .ph-name {
+      font-family: 'Sarabun', sans-serif;
+      font-weight: 800;
+      color: #FFF6E5;
+      letter-spacing: .015em;
+      white-space: nowrap;
+      text-shadow:
+        0 1.5px 3px rgba(0,0,0,.65),
+        0 0 6px rgba(80,15,25,.45);
+    }
+    .ph-badge {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      font-size: .82rem;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800;
+      box-shadow: 0 1px 3px rgba(0,0,0,.35);
+    }
+    .ph-badge.ok { background: #6EE7B7; color: #064E3B; }
+    .ph-badge.warn { background: #FCD34D; color: #783A11; }
+
+    /* Tier positions (in % of image — pyramid centered around x=28.5%) */
+    .ph-layer-5 { top: 19.5%; left: 28.5%; }
+    .ph-layer-4 { top: 34.5%; left: 28.5%; }
+    .ph-layer-3 { top: 50.0%; left: 28.5%; }
+    .ph-layer-2 { top: 65.5%; left: 28.5%; }
+    .ph-layer-1 { top: 81.0%; left: 28.5%; }
+
+    /* Mobile font sizing — narrower tiers up top need smaller text */
+    .ph-layer-5 .ph-name { font-size: .58rem; }
+    .ph-layer-4 .ph-name { font-size: .7rem; }
+    .ph-layer-3 .ph-name { font-size: .8rem; }
+    .ph-layer-2 .ph-name { font-size: .9rem; }
+    .ph-layer-1 .ph-name { font-size: 1rem; }
+
+    @media (min-width: 768px) {
+      .ph-layer-5 .ph-name { font-size: .72rem; }
+      .ph-layer-4 .ph-name { font-size: .88rem; }
+      .ph-layer-3 .ph-name { font-size: 1rem; }
+      .ph-layer-2 .ph-name { font-size: 1.1rem; }
+      .ph-layer-1 .ph-name { font-size: 1.2rem; }
+      .ph-badge { width: 26px; height: 26px; font-size: .95rem; }
+    }
+    @media (max-width: 480px) {
+      .ph-layer-5 .ph-name { font-size: .5rem; }
+      .ph-layer-4 .ph-name { font-size: .58rem; }
+      .ph-layer-3 .ph-name { font-size: .68rem; }
+      .ph-layer-2 .ph-name { font-size: .78rem; }
+      .ph-layer-1 .ph-name { font-size: .88rem; }
+      .ph-badge { width: 17px; height: 17px; font-size: .65rem; }
+    }
+
+    /* Status summary row below image — compact bar */
+    .ph-summary {
+      margin: 12px auto 6px;
+      max-width: 760px;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+    }
+    .ph-sum-item {
+      text-align: center;
+      padding: 8px 4px;
+      border-radius: 8px;
+      background: var(--gray-50);
+      border-top: 3px solid var(--gray-300);
+      font-size: .72rem; line-height: 1.3;
+    }
+    .ph-sum-item.ok { border-top-color: #16A34A; background: #F0FAF3; }
+    .ph-sum-item.warn { border-top-color: #C9A961; background: #FCF7E8; }
+    .ph-sum-lvl {
+      display: inline-block;
+      background: #1F2D4F; color: #fff;
+      font-weight: 800; font-size: .62rem;
+      padding: 1px 6px; border-radius: 6px;
+      margin-bottom: 4px;
+    }
+    .ph-sum-label {
+      font-weight: 700; color: #1F2D4F;
+      font-size: .7rem;
+    }
+    .ph-sum-status {
+      margin-top: 4px;
+      font-weight: 800;
+      font-size: .7rem;
+    }
+    .ph-sum-item.ok .ph-sum-status { color: #15803D; }
+    .ph-sum-item.warn .ph-sum-status { color: #A16207; }
+    @media (max-width: 480px) {
+      .ph-summary { gap: 3px; }
+      .ph-sum-item { padding: 6px 2px; }
+      .ph-sum-label { font-size: .58rem; }
+      .ph-sum-status { font-size: .58rem; }
+      .ph-sum-lvl { font-size: .54rem; padding: 1px 4px; }
     }
 
     .py-legend {
@@ -2037,149 +2154,30 @@ function openPyramid() {
   if (!summary) return;
   const layers = computePyramid(client, summary);
 
-  /* Pyramid points — 5 trapezoids sharing edges → continuous triangle.
-     viewBox 500×500 (extra space at bottom for ground shadow + ground line) */
-  const POLYGONS = {
-    5: '210,30 290,30 332,116 168,116',   /* top */
-    4: '168,116 332,116 372,202 128,202',
-    3: '128,202 372,202 412,288 88,288',
-    2: '88,288 412,288 452,374 48,374',
-    1: '48,374 452,374 492,460 8,460',    /* base */
-  };
-  /* Top edge of each layer (for highlight stroke) */
-  const TOP_EDGES = {
-    5: 'M210,30 L290,30',
-    4: 'M168,116 L332,116',
-    3: 'M128,202 L372,202',
-    2: 'M88,288 L412,288',
-    1: 'M48,374 L452,374',
-  };
-  /* Layer label vertical center (px in viewBox 500h) */
-  const LABEL_Y = { 5: 73, 4: 159, 3: 245, 2: 331, 1: 417 };
-  /* Max label width % of pyramid container */
-  const LABEL_W = { 5: '22%', 4: '38%', 3: '54%', 2: '70%', 1: '85%' };
-
-  const svgPolys = layers.map(l => `
-    <polygon points="${POLYGONS[l.layer]}" fill="url(#cm-g${l.layer})"/>
-    <polygon points="${POLYGONS[l.layer]}" fill="url(#cm-shade)" />
-  `).join('');
-
-  /* Edge highlight (thin lighter line at top of each layer — looks like clay tier edge) */
-  const edgeHighlights = layers.map(l => `
-    <path d="${TOP_EDGES[l.layer]}" stroke="rgba(255,240,220,.45)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
-  `).join('');
-
-  /* Subtle inner shadow at bottom of each layer (between layers — depth) */
-  const innerShadows = layers.map(l => {
-    const e = TOP_EDGES[l.layer];
-    return `<path d="${e}" stroke="rgba(40,8,12,.4)" stroke-width="1.5" fill="none" transform="translate(0,1.2)" stroke-linecap="round"/>`;
-  }).join('');
-
-  /* HTML label positioned over each layer */
-  const labelEls = layers.map(l => `
-    <div class="cm-label cm-l${l.layer}" style="top:${LABEL_Y[l.layer]/500*100}%;">
-      <div class="cm-l-inner" style="max-width:${LABEL_W[l.layer]};">
-        <div class="cm-l-name">${l.title}</div>
-        <div class="cm-l-status ${l.ok?'ok':'warn'}">${l.ok ? '✓' : '⚠'}</div>
-      </div>
+  /* Tier name overlays — positioned over the empty pyramid bands in pyramid-blank.jpg.
+     Layer order from API: [5 top → 1 base]. Tier positions handled by CSS class. */
+  const layerLabels = layers.map(l => `
+    <div class="ph-layer ph-layer-${l.layer}">
+      <div class="ph-name">${l.title}</div>
+      <div class="ph-badge ${l.ok?'ok':'warn'}">${l.ok?'✓':'⚠'}</div>
     </div>
   `).join('');
 
-  /* Description card column */
-  const descRows = layers.map(l => `
-    <div class="cm-desc-row ${l.ok?'ok':'warn'}">
-      <div class="cm-desc-num">L${l.layer}</div>
-      <div class="cm-desc-text">
-        <div class="cm-desc-title">${l.title}${l.titleTh ? ` <span class="cm-desc-th">· ${l.titleTh}</span>` : ''}</div>
-        <div class="cm-desc-detail">${l.desc}</div>
-      </div>
-      <div class="cm-desc-status">${l.ok ? '✓ ผ่าน' : '⚠ ยัง'}</div>
+  /* Status summary row — base (L1) → top (L5), left-to-right (matches "build from base" logic) */
+  const sumItems = layers.slice().reverse().map(l => `
+    <div class="ph-sum-item ${l.ok?'ok':'warn'}">
+      <div class="ph-sum-lvl">L${l.layer}</div>
+      <div class="ph-sum-label">${l.titleTh || l.title}</div>
+      <div class="ph-sum-status">${l.ok ? '✓ ผ่าน' : '⚠ ยัง'}</div>
     </div>
   `).join('');
 
   document.getElementById('pyramid-stack-container').innerHTML = `
-    <div class="cm-pyramid-layout">
-      <div class="cm-pyramid-col">
-        <div class="cm-pyramid-scene">
-          <div class="cm-tax-tag">
-            <span class="cm-tax-text">Tax Planning</span>
-          </div>
-          <svg class="cm-pyramid-svg" viewBox="0 0 500 500" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <!-- Base color gradients per layer (deep red top → lighter base) -->
-              <linearGradient id="cm-g5" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#5C1A24"/><stop offset="100%" stop-color="#76222D"/>
-              </linearGradient>
-              <linearGradient id="cm-g4" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#76222D"/><stop offset="100%" stop-color="#882A36"/>
-              </linearGradient>
-              <linearGradient id="cm-g3" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#882A36"/><stop offset="100%" stop-color="#993340"/>
-              </linearGradient>
-              <linearGradient id="cm-g2" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#993340"/><stop offset="100%" stop-color="#A93C4A"/>
-              </linearGradient>
-              <linearGradient id="cm-g1" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#A93C4A"/><stop offset="100%" stop-color="#B84256"/>
-              </linearGradient>
-              <!-- Universal layer shading overlay (top highlight + bottom shadow) -->
-              <linearGradient id="cm-shade" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="rgba(255,240,210,.18)"/>
-                <stop offset="35%" stop-color="rgba(255,255,255,0)"/>
-                <stop offset="100%" stop-color="rgba(20,5,8,.32)"/>
-              </linearGradient>
-              <!-- Side highlight: brighter on the LEFT slope (light from upper-left) -->
-              <linearGradient id="cm-sidelight" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="rgba(255,240,210,.18)"/>
-                <stop offset="50%" stop-color="rgba(255,255,255,0)"/>
-                <stop offset="100%" stop-color="rgba(20,5,8,.15)"/>
-              </linearGradient>
-              <!-- Ground shadow filter -->
-              <filter id="cm-blur" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="6"/>
-              </filter>
-              <!-- Clay-surface texture (subtle noise) -->
-              <filter id="cm-noise" x="0%" y="0%" width="100%" height="100%">
-                <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="1" seed="3"/>
-                <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .12 0"/>
-                <feComposite in2="SourceGraphic" operator="in"/>
-              </filter>
-            </defs>
-
-            <!-- Ground shadow (oval beneath pyramid) -->
-            <ellipse cx="250" cy="480" rx="230" ry="9"
-                     fill="#3A1015" opacity=".4" filter="url(#cm-blur)"/>
-
-            <!-- Pyramid silhouette drop-shadow group -->
-            <g filter="drop-shadow(0 14px 18px rgba(80,15,25,.45)) drop-shadow(0 3px 6px rgba(80,15,25,.3))">
-              <!-- Whole pyramid outline first (for unified shadow) -->
-              <polygon points="210,30 290,30 492,460 8,460" fill="#6B1F2A"/>
-              <!-- Then each layer with gradients + shading -->
-              ${svgPolys}
-              <!-- Side light overlay for whole pyramid -->
-              <polygon points="210,30 290,30 492,460 8,460" fill="url(#cm-sidelight)"/>
-              <!-- Subtle noise texture overlay -->
-              <polygon points="210,30 290,30 492,460 8,460" fill="white" filter="url(#cm-noise)" opacity=".5"/>
-            </g>
-
-            <!-- Inner shadow between layers (separation depth) -->
-            ${innerShadows}
-            <!-- Edge highlight at top of each layer -->
-            ${edgeHighlights}
-
-            <!-- Apex up-arrow ornament (like reference image) -->
-            <g transform="translate(250,15)">
-              <path d="M0,-10 L0,12 M-6,-4 L0,-10 L6,-4"
-                    stroke="#4A1218" stroke-width="2.5" fill="none"
-                    stroke-linecap="round" stroke-linejoin="round"/>
-            </g>
-          </svg>
-
-          <div class="cm-labels">${labelEls}</div>
-        </div>
-      </div>
-      <div class="cm-desc-col">${descRows}</div>
+    <div class="ph-wrap">
+      <img class="ph-img" src="pyramid-blank.jpg" alt="Financial Pyramid">
+      <div class="ph-overlay">${layerLabels}</div>
     </div>
+    <div class="ph-summary">${sumItems}</div>
   `;
   document.getElementById('pyramid-modal').classList.add('open');
 }
