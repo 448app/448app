@@ -470,15 +470,15 @@
     .ph-badge.ok { background: #6EE7B7; color: #064E3B; }
     .ph-badge.warn { background: #FCD34D; color: #783A11; }
 
-    /* Tier centers (pixel-measured from pyramid-blank.jpg):
-       apex Y=28%, base Y=83.5%, axis X=33%, each tier ≈11.1% tall.
-       Row label is centered at axis; long names overflow into the
-       cream backdrop — that's expected and matches the reference image. */
-    .ph-layer-5 { top: 33.6%; left: 33%; }
-    .ph-layer-4 { top: 44.7%; left: 33%; }
-    .ph-layer-3 { top: 55.8%; left: 33%; }
-    .ph-layer-2 { top: 66.9%; left: 33%; }
-    .ph-layer-1 { top: 77.9%; left: 33%; }
+    /* Tier centers — derived from user's annotation (blue marks).
+       User treats the full visible pyramid + base figures (apex Y≈28%
+       down through the figures at Y≈90%) as 5 equal tiers (~12.5% each).
+       Long names overflow into cream backdrop horizontally — expected. */
+    .ph-layer-5 { top: 34%;   left: 33%; }
+    .ph-layer-4 { top: 46.5%; left: 33%; }
+    .ph-layer-3 { top: 59%;   left: 33%; }
+    .ph-layer-2 { top: 71.5%; left: 33%; }
+    .ph-layer-1 { top: 84%;   left: 33%; }
 
     /* Default (≥481px) — readable sizing */
     .ph-layer-5 .ph-name { font-size: .65rem; }
