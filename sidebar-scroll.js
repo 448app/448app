@@ -191,108 +191,71 @@ if ('serviceWorker' in navigator
      - Pyramid = placeholder (เปิดเร็วๆนี้)
      - Exit = กลับ dashboard.html
   ═══════════════════════════════════════════ */
+  const FMENU_KEY = 'aia_fmenu_collapsed';
+
   function injectFmenuStyles() {
     if (document.getElementById('fmenu-styles')) return;
     const style = document.createElement('style');
     style.id = 'fmenu-styles';
     style.textContent = `
-      /* ════════════════════════════════════════════════
-         FMENU — Topbar-integrated mode (default)
-         Inject into .app-topbar-right OR .feature-hero-row
-      ═══════════════════════════════════════════════ */
-      .fm-topbar {
-        display: inline-flex; align-items: center;
-        gap: 4px; flex-shrink: 0;
-        font-family: 'Sarabun', sans-serif;
-      }
-      .fm-sep {
-        width: 1px; height: 26px;
-        background: rgba(0,0,0,.12);
-        margin: 0 6px;
-      }
-      .fm-tb-btn {
-        width: 40px; height: 40px;
-        border-radius: 10px;
-        background: #F0F2F5;
-        color: #1F2D4F;
-        border: none; cursor: pointer;
-        display: inline-flex; align-items: center; justify-content: center;
-        transition: all .18s cubic-bezier(.2,.9,.3,1.05);
-        position: relative;
-        font-family: inherit;
-        padding: 0;
-      }
-      .fm-tb-btn:hover {
-        background: #1F2D4F; color: white;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(31,45,79,.25);
-      }
-      .fm-tb-btn.active {
-        background: linear-gradient(135deg, #1F2D4F, #2C3E61);
-        color: white;
-        box-shadow: 0 3px 8px rgba(31,45,79,.25);
-      }
-      .fm-tb-btn.fm-tb-exit { color: #B02030; }
-      .fm-tb-btn.fm-tb-exit:hover { background: #B02030; color: white; }
-      .fm-tb-btn svg { width: 20px; height: 20px; }
-
-      /* ── On dark hero (.feature-hero-row) ── */
-      .fm-topbar.on-hero .fm-sep {
-        background: rgba(255,255,255,.25);
-      }
-      .fm-topbar.on-hero .fm-tb-btn {
-        background: rgba(255,255,255,.15);
-        color: white;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(255,255,255,.2);
-      }
-      .fm-topbar.on-hero .fm-tb-btn:hover {
-        background: rgba(255,255,255,.95);
-        color: #1F2D4F;
-      }
-      .fm-topbar.on-hero .fm-tb-btn.active {
-        background: rgba(201,169,97,.85);
-        color: #1F2D4F;
-        border-color: #C9A961;
-      }
-      .fm-topbar.on-hero .fm-tb-btn.fm-tb-exit { color: #FFB4B8; }
-      .fm-topbar.on-hero .fm-tb-btn.fm-tb-exit:hover {
-        background: #B02030; color: white;
-        border-color: transparent;
-      }
-
-      /* ── Mobile ── */
-      @media (max-width: 600px) {
-        .fm-tb-btn { width: 36px; height: 36px; border-radius: 9px; }
-        .fm-tb-btn svg { width: 18px; height: 18px; }
-        .fm-sep { height: 22px; margin: 0 4px; }
-      }
-
-      /* ── Hero-row layout fix when fmenu is injected ──
-         Default .feature-hero-row uses space-between which would
-         spread title + client-pick + fmenu evenly. We want
-         client-pick + fmenu to cluster on the right. */
-      .feature-hero-row.has-fmenu {
-        justify-content: flex-start;
-      }
-      .feature-hero-row.has-fmenu > :first-child {
-        flex: 1; min-width: 0;
-      }
-
-      /* ════════════════════════════════════════════════
-         FALLBACK — Floating (bottom-right) when no topbar
-         Used on pages like pyramid.html that have custom hero
-      ═══════════════════════════════════════════════ */
-      .fm-topbar.fallback {
+      .fmenu {
         position: fixed; right: 16px;
-        bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+        /* iOS PWA safe-area — กัน home indicator บัง */
+        bottom: calc(72px + env(safe-area-inset-bottom, 0px));
         z-index: 9000;
-        background: white;
-        border-radius: 14px;
-        padding: 6px;
-        box-shadow: 0 8px 24px rgba(0,0,0,.18);
-        border: 1px solid #E5E7EB;
+        background: white; border-radius: 14px;
+        box-shadow: 0 8px 24px rgba(0,0,0,.22), 0 2px 6px rgba(0,0,0,.08);
+        padding: 7px 6px; display: flex; flex-direction: column; gap: 3px;
+        transition: transform .35s cubic-bezier(.2,.9,.3,1.05);
+        border: 1.5px solid #D5DAE2;
+        font-family: 'Sarabun', sans-serif;
+        /* fmenu จะอยู่บนเสมอ — ไม่ถูก clipping context อะไรบัง */
+        isolation: isolate;
+      }
+      .fmenu.collapsed { transform: translateX(calc(100% - 26px)); }
+      .fmenu.collapsed .fm-item { opacity: 0; pointer-events: none; }
+      .fmenu-toggle {
+        position: absolute; left: -16px; top: 50%; transform: translateY(-50%);
+        width: 26px; height: 52px; border-radius: 13px 0 0 13px;
+        background: #1F2D4F; color: white; border: none;
+        font-size: 1rem; font-weight: 800; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: -3px 3px 10px rgba(0,0,0,.20);
+        transition: all .25s; line-height: 1; padding: 0;
+        font-family: inherit;
+      }
+      .fmenu-toggle:hover { background: #2C3E61; }
+      .fmenu.collapsed .fmenu-toggle { transform: translateY(-50%) rotate(180deg); }
+      /* Pulse animation ครั้งแรก เพื่อให้ user สังเกตเห็น (auto-stop) */
+      @keyframes fmenu-pulse {
+        0%, 100% { box-shadow: -3px 3px 10px rgba(0,0,0,.20); }
+        50%      { box-shadow: -3px 3px 18px rgba(25,118,210,.65), 0 0 0 4px rgba(25,118,210,.18); }
+      }
+      .fmenu.collapsed .fmenu-toggle { animation: fmenu-pulse 1.6s ease-in-out 2; }
+      .fm-item {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 3px; padding: 7px 6px; border-radius: 10px;
+        background: white; border: none; cursor: pointer;
+        font-family: inherit; font-weight: 700; font-size: .65rem;
+        color: #374151; min-width: 56px;
+        transition: all .15s;
+      }
+      .fm-item:hover { background: #FDE8E8; color: #B02030; }
+      .fm-item.active { background: #E3F2FD; color: #1976D2; }
+      .fm-item .fm-ico {
+        width: 24px; height: 24px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .fm-item .fm-ico svg { width: 22px; height: 22px; }
+      .fm-item.fm-exit { color: #B02030; }
+      .fm-item.fm-exit:hover { background: #FFEBEE; }
+      .fm-divider { height: 1px; background: #E5E7EB; margin: 2px 5px; }
+      /* mobile (< 600px) — ขนาดเล็กลงเฉพาะมือถือเล็ก iPad ยังคงไซส์ปกติ */
+      @media (max-width: 600px) {
+        .fmenu { right: 10px; padding: 5px 4px; }
+        .fm-item { min-width: 48px; font-size: .6rem; padding: 5px 4px; }
+        .fm-item .fm-ico { width: 20px; height: 20px; }
+        .fm-item .fm-ico svg { width: 18px; height: 18px; }
       }
     `;
     document.head.appendChild(style);
@@ -300,59 +263,67 @@ if ('serviceWorker' in navigator
 
   function injectFmenu() {
     if (document.getElementById('fmenu')) return;
-
-    /* Determine active state */
+    /* One-time reset: ลบ state เก่าจากการทดสอบ v96/v97 (collapsed) — user จะเห็นเมนูแน่นอน
+       หลังจาก reset แล้ว user สามารถ collapse ได้เองตามต้องการ */
+    try {
+      const RESET_KEY = 'aia_fmenu_reset_v98';
+      if (!localStorage.getItem(RESET_KEY)) {
+        localStorage.removeItem(FMENU_KEY);
+        localStorage.setItem(RESET_KEY, '1');
+      }
+    } catch(_){}
+    /* ตัดสินว่าหน้าไหน active — match path สุดท้าย */
     const path = (location.pathname || '').toLowerCase();
     const isTimeline = path.endsWith('timeline.html');
     const isPyramid  = path.endsWith('pyramid.html');
-
-    /* SVG icons fallback to emoji */
+    /* ใช้ SVG icons จาก IconLib (line-style เหมือน sidebar) — fallback เป็น emoji ถ้ายังไม่โหลด */
     const ico = (name, emoji) => {
       if (window.IconLib && window.IconLib.getIcon) {
-        const svg = window.IconLib.getIcon(name, { size: 20 });
+        const svg = window.IconLib.getIcon(name, { size: 22 });
         if (svg) return svg;
       }
       return emoji;
     };
-
-    /* Find target host:
-       1) .app-topbar-right (dashboard, clients, profile) — light context
-       2) .feature-hero-row (most planning pages) — dark hero context
-       3) Fallback: floating bottom-right */
-    const topbarRight = document.querySelector('.app-topbar-right');
-    const heroRow     = document.querySelector('.feature-hero-row');
-    const onHero      = !!heroRow && !topbarRight;
-
     const wrap = document.createElement('div');
     wrap.id = 'fmenu';
-    wrap.className = 'fm-topbar' + (onHero ? ' on-hero' : '');
+    wrap.className = 'fmenu';
     wrap.innerHTML = `
-      <div class="fm-sep"></div>
-      <button class="fm-tb-btn ${isTimeline ? 'active' : ''}"
-              onclick="location.href='timeline.html'"
-              title="Timeline">${ico('map', '🗺️')}</button>
-      <button class="fm-tb-btn ${isPyramid ? 'active' : ''}"
-              onclick="location.href='pyramid.html'"
-              title="Pyramid (สามเหลี่ยมการเงิน)">${ico('pyramid', '🔺')}</button>
-      <button class="fm-tb-btn fm-tb-exit"
-              onclick="location.href='dashboard.html'"
-              title="กลับหน้าแรก">${ico('exit', '🚪')}</button>
+      <button class="fmenu-toggle" onclick="toggleFmenu()" title="ซ่อน/แสดง">‹</button>
+      <button class="fm-item ${isTimeline ? 'active' : ''}" onclick="location.href='timeline.html'" title="Timeline">
+        <span class="fm-ico">${ico('map', '🗺️')}</span>
+        <span>Timeline</span>
+      </button>
+      <button class="fm-item ${isPyramid ? 'active' : ''}" onclick="location.href='pyramid.html'" title="Pyramid">
+        <span class="fm-ico">${ico('pyramid', '🔺')}</span>
+        <span>Pyramid</span>
+      </button>
+      <div class="fm-divider"></div>
+      <button class="fm-item fm-exit" onclick="location.href='dashboard.html'" title="กลับหน้าแรก">
+        <span class="fm-ico">${ico('exit', '🚪')}</span>
+        <span>Exit</span>
+      </button>
     `;
-
-    if (topbarRight) {
-      topbarRight.appendChild(wrap);
-    } else if (heroRow) {
-      heroRow.classList.add('has-fmenu');
-      heroRow.appendChild(wrap);
-    } else {
-      /* Fallback: float at bottom-right */
-      wrap.classList.add('fallback');
-      /* Remove sep in fallback (looks weird floating) */
-      const sep = wrap.querySelector('.fm-sep');
-      if (sep) sep.remove();
-      document.body.appendChild(wrap);
+    document.body.appendChild(wrap);
+    try {
+      if (localStorage.getItem(FMENU_KEY) === '1') wrap.classList.add('collapsed');
+    } catch(_) {}
+    /* Entry animation — slide in from right ครั้งแรกที่โหลดหน้า เพื่อให้สังเกตเห็น */
+    if (!wrap.classList.contains('collapsed')) {
+      wrap.style.transform = 'translateX(120%)';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        wrap.style.transition = 'transform .45s cubic-bezier(.2,.9,.3,1.05)';
+        wrap.style.transform = '';
+      }));
     }
   }
+
+  function toggleFmenu() {
+    const m = document.getElementById('fmenu');
+    if (!m) return;
+    m.classList.toggle('collapsed');
+    try { localStorage.setItem(FMENU_KEY, m.classList.contains('collapsed') ? '1' : '0'); } catch(_) {}
+  }
+  window.toggleFmenu = toggleFmenu;
 
   function init() {
     restore();
