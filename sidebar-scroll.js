@@ -195,16 +195,16 @@ if ('serviceWorker' in navigator
     style.textContent = `
       /* ── FAB main button ── */
       .fmenu-fab {
-        position: fixed; right: 22px;
-        bottom: calc(var(--fmenu-bottom, 24px) + env(safe-area-inset-bottom, 0px));
+        position: fixed; right: 20px;
+        bottom: calc(var(--fmenu-bottom, 22px) + env(safe-area-inset-bottom, 0px));
         z-index: 9000;
-        width: 56px; height: 56px; border-radius: 50%;
+        width: 44px; height: 44px; border-radius: 50%;
         background: linear-gradient(135deg, #1F2D4F 0%, #2C3E61 100%);
         color: white; border: none; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         box-shadow:
-          0 8px 22px rgba(31,45,79,.4),
-          0 2px 6px rgba(31,45,79,.2);
+          0 6px 16px rgba(31,45,79,.35),
+          0 2px 5px rgba(31,45,79,.18);
         transition: bottom .25s ease, background .3s, box-shadow .3s, transform .3s cubic-bezier(.2,.9,.3,1.05);
         font-family: 'Sarabun', sans-serif;
         padding: 0; line-height: 1;
@@ -225,7 +225,7 @@ if ('serviceWorker' in navigator
       /* Cross-fade between ⋯ (default) and × (open) */
       .fmenu-fab-icon {
         position: relative;
-        width: 30px; height: 30px;
+        width: 24px; height: 24px;
         display: flex; align-items: center; justify-content: center;
       }
       .fmenu-fab-icon .ic-dots,
@@ -240,7 +240,7 @@ if ('serviceWorker' in navigator
         opacity: 1; transform: scale(1) rotate(0deg);
       }
       .fmenu-fab-icon .ic-dots .dot {
-        width: 6px; height: 6px; border-radius: 50%;
+        width: 5px; height: 5px; border-radius: 50%;
         background: currentColor;
         display: inline-block;
       }
@@ -252,7 +252,7 @@ if ('serviceWorker' in navigator
       .fmenu-fab-icon .ic-close::after {
         content: '';
         position: absolute; top: 50%; left: 50%;
-        width: 20px; height: 2.5px;
+        width: 16px; height: 2px;
         background: currentColor; border-radius: 2px;
         transform: translate(-50%, -50%) rotate(45deg);
       }
@@ -268,19 +268,21 @@ if ('serviceWorker' in navigator
 
       /* ── Popup items ── */
       .fmenu-items {
-        position: fixed; right: 22px;
-        bottom: calc(var(--fmenu-bottom, 24px) + 72px + env(safe-area-inset-bottom, 0px));
+        position: fixed; right: 20px;
+        bottom: calc(var(--fmenu-bottom, 22px) + 56px + env(safe-area-inset-bottom, 0px));
         z-index: 9000;
         display: flex; flex-direction: column; align-items: flex-end;
-        gap: 12px;
+        gap: 10px;
         pointer-events: none;
         transition: bottom .25s ease;
       }
-      /* Auto-shift when flow-bar is present (sticky bottom nav) */
-      body.has-flow-bar { --fmenu-bottom: 88px; }
-      /* Older browsers without :has() — backup via JS class */
+      /* Auto-shift when flow-bar is present (sticky bottom nav ~64px tall)
+         Use a generous clearance (~95px) to be safe on iPad (where flow-bar
+         may be slightly taller due to safe-area or larger fonts) */
+      body.has-flow-bar { --fmenu-bottom: 95px; }
+      /* Modern browsers: pure CSS :has() detection (no JS race condition) */
       @supports selector(:has(.flow-bar)) {
-        body:has(.flow-bar) { --fmenu-bottom: 88px; }
+        body:has(.flow-bar) { --fmenu-bottom: 95px; }
       }
       .fmenu-item {
         display: flex; align-items: center; gap: 10px;
@@ -302,32 +304,32 @@ if ('serviceWorker' in navigator
       .fmenu-item-label {
         background: rgba(31,45,79,.92);
         color: white;
-        padding: 7px 14px;
+        padding: 6px 12px;
         border-radius: 50px;
-        font-size: .82rem; font-weight: 700;
+        font-size: .76rem; font-weight: 700;
         font-family: 'Sarabun', sans-serif;
         white-space: nowrap;
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        box-shadow: 0 4px 12px rgba(0,0,0,.2);
+        box-shadow: 0 3px 10px rgba(0,0,0,.18);
       }
       .fmenu-item-btn {
-        width: 48px; height: 48px; border-radius: 50%;
+        width: 40px; height: 40px; border-radius: 50%;
         background: white;
         color: #1F2D4F; border: none; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
         box-shadow:
-          0 6px 16px rgba(0,0,0,.18),
+          0 5px 14px rgba(0,0,0,.16),
           0 2px 4px rgba(0,0,0,.08);
         transition: all .18s;
         font-family: inherit;
         padding: 0;
       }
-      .fmenu-item-btn svg { width: 22px; height: 22px; }
+      .fmenu-item-btn svg { width: 18px; height: 18px; }
       .fmenu-item-btn:hover {
         background: #1F2D4F; color: white;
         transform: scale(1.08);
-        box-shadow: 0 8px 22px rgba(31,45,79,.35);
+        box-shadow: 0 7px 18px rgba(31,45,79,.3);
       }
       .fmenu-item-btn.active {
         background: linear-gradient(135deg, #C9A961, #A88A4F);
@@ -352,11 +354,11 @@ if ('serviceWorker' in navigator
 
       /* ── Mobile ── */
       @media (max-width: 600px) {
-        .fmenu-fab { width: 52px; height: 52px; right: 16px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
-        .fmenu-items { right: 18px; bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
-        .fmenu-item-btn { width: 44px; height: 44px; }
-        .fmenu-item-btn svg { width: 20px; height: 20px; }
-        .fmenu-item-label { font-size: .76rem; padding: 6px 12px; }
+        .fmenu-fab { width: 40px; height: 40px; right: 14px; }
+        .fmenu-items { right: 14px; }
+        .fmenu-item-btn { width: 36px; height: 36px; }
+        .fmenu-item-btn svg { width: 16px; height: 16px; }
+        .fmenu-item-label { font-size: .72rem; padding: 5px 11px; }
       }
     `;
     document.head.appendChild(style);
