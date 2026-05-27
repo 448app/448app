@@ -196,7 +196,7 @@ if ('serviceWorker' in navigator
       /* ── FAB main button ── */
       .fmenu-fab {
         position: fixed; right: 22px;
-        bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(var(--fmenu-bottom, 24px) + env(safe-area-inset-bottom, 0px));
         z-index: 9000;
         width: 56px; height: 56px; border-radius: 50%;
         background: linear-gradient(135deg, #1F2D4F 0%, #2C3E61 100%);
@@ -205,7 +205,7 @@ if ('serviceWorker' in navigator
         box-shadow:
           0 8px 22px rgba(31,45,79,.4),
           0 2px 6px rgba(31,45,79,.2);
-        transition: background .3s, box-shadow .3s, transform .3s cubic-bezier(.2,.9,.3,1.05);
+        transition: bottom .25s ease, background .3s, box-shadow .3s, transform .3s cubic-bezier(.2,.9,.3,1.05);
         font-family: 'Sarabun', sans-serif;
         padding: 0; line-height: 1;
         overflow: hidden;
@@ -269,11 +269,18 @@ if ('serviceWorker' in navigator
       /* ── Popup items ── */
       .fmenu-items {
         position: fixed; right: 22px;
-        bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+        bottom: calc(var(--fmenu-bottom, 24px) + 72px + env(safe-area-inset-bottom, 0px));
         z-index: 9000;
         display: flex; flex-direction: column; align-items: flex-end;
         gap: 12px;
         pointer-events: none;
+        transition: bottom .25s ease;
+      }
+      /* Auto-shift when flow-bar is present (sticky bottom nav) */
+      body.has-flow-bar { --fmenu-bottom: 88px; }
+      /* Older browsers without :has() — backup via JS class */
+      @supports selector(:has(.flow-bar)) {
+        body:has(.flow-bar) { --fmenu-bottom: 88px; }
       }
       .fmenu-item {
         display: flex; align-items: center; gap: 10px;
@@ -428,6 +435,23 @@ if ('serviceWorker' in navigator
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeFmenu();
     });
+
+    /* Auto-detect .flow-bar to shift FAB up (avoid overlap with sticky bottom nav).
+       flow-nav.js may inject .flow-bar AFTER sidebar-scroll.js init, so we:
+       1. Check immediately
+       2. Watch for DOM mutations (flow-nav.js inserts later)
+       3. Re-check after 500ms as a safety net */
+    function checkFlowBar() {
+      const has = !!document.querySelector('.flow-bar');
+      document.body.classList.toggle('has-flow-bar', has);
+    }
+    checkFlowBar();
+    /* Observe body for .flow-bar insertion/removal */
+    const mo = new MutationObserver(() => checkFlowBar());
+    mo.observe(document.body, { childList: true, subtree: true });
+    /* Safety re-check */
+    setTimeout(checkFlowBar, 500);
+    setTimeout(checkFlowBar, 1500);
   }
 
   function toggleFmenu() {
