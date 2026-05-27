@@ -244,22 +244,27 @@
       }
     }
     .cm-pyramid-col { display: flex; align-items: center; justify-content: center; }
-    .cm-pyramid-container {
+
+    /* Scene container — gives the pyramid a "studio backdrop" feel */
+    .cm-pyramid-scene {
       position: relative;
       width: 100%;
-      max-width: 460px;
-      aspect-ratio: 500 / 460;
-      padding-left: 38px;  /* room for wooden Tax Planning tag */
+      max-width: 520px;
+      aspect-ratio: 500 / 500;
+      padding-left: 48px;
       box-sizing: border-box;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 95%, rgba(60,20,25,.12) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 100% at 50% 30%, #F0EAE0 0%, #DDD5C8 100%);
+      border-radius: 16px;
+      padding-top: 18px; padding-bottom: 18px; padding-right: 18px;
     }
     .cm-pyramid-svg {
-      position: absolute; left: 38px; right: 0; top: 0; bottom: 0;
-      width: calc(100% - 38px); height: 100%;
-      filter: drop-shadow(0 14px 22px rgba(120,30,30,.28))
-              drop-shadow(0 3px 6px rgba(120,30,30,.18));
+      position: absolute; left: 48px; right: 18px; top: 18px; bottom: 18px;
+      width: calc(100% - 66px); height: calc(100% - 36px);
     }
     .cm-labels {
-      position: absolute; left: 38px; right: 0; top: 0; bottom: 0;
+      position: absolute; left: 48px; right: 18px; top: 18px; bottom: 18px;
       pointer-events: none;
     }
     .cm-label {
@@ -279,57 +284,88 @@
     .cm-l-name {
       font-family: 'Sarabun', sans-serif;
       font-weight: 800;
-      font-size: .9rem;
-      line-height: 1.2;
-      letter-spacing: .01em;
-      text-shadow: 0 2px 3px rgba(0,0,0,.35);
+      font-size: .92rem;
+      line-height: 1.18;
+      letter-spacing: .015em;
+      text-shadow:
+        0 1.5px 2px rgba(0,0,0,.4),
+        0 0 8px rgba(120,30,30,.3);
       color: #FFF6E5;
     }
     .cm-l-status {
-      font-size: .8rem;
-      margin-top: 2px;
-      color: rgba(255,255,255,.95);
-      text-shadow: 0 1px 2px rgba(0,0,0,.3);
+      font-size: .82rem;
+      margin-top: 3px;
+      width: 18px; height: 18px; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-weight: 800;
     }
-    /* Top layer (L5) is narrowest — smaller font + tight word wrap */
-    .cm-l5 .cm-l-name { font-size: .72rem; line-height: 1.15; }
-    .cm-l4 .cm-l-name { font-size: .8rem; }
+    .cm-l-status.ok { background: rgba(110,231,183,.95); color: #064E3B; }
+    .cm-l-status.warn { background: rgba(252,211,77,.95); color: #783A11; }
+    .cm-l5 .cm-l-name { font-size: .72rem; line-height: 1.12; }
+    .cm-l4 .cm-l-name { font-size: .82rem; }
 
-    /* Wooden 'Tax Planning' tag on left side (like the claymation reference) */
+    /* ── Wooden 'Tax Planning' tag (claymation reference style) ── */
     .cm-tax-tag {
       position: absolute;
-      left: -4px; top: 50%;
-      transform: translateY(-50%) rotate(-90deg);
-      transform-origin: center;
-      padding: 8px 22px;
-      background: linear-gradient(135deg, #A07555 0%, #7C5638 50%, #5F4126 100%);
+      left: 6px; top: 50%;
+      transform: translateY(-50%);
+      width: 42px; height: 70%;
+      max-height: 360px;
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg,
+          rgba(255,220,170,.18) 0%,
+          rgba(255,220,170,0) 30%,
+          rgba(40,20,5,.25) 100%),
+        repeating-linear-gradient(180deg,
+          rgba(60,30,10,.22) 0,
+          rgba(60,30,10,.22) 1px,
+          transparent 1.5px,
+          transparent 6px,
+          rgba(80,40,15,.14) 7px,
+          rgba(80,40,15,.14) 8px,
+          transparent 9px,
+          transparent 14px),
+        linear-gradient(135deg, #B0825C 0%, #8A5F3D 50%, #5F4126 100%);
+      box-shadow:
+        0 8px 16px rgba(60,40,20,.5),
+        0 2px 4px rgba(60,40,20,.3),
+        inset 2px 2px 0 rgba(255,220,180,.3),
+        inset -2px -2px 4px rgba(0,0,0,.35);
+      border: 1px solid #3A2210;
+      z-index: 6;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden;
+    }
+    /* Wood grain knot detail */
+    .cm-tax-tag::before {
+      content: '';
+      position: absolute; top: 30%; left: 50%;
+      width: 14px; height: 14px;
+      transform: translate(-50%,-50%);
+      background: radial-gradient(circle, rgba(40,20,5,.5) 30%, transparent 60%);
+      border-radius: 50%;
+    }
+    .cm-tax-tag::after {
+      content: '';
+      position: absolute; top: 75%; left: 30%;
+      width: 10px; height: 10px;
+      background: radial-gradient(circle, rgba(40,20,5,.4) 30%, transparent 60%);
+      border-radius: 50%;
+    }
+    .cm-tax-text {
+      display: block;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
       color: #FFF1D6;
       font-family: 'Sarabun', sans-serif;
       font-weight: 800;
-      font-size: .92rem;
-      letter-spacing: .08em;
-      border-radius: 4px;
-      white-space: nowrap;
-      box-shadow:
-        0 6px 14px rgba(60,40,20,.45),
-        inset 1.5px 1.5px 0 rgba(255,220,180,.25),
-        inset -1px -2px 3px rgba(0,0,0,.3);
-      border: 1px solid #4A3220;
-      z-index: 5;
-      text-shadow: 0 1px 2px rgba(0,0,0,.4);
-    }
-    /* Subtle wood grain effect — vertical streaks */
-    .cm-tax-tag::before {
-      content: ''; position: absolute; inset: 0;
-      background: repeating-linear-gradient(
-        90deg,
-        transparent 0,
-        rgba(60,40,20,.08) 1px,
-        transparent 2px,
-        transparent 6px
-      );
-      border-radius: inherit;
-      pointer-events: none;
+      font-size: 1rem;
+      letter-spacing: .1em;
+      text-shadow:
+        0 1px 2px rgba(0,0,0,.5),
+        0 0 4px rgba(120,70,30,.5);
+      position: relative; z-index: 2;
     }
 
     /* Description column on the right (or below on mobile) */
@@ -377,12 +413,14 @@
     .cm-desc-row.warn .cm-desc-status { background: #FEF3C7; color: #A16207; }
 
     @media (max-width: 600px) {
-      .cm-pyramid-container { padding-left: 30px; }
-      .cm-pyramid-svg { left: 30px; width: calc(100% - 30px); }
-      .cm-labels { left: 30px; }
-      .cm-tax-tag { padding: 6px 16px; font-size: .8rem; }
+      .cm-pyramid-scene { padding-left: 38px; padding-right: 12px; }
+      .cm-pyramid-svg { left: 38px; right: 12px; width: calc(100% - 50px); }
+      .cm-labels { left: 38px; right: 12px; }
+      .cm-tax-tag { width: 32px; left: 4px; }
+      .cm-tax-text { font-size: .85rem; }
       .cm-l-name { font-size: .82rem; }
-      .cm-l5 .cm-l-name { font-size: .68rem; }
+      .cm-l5 .cm-l-name { font-size: .66rem; }
+      .cm-l4 .cm-l-name { font-size: .74rem; }
     }
 
     .py-legend {
@@ -1998,38 +2036,56 @@ function openPyramid() {
   const summary = computeSummary(client);
   if (!summary) return;
   const layers = computePyramid(client, summary);
-  /* layers array is in order [L5(top), L4, L3, L2, L1(base)] */
 
-  /* Polygon coordinates for continuous pyramid 500×460
-     Top width 100 (room for 'Wealth Distribution' label), base 500
-     Five trapezoids share edges → no gaps */
+  /* Pyramid points — 5 trapezoids sharing edges → continuous triangle.
+     viewBox 500×500 (extra space at bottom for ground shadow + ground line) */
   const POLYGONS = {
-    5: '200,0 300,0 340,92 160,92',
-    4: '160,92 340,92 380,184 120,184',
-    3: '120,184 380,184 420,276 80,276',
-    2: '80,276 420,276 460,368 40,368',
-    1: '40,368 460,368 500,460 0,460',
+    5: '210,30 290,30 332,116 168,116',   /* top */
+    4: '168,116 332,116 372,202 128,202',
+    3: '128,202 372,202 412,288 88,288',
+    2: '88,288 412,288 452,374 48,374',
+    1: '48,374 452,374 492,460 8,460',    /* base */
   };
-  /* Label vertical center % within total height (460px) */
-  const LABEL_TOP = { 5: '10%', 4: '30%', 3: '50%', 2: '70%', 1: '90%' };
-  /* Max-width per layer so label fits within trapezoid */
-  const LABEL_W   = { 5: '26%', 4: '42%', 3: '56%', 2: '72%', 1: '86%' };
+  /* Top edge of each layer (for highlight stroke) */
+  const TOP_EDGES = {
+    5: 'M210,30 L290,30',
+    4: 'M168,116 L332,116',
+    3: 'M128,202 L372,202',
+    2: 'M88,288 L412,288',
+    1: 'M48,374 L452,374',
+  };
+  /* Layer label vertical center (px in viewBox 500h) */
+  const LABEL_Y = { 5: 73, 4: 159, 3: 245, 2: 331, 1: 417 };
+  /* Max label width % of pyramid container */
+  const LABEL_W = { 5: '22%', 4: '38%', 3: '54%', 2: '70%', 1: '85%' };
 
   const svgPolys = layers.map(l => `
-    <polygon points="${POLYGONS[l.layer]}" fill="url(#cm-g${l.layer})"
-             stroke="rgba(70,15,20,.55)" stroke-width="1"/>
+    <polygon points="${POLYGONS[l.layer]}" fill="url(#cm-g${l.layer})"/>
+    <polygon points="${POLYGONS[l.layer]}" fill="url(#cm-shade)" />
   `).join('');
 
+  /* Edge highlight (thin lighter line at top of each layer — looks like clay tier edge) */
+  const edgeHighlights = layers.map(l => `
+    <path d="${TOP_EDGES[l.layer]}" stroke="rgba(255,240,220,.45)" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+  `).join('');
+
+  /* Subtle inner shadow at bottom of each layer (between layers — depth) */
+  const innerShadows = layers.map(l => {
+    const e = TOP_EDGES[l.layer];
+    return `<path d="${e}" stroke="rgba(40,8,12,.4)" stroke-width="1.5" fill="none" transform="translate(0,1.2)" stroke-linecap="round"/>`;
+  }).join('');
+
+  /* HTML label positioned over each layer */
   const labelEls = layers.map(l => `
-    <div class="cm-label cm-l${l.layer}" style="top:${LABEL_TOP[l.layer]};">
+    <div class="cm-label cm-l${l.layer}" style="top:${LABEL_Y[l.layer]/500*100}%;">
       <div class="cm-l-inner" style="max-width:${LABEL_W[l.layer]};">
         <div class="cm-l-name">${l.title}</div>
-        <div class="cm-l-status">${l.ok ? '✓' : '⚠'}</div>
+        <div class="cm-l-status ${l.ok?'ok':'warn'}">${l.ok ? '✓' : '⚠'}</div>
       </div>
     </div>
   `).join('');
 
-  /* Description column to the right of pyramid */
+  /* Description card column */
   const descRows = layers.map(l => `
     <div class="cm-desc-row ${l.ok?'ok':'warn'}">
       <div class="cm-desc-num">L${l.layer}</div>
@@ -2044,28 +2100,81 @@ function openPyramid() {
   document.getElementById('pyramid-stack-container').innerHTML = `
     <div class="cm-pyramid-layout">
       <div class="cm-pyramid-col">
-        <div class="cm-pyramid-container">
-          <div class="cm-tax-tag">Tax Planning</div>
-          <svg class="cm-pyramid-svg" viewBox="0 0 500 460" preserveAspectRatio="xMidYMid meet">
+        <div class="cm-pyramid-scene">
+          <div class="cm-tax-tag">
+            <span class="cm-tax-text">Tax Planning</span>
+          </div>
+          <svg class="cm-pyramid-svg" viewBox="0 0 500 500" preserveAspectRatio="xMidYMid meet">
             <defs>
+              <!-- Base color gradients per layer (deep red top → lighter base) -->
               <linearGradient id="cm-g5" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#6B1F2A"/><stop offset="100%" stop-color="#7E2530"/>
+                <stop offset="0%" stop-color="#5C1A24"/><stop offset="100%" stop-color="#76222D"/>
               </linearGradient>
               <linearGradient id="cm-g4" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#7E2530"/><stop offset="100%" stop-color="#8C2A36"/>
+                <stop offset="0%" stop-color="#76222D"/><stop offset="100%" stop-color="#882A36"/>
               </linearGradient>
               <linearGradient id="cm-g3" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#8C2A36"/><stop offset="100%" stop-color="#9A3040"/>
+                <stop offset="0%" stop-color="#882A36"/><stop offset="100%" stop-color="#993340"/>
               </linearGradient>
               <linearGradient id="cm-g2" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#9A3040"/><stop offset="100%" stop-color="#A6364A"/>
+                <stop offset="0%" stop-color="#993340"/><stop offset="100%" stop-color="#A93C4A"/>
               </linearGradient>
               <linearGradient id="cm-g1" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stop-color="#A6364A"/><stop offset="100%" stop-color="#B23D54"/>
+                <stop offset="0%" stop-color="#A93C4A"/><stop offset="100%" stop-color="#B84256"/>
               </linearGradient>
+              <!-- Universal layer shading overlay (top highlight + bottom shadow) -->
+              <linearGradient id="cm-shade" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="rgba(255,240,210,.18)"/>
+                <stop offset="35%" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="100%" stop-color="rgba(20,5,8,.32)"/>
+              </linearGradient>
+              <!-- Side highlight: brighter on the LEFT slope (light from upper-left) -->
+              <linearGradient id="cm-sidelight" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="rgba(255,240,210,.18)"/>
+                <stop offset="50%" stop-color="rgba(255,255,255,0)"/>
+                <stop offset="100%" stop-color="rgba(20,5,8,.15)"/>
+              </linearGradient>
+              <!-- Ground shadow filter -->
+              <filter id="cm-blur" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="6"/>
+              </filter>
+              <!-- Clay-surface texture (subtle noise) -->
+              <filter id="cm-noise" x="0%" y="0%" width="100%" height="100%">
+                <feTurbulence type="fractalNoise" baseFrequency="1.5" numOctaves="1" seed="3"/>
+                <feColorMatrix values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .12 0"/>
+                <feComposite in2="SourceGraphic" operator="in"/>
+              </filter>
             </defs>
-            ${svgPolys}
+
+            <!-- Ground shadow (oval beneath pyramid) -->
+            <ellipse cx="250" cy="480" rx="230" ry="9"
+                     fill="#3A1015" opacity=".4" filter="url(#cm-blur)"/>
+
+            <!-- Pyramid silhouette drop-shadow group -->
+            <g filter="drop-shadow(0 14px 18px rgba(80,15,25,.45)) drop-shadow(0 3px 6px rgba(80,15,25,.3))">
+              <!-- Whole pyramid outline first (for unified shadow) -->
+              <polygon points="210,30 290,30 492,460 8,460" fill="#6B1F2A"/>
+              <!-- Then each layer with gradients + shading -->
+              ${svgPolys}
+              <!-- Side light overlay for whole pyramid -->
+              <polygon points="210,30 290,30 492,460 8,460" fill="url(#cm-sidelight)"/>
+              <!-- Subtle noise texture overlay -->
+              <polygon points="210,30 290,30 492,460 8,460" fill="white" filter="url(#cm-noise)" opacity=".5"/>
+            </g>
+
+            <!-- Inner shadow between layers (separation depth) -->
+            ${innerShadows}
+            <!-- Edge highlight at top of each layer -->
+            ${edgeHighlights}
+
+            <!-- Apex up-arrow ornament (like reference image) -->
+            <g transform="translate(250,15)">
+              <path d="M0,-10 L0,12 M-6,-4 L0,-10 L6,-4"
+                    stroke="#4A1218" stroke-width="2.5" fill="none"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
           </svg>
+
           <div class="cm-labels">${labelEls}</div>
         </div>
       </div>
