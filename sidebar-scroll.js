@@ -360,6 +360,77 @@ if ('serviceWorker' in navigator
         .fmenu-item-btn svg { width: 16px; height: 16px; }
         .fmenu-item-label { font-size: .72rem; padding: 5px 11px; }
       }
+
+      /* ════════════════════════════════════════════════
+         PYRAMID POPUP — overlay shown when Pyramid menu clicked
+         Displays pyramid-image.jpg fullscreen without navigating
+      ═══════════════════════════════════════════════ */
+      .pyr-popup {
+        display: none;
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,.92);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 9999;
+        align-items: center; justify-content: center;
+        padding: 24px;
+        font-family: 'Sarabun', sans-serif;
+      }
+      .pyr-popup.open {
+        display: flex;
+        animation: pyrPopFadeIn .25s ease-out;
+      }
+      @keyframes pyrPopFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      .pyr-popup-inner {
+        display: flex; flex-direction: column; align-items: center; gap: 14px;
+        max-width: 100%; max-height: 100%;
+        animation: pyrPopZoomIn .35s cubic-bezier(.2,.9,.3,1.05);
+      }
+      @keyframes pyrPopZoomIn {
+        from { transform: scale(.9); opacity: 0; }
+        to   { transform: scale(1); opacity: 1; }
+      }
+      .pyr-popup-img {
+        max-width: 100%;
+        max-height: calc(100vh - 120px);
+        border-radius: 14px;
+        box-shadow: 0 20px 60px rgba(0,0,0,.6);
+        object-fit: contain;
+      }
+      .pyr-popup-caption {
+        color: white;
+        font-size: .92rem;
+        text-align: center;
+        opacity: .85;
+        max-width: 600px;
+        line-height: 1.5;
+      }
+      .pyr-popup-caption b {
+        color: #C9A961;
+        font-weight: 800;
+      }
+      .pyr-popup-close {
+        position: fixed; top: 22px; right: 22px;
+        width: 44px; height: 44px; border-radius: 50%;
+        background: white; color: #1F2D4F;
+        border: none; font-size: 1.3rem; font-weight: 700;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 8px 22px rgba(0,0,0,.4);
+        transition: all .15s;
+        z-index: 10000;
+        font-family: inherit;
+      }
+      .pyr-popup-close:hover {
+        background: #C9A961; color: white;
+        transform: scale(1.08);
+      }
+      @media (max-width: 600px) {
+        .pyr-popup { padding: 16px; }
+        .pyr-popup-img { max-height: calc(100vh - 100px); }
+        .pyr-popup-caption { font-size: .82rem; }
+        .pyr-popup-close { width: 38px; height: 38px; top: 16px; right: 16px; }
+      }
     `;
     document.head.appendChild(style);
   }
@@ -413,8 +484,8 @@ if ('serviceWorker' in navigator
       </div>
       <div class="fmenu-item">
         <span class="fmenu-item-label">Pyramid · สามเหลี่ยมการเงิน</span>
-        <button class="fmenu-item-btn ${isPyramid ? 'active' : ''}"
-                onclick="location.href='pyramid.html'" title="Pyramid">${ico('pyramid', '🔺')}</button>
+        <button class="fmenu-item-btn"
+                onclick="openPyramidPopup()" title="Pyramid">${ico('pyramid', '🔺')}</button>
       </div>
       <div class="fmenu-item">
         <span class="fmenu-item-label">กลับหน้าแรก</span>
@@ -433,9 +504,33 @@ if ('serviceWorker' in navigator
     fab.addEventListener('click', toggleFmenu);
     document.body.appendChild(fab);
 
-    /* Esc to close */
+    /* Pyramid popup — shows pyramid-image.jpg as overlay
+       Inject once globally so any page can call openPyramidPopup() */
+    if (!document.getElementById('pyr-popup')) {
+      const popup = document.createElement('div');
+      popup.id = 'pyr-popup';
+      popup.className = 'pyr-popup';
+      popup.innerHTML = `
+        <button class="pyr-popup-close" onclick="closePyramidPopup()" title="ปิด">✕</button>
+        <div class="pyr-popup-inner">
+          <img src="pyramid-image.jpg" alt="สามเหลี่ยมการเงิน" class="pyr-popup-img">
+          <div class="pyr-popup-caption">
+            <b>สามเหลี่ยมการเงิน</b> · กระบวนการที่ต้องรู้ก่อนวางแผนการเงิน
+          </div>
+        </div>
+      `;
+      popup.addEventListener('click', (e) => {
+        if (e.target === popup) closePyramidPopup();
+      });
+      document.body.appendChild(popup);
+    }
+
+    /* Esc to close — both fmenu and pyramid popup */
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeFmenu();
+      if (e.key === 'Escape') {
+        closeFmenu();
+        closePyramidPopup();
+      }
     });
 
     /* Auto-detect .flow-bar to shift FAB up (avoid overlap with sticky bottom nav).
@@ -478,6 +573,23 @@ if ('serviceWorker' in navigator
   window.toggleFmenu = toggleFmenu;
   window.openFmenu = openFmenu;
   window.closeFmenu = closeFmenu;
+
+  /* Pyramid popup — show pyramid-image.jpg without leaving current page */
+  function openPyramidPopup() {
+    closeFmenu();                      /* close fmenu first */
+    const p = document.getElementById('pyr-popup');
+    if (!p) return;
+    p.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closePyramidPopup() {
+    const p = document.getElementById('pyr-popup');
+    if (!p) return;
+    p.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  window.openPyramidPopup = openPyramidPopup;
+  window.closePyramidPopup = closePyramidPopup;
 
   function init() {
     restore();
