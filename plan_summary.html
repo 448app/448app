@@ -839,6 +839,10 @@
       flex: 1; padding: 60px 50px 30px;
       display: flex; flex-direction: column; align-items: center; text-align: center;
       gap: 14px;
+      min-width: 0;  /* allow children to shrink properly */
+    }
+    @media (max-width: 600px) {
+      .pf-cover-body { padding: 40px 24px 24px; }
     }
     .pf-cover-icon {
       font-size: 4.5rem; line-height: 1; margin-bottom: 6px;
@@ -865,7 +869,20 @@
       background: linear-gradient(135deg, var(--red-primary), var(--red-dark));
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
-      line-height: 1.2; padding: 0 20px;
+      line-height: 1.25; padding: 0 24px;
+      max-width: 100%;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      hyphens: auto;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    /* Auto-shrink for very long names (clamp scales font with viewport) */
+    .pf-cover-client.long {
+      font-size: clamp(1.4rem, 4.5vw, 2.2rem);
+    }
+    .pf-cover-client.very-long {
+      font-size: clamp(1.2rem, 3.8vw, 1.8rem);
     }
     .pf-cover-client-sub {
       font-size: .95rem; color: var(--gray-600); font-weight: 600;
@@ -1928,7 +1945,7 @@ function _pfRenderCover(c, agent, dateStr) {
         <div class="pf-cover-title">สรุปแผนการเงิน</div>
         <div class="pf-cover-divider"></div>
         <div class="pf-cover-prep-for">จัดทำสำหรับ</div>
-        <div class="pf-cover-client">คุณ ${clientName}</div>
+        <div class="pf-cover-client ${(('คุณ '+clientName).length > 30) ? 'very-long' : (('คุณ '+clientName).length > 20) ? 'long' : ''}">คุณ ${clientName}</div>
         ${ageStr || occ ? `<div class="pf-cover-client-sub">${[ageStr, occ].filter(Boolean).join(' · ')}</div>` : ''}
         <div class="pf-cover-divider"></div>
         <div class="pf-cover-date"><b>วันที่จัดทำ</b><br>${dateStr}</div>
