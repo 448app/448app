@@ -4,9 +4,9 @@
    2. ป้องกัน mouse wheel เปลี่ยนค่าใน <input type="number"> โดยไม่ตั้งใจ
    3. Register Service Worker — auto cache busting (ไม่ต้องกด Ctrl+Shift+R) */
 
-/* Register Service Worker — network-first strategy
-   ข้าม SW เมื่อโหลดผ่าน file:// (double-click เปิดไฟล์) — browser security ห้าม
-   หรือเมื่อ origin เป็น null (sandboxed iframe) */
+/* Register Service Worker — network-first strategy with AGGRESSIVE cache-bust
+   - iPad PWA caches dื้อ → ใช้ version-check + force-reload เพิ่ม
+   - ข้าม SW เมื่อโหลดผ่าน file:// (double-click เปิดไฟล์) — browser ห้าม */
 if ('serviceWorker' in navigator
     && (location.protocol === 'https:' || location.protocol === 'http:')) {
   window.addEventListener('load', () => {
@@ -25,6 +25,54 @@ if ('serviceWorker' in navigator
         });
       });
     }).catch(() => { /* SW register ล้มเหลว — ignore */ });
+
+    /* AGGRESSIVE VERSION CHECK สำหรับ iPad PWA — SW activation ไม่เสถียร
+       บน iOS PWA standalone บางครั้ง — ใช้ fetch sw.js เพื่ออ่าน version ตรง ๆ
+       เปรียบเทียบกับ localStorage — ถ้าต่างก็บังคับ hard reload ทันที */
+    fetch('/sw.js?_check=' + Date.now(), { cache: 'no-store' })
+      .then(r => r.text())
+      .then(text => {
+        const m = text.match(/SW_VERSION\s*=\s*['"]([^'"]+)['"]/);
+        if (!m) return;
+        const serverVersion = m[1];
+        const KEY = 'aia_sw_seen_version';
+        const lastSeen = localStorage.getItem(KEY);
+        if (!lastSeen) {
+          /* ครั้งแรก — บันทึกอย่างเดียว ไม่ reload */
+          localStorage.setItem(KEY, serverVersion);
+          return;
+        }
+        if (lastSeen !== serverVersion) {
+          /* เวอร์ชั่นใหม่! บันทึก + hard reload ด้วย cache-bust query */
+          localStorage.setItem(KEY, serverVersion);
+          const RELOAD_GUARD = 'aia_sw_just_reloaded';
+          /* กัน reload loop — ถ้าเพิ่ง reload ใน 10 วินาทีที่ผ่านมาให้ skip */
+          const lastReload = Number(sessionStorage.getItem(RELOAD_GUARD) || 0);
+          if (Date.now() - lastReload < 10000) return;
+          sessionStorage.setItem(RELOAD_GUARD, String(Date.now()));
+          /* แสดง banner สั้น ๆ ก่อน reload */
+          const banner = document.createElement('div');
+          banner.style.cssText = `
+            position: fixed; top: 14px; left: 50%;
+            transform: translateX(-50%); z-index: 99999;
+            background: linear-gradient(135deg, #1F2D4F, #2C3E61);
+            color: white; padding: 10px 22px;
+            border-radius: 50px; font-family: 'Sarabun', sans-serif;
+            font-weight: 700; font-size: .88rem;
+            box-shadow: 0 8px 22px rgba(0,0,0,.3);
+            animation: fadeIn .25s ease-out;
+          `;
+          banner.textContent = '⚡ อัปเดตเวอร์ชั่นใหม่ ' + serverVersion + ' — กำลังโหลด...';
+          document.body.appendChild(banner);
+          /* Hard reload with cache-bust */
+          setTimeout(() => {
+            const u = new URL(location.href);
+            u.searchParams.set('_v', serverVersion);
+            location.replace(u.toString());
+          }, 700);
+        }
+      })
+      .catch(() => {});
   });
 }
 
