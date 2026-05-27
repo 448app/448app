@@ -2384,8 +2384,10 @@ function _pfRenderSummary(summary) {
 }
 
 function _pfRenderRadarSVG(summary) {
-  /* simplified radar suitable for print */
-  const size = 320, cx = size/2, cy = size/2, R = 110;
+  /* simplified radar suitable for print + PDF
+     Wrapped in a div with page-break-inside:avoid so html2pdf doesn't split it.
+     Uses Thai text labels (not emoji) — emoji often render incorrectly in html2canvas */
+  const size = 340, cx = size/2, cy = size/2, R = 105;
   let grid = '', axes = '', labels = '';
   for (let i = 1; i <= 5; i++) {
     const r = R*(i/5);
@@ -2398,8 +2400,11 @@ function _pfRenderRadarSVG(summary) {
   CATEGORIES.forEach(cat => {
     const rad = cat.angle*Math.PI/180;
     axes += `<line x1="${cx}" y1="${cy}" x2="${cx+R*Math.cos(rad)}" y2="${cy+R*Math.sin(rad)}" stroke="#D0D7E2" stroke-width="1"/>`;
-    const lr = R+20, lx = cx+lr*Math.cos(rad), ly = cy+lr*Math.sin(rad);
-    labels += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="16">${cat.icon}</text>`;
+    const lr = R+24, lx = cx+lr*Math.cos(rad), ly = cy+lr*Math.sin(rad);
+    /* Text label (Thai) instead of emoji — renders reliably in PDF */
+    labels += `<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central"
+                font-size="12" font-weight="700" fill="#1F2D4F"
+                font-family="Sarabun, sans-serif">${cat.name}</text>`;
   });
   const dataPts = CATEGORIES.map(cat => {
     const pct = summary[cat.key].pct || 0;
@@ -2407,11 +2412,14 @@ function _pfRenderRadarSVG(summary) {
     const rad = cat.angle*Math.PI/180;
     return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)].join(',');
   }).join(' ');
-  return `<svg class="pf-doc-radar" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-    ${grid}${axes}
-    <polygon points="${dataPts}" fill="rgba(255,167,38,0.35)" stroke="#F39C12" stroke-width="2"/>
-    ${labels}
-  </svg>`;
+  return `<div class="pf-radar-wrap" style="page-break-inside:avoid;break-inside:avoid;text-align:center;padding:8px 0;">
+    <svg class="pf-doc-radar" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}"
+         xmlns="http://www.w3.org/2000/svg">
+      ${grid}${axes}
+      <polygon points="${dataPts}" fill="rgba(201,169,97,.35)" stroke="#C9A961" stroke-width="2"/>
+      ${labels}
+    </svg>
+  </div>`;
 }
 
 function _pfRenderPyramid(client, summary) {
@@ -2945,35 +2953,115 @@ function _pfRenderGoals(c) {
   `;
 }
 
-/* ════════════════════════════════════════════
+/* ════════════════════════════════════════════════
    PDF EXPORT — html2pdf.js
-═══════════════════════════════════════════ */
-function downloadPlanPDF() {
-  const el = document.getElementById('pf-document');
-  if (!el) { alert('ไม่พบเอกสาร'); return; }
+   Multiple fixes for correctness:
+   1. Wait for fonts to load (Thai chars rendered correctly)
+   2. Clone element to OFF-SCREEN container (avoid scrollable wrap clipping)
+   3. Set explicit width matching A4 print area (210mm @ 96dpi ≈ 794px)
+   4. Override max-height/overflow on clone (so full content captured)
+   5. Force SVG explicit dimensions (radar chart wasn't fully captured)
+   6. Avoid page break inside .pf-doc-section / .pf-cover / .pf-agent-page
+═══════════════════════════════════════════════ */
+async function downloadPlanPDF() {
+  const src = document.getElementById('pf-document');
+  if (!src) { alert('ไม่พบเอกสาร'); return; }
   const client = getCurrent();
   const clientName = ((client.firstName||'') + '-' + (client.lastName||'')).trim() || 'client';
   const dateTag = new Date().toISOString().slice(0,10);
   const filename = `plan-summary-${clientName}-${dateTag}.pdf`;
   const btn = document.querySelector('#pf-footer .pf-btn-success');
   if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังสร้าง PDF...'; }
+
+  /* (1) Wait for Thai fonts to fully load — fixes character distortion */
+  try {
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+  } catch(_) {}
+
+  /* (2) Clone the document to an off-screen wrapper. This bypasses any
+     scrollable parent (pf-preview-wrap has max-height + overflow-y) that
+     can clip what html2canvas captures */
+  const clone = src.cloneNode(true);
+  /* (3) A4 print width @ ~96dpi: 210mm - margins ≈ 780px content area
+     We use 800px to match the existing .pf-document max-width */
+  const PRINT_WIDTH = 800;
+  const offscreen = document.createElement('div');
+  offscreen.id = 'pf-pdf-staging';
+  offscreen.style.cssText = `
+    position: fixed;
+    left: -10000px;
+    top: 0;
+    width: ${PRINT_WIDTH}px;
+    background: white;
+    z-index: -1;
+    /* important: no max-height / overflow so full content renders */
+    max-height: none;
+    overflow: visible;
+  `;
+  /* (4) Override max-height/overflow on clone for full-content capture */
+  clone.style.maxHeight = 'none';
+  clone.style.overflow = 'visible';
+  clone.style.maxWidth = PRINT_WIDTH + 'px';
+  clone.style.margin = '0';
+  offscreen.appendChild(clone);
+  document.body.appendChild(offscreen);
+
+  /* (5) Force explicit width/height on all SVGs (radar chart was being
+     captured incorrectly because html2canvas needs explicit dims) */
+  clone.querySelectorAll('svg').forEach(svg => {
+    const rect = svg.getBoundingClientRect();
+    if (rect.width > 0 && !svg.getAttribute('width')) {
+      svg.setAttribute('width', rect.width);
+      svg.setAttribute('height', rect.height);
+    }
+    /* Ensure viewBox so it scales correctly */
+    if (!svg.getAttribute('viewBox') && svg.getAttribute('width')) {
+      const w = svg.getAttribute('width');
+      const h = svg.getAttribute('height');
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    }
+  });
+
+  /* Give the browser one tick to layout the offscreen clone before capture */
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
   const opts = {
     margin: [10, 8, 12, 8],
     filename,
-    image: { type: 'jpeg', quality: 0.96 },
-    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-    pagebreak: { mode: ['css', 'legacy'], avoid: '.pf-doc-section' },
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      letterRendering: true,
+      logging: false,
+      windowWidth: PRINT_WIDTH,           /* (6) match clone width — critical */
+      backgroundColor: '#FFFFFF',         /* avoid transparent → black artifacts */
+      scrollX: 0,
+      scrollY: 0,
+    },
+    jsPDF: {
+      unit: 'mm',
+      format: 'a4',
+      orientation: 'portrait',
+      compress: true,
+    },
+    pagebreak: {
+      mode: ['css', 'legacy'],
+      avoid: ['.pf-doc-section', '.pf-cover', '.pf-agent-page', '.pf-doc-table', '.pf-kpi-grid', '.pf-radar-wrap', '.pf-doc-progress'],
+    },
   };
-  html2pdf().set(opts).from(el).save()
-    .then(() => {
-      if (btn) { btn.disabled = false; btn.innerHTML = '📥 ดาวน์โหลด PDF'; }
-    })
-    .catch(err => {
-      console.error('PDF generation error', err);
-      alert('สร้าง PDF ไม่สำเร็จ: ' + (err.message||err));
-      if (btn) { btn.disabled = false; btn.innerHTML = '📥 ดาวน์โหลด PDF'; }
-    });
+
+  try {
+    await html2pdf().set(opts).from(clone).save();
+  } catch (err) {
+    console.error('PDF generation error', err);
+    alert('สร้าง PDF ไม่สำเร็จ: ' + (err.message||err));
+  } finally {
+    /* Always clean up the offscreen staging element */
+    try { document.body.removeChild(offscreen); } catch(_){}
+    if (btn) { btn.disabled = false; btn.innerHTML = '📥 ดาวน์โหลด PDF'; }
+  }
 }
 
 /* ════════════════════════════════════════════
