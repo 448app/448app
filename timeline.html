@@ -28,40 +28,24 @@
     .feature-hero h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
     .feature-hero p  { opacity: .85; font-size: .92rem; }
     .feature-hero-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-    /* Back button */
-    .tl-back-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 7px 14px 7px 12px;
-      margin-bottom: 10px;
-      background: rgba(255,255,255,.18);
-      color: white;
-      border: 1.5px solid rgba(255,255,255,.35);
-      border-radius: 50px;
-      font-family: var(--font);
-      font-size: .82rem; font-weight: 700;
-      cursor: pointer;
-      transition: all .15s;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-    .tl-back-btn:hover {
-      background: rgba(255,255,255,.95);
-      color: var(--red-primary);
-      border-color: white;
-      transform: translateX(-2px);
-    }
-    .tl-back-arrow {
+
+    /* ════ Floating back button (bottom-left, like Planista) ════ */
+    .tl-back-fab {
+      position: fixed; bottom: 24px; left: 280px;  /* offset for sidebar */
+      width: 56px; height: 56px; border-radius: 50%;
+      background: white; color: var(--red-primary);
+      border: 2.5px solid var(--red-primary);
+      cursor: pointer; line-height: 1;
       display: inline-flex; align-items: center; justify-content: center;
-      width: 18px; height: 18px;
-      background: rgba(255,255,255,.25);
-      border-radius: 50%;
-      font-weight: 800; font-size: .9rem;
-      line-height: 1; transition: all .15s;
+      box-shadow: 0 4px 12px rgba(31,45,79,.18);
+      transition: all .15s; z-index: 30;
     }
-    .tl-back-btn:hover .tl-back-arrow {
-      background: var(--red-primary);
-      color: white;
+    .tl-back-fab:hover {
+      background: var(--red-primary); color: white;
+      transform: translateY(-2px); box-shadow: 0 6px 16px rgba(31,45,79,.3);
     }
+    :root[data-sb-collapsed="1"] .tl-back-fab { left: 24px; }
+    @media (max-width: 768px) { .tl-back-fab { left: 24px; } }
     .client-pick {
       display: flex; align-items: center; gap: 10px;
       background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.4);
@@ -677,10 +661,6 @@
     <div class="feature-hero">
       <div class="feature-hero-row">
         <div>
-          <button class="tl-back-btn" onclick="goBack()" title="ย้อนกลับ">
-            <span class="tl-back-arrow">←</span>
-            <span>ย้อนกลับ</span>
-          </button>
           <h2>⏳ Life Timeline</h2>
           <p>เส้นเวลาชีวิตจากอายุปัจจุบันไปจนถึงจุดสิ้นสุด พร้อม milestones สำคัญ</p>
         </div>
@@ -690,6 +670,11 @@
         </div>
       </div>
     </div>
+
+    <!-- Floating back button (bottom-left) — ย้อนกลับหน้าก่อน -->
+    <button class="tl-back-fab" onclick="goBack()" title="ย้อนกลับ">
+      <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
 
     <div class="app-content">
       <div id="content-wrap"></div>
