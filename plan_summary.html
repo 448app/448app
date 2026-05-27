@@ -480,6 +480,16 @@
     .ph-layer-2 { top: 76.5%; left: 33%; }
     .ph-layer-1 { top: 89%;   left: 33%; }
 
+    /* Touch tablet (iPad) — font baseline metrics differ from desktop;
+       row visual center renders higher on iPad. Shift down +3%. */
+    @media (hover: none) and (min-width: 600px) {
+      .ph-layer-5 { top: 42%; }
+      .ph-layer-4 { top: 54.5%; }
+      .ph-layer-3 { top: 67%; }
+      .ph-layer-2 { top: 79.5%; }
+      .ph-layer-1 { top: 92%; }
+    }
+
     /* Default (≥481px) — readable sizing */
     .ph-layer-5 .ph-name { font-size: .65rem; }
     .ph-layer-4 .ph-name { font-size: .75rem; }
