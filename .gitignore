@@ -5,7 +5,6 @@
 # Exception: PWA icons + icon library PNGs (required for app)
 !icon-*.png
 !icon_*.png
-!pyramid-image.png
 
 # OS files
 .DS_Store
