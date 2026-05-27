@@ -465,13 +465,13 @@
     .ph-badge.ok { background: #6EE7B7; color: #064E3B; }
     .ph-badge.warn { background: #FCD34D; color: #783A11; }
 
-    /* Tier positions (in % of image — pyramid center axis at x≈36%,
-       apex y≈22%, base y≈83%, each tier ≈12% tall) */
-    .ph-layer-5 { top: 28%; left: 36%; }
-    .ph-layer-4 { top: 40%; left: 36%; }
-    .ph-layer-3 { top: 52%; left: 36%; }
-    .ph-layer-2 { top: 65%; left: 36%; }
-    .ph-layer-1 { top: 77%; left: 36%; }
+    /* Tier positions (pixel-measured from pyramid-blank.jpg):
+       apex Y=28%, base Y=83.5%, axis X=33%, each tier ≈11.1% tall */
+    .ph-layer-5 { top: 33.6%; left: 33%; }
+    .ph-layer-4 { top: 44.7%; left: 33%; }
+    .ph-layer-3 { top: 55.8%; left: 33%; }
+    .ph-layer-2 { top: 66.9%; left: 33%; }
+    .ph-layer-1 { top: 77.9%; left: 33%; }
 
     /* Mobile font sizing — narrower tiers up top need smaller text */
     .ph-layer-5 .ph-name { font-size: .58rem; }
