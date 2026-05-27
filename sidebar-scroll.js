@@ -391,18 +391,19 @@ if ('serviceWorker' in navigator
         to   { transform: scale(1); opacity: 1; }
       }
       .pyr-popup-img {
-        max-width: 100%;
-        max-height: calc(100vh - 120px);
-        border-radius: 14px;
-        box-shadow: 0 20px 60px rgba(0,0,0,.6);
+        /* Smaller — cap at ~70% viewport so popup doesn't dominate the screen */
+        max-width: min(70vw, 900px);
+        max-height: calc(80vh - 90px);
+        border-radius: 12px;
+        box-shadow: 0 16px 50px rgba(0,0,0,.55);
         object-fit: contain;
       }
       .pyr-popup-caption {
         color: white;
-        font-size: .92rem;
+        font-size: .85rem;
         text-align: center;
         opacity: .85;
-        max-width: 600px;
+        max-width: 500px;
         line-height: 1.5;
       }
       .pyr-popup-caption b {
@@ -410,13 +411,13 @@ if ('serviceWorker' in navigator
         font-weight: 800;
       }
       .pyr-popup-close {
-        position: fixed; top: 22px; right: 22px;
-        width: 44px; height: 44px; border-radius: 50%;
+        position: fixed; top: 20px; right: 20px;
+        width: 38px; height: 38px; border-radius: 50%;
         background: white; color: #1F2D4F;
-        border: none; font-size: 1.3rem; font-weight: 700;
+        border: none; font-size: 1.1rem; font-weight: 700;
         cursor: pointer;
         display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 8px 22px rgba(0,0,0,.4);
+        box-shadow: 0 6px 18px rgba(0,0,0,.4);
         transition: all .15s;
         z-index: 10000;
         font-family: inherit;
@@ -427,9 +428,9 @@ if ('serviceWorker' in navigator
       }
       @media (max-width: 600px) {
         .pyr-popup { padding: 16px; }
-        .pyr-popup-img { max-height: calc(100vh - 100px); }
-        .pyr-popup-caption { font-size: .82rem; }
-        .pyr-popup-close { width: 38px; height: 38px; top: 16px; right: 16px; }
+        .pyr-popup-img { max-width: 90vw; max-height: calc(80vh - 80px); }
+        .pyr-popup-caption { font-size: .76rem; }
+        .pyr-popup-close { width: 34px; height: 34px; top: 14px; right: 14px; font-size: 1rem; }
       }
     `;
     document.head.appendChild(style);
