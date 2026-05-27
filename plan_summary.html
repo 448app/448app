@@ -663,14 +663,28 @@
     .ps2-prog-amt.empty { color: var(--ps2-red); }
 
     .ps2-pyramid-btn {
-      margin-top: 18px; padding: 12px 22px;
-      background: linear-gradient(135deg, #FFD180, var(--ps2-yellow));
-      color: white; border: none; border-radius: 100px;
-      font-family: var(--font); font-weight: 800; font-size: .95rem;
+      margin-top: 18px; padding: 13px 26px;
+      background: linear-gradient(135deg, var(--ps2-indigo) 0%, #2A3B66 100%);
+      color: white;
+      border: 2px solid var(--ps2-yellow);
+      border-radius: 14px;
+      font-family: var(--font); font-weight: 800; font-size: .98rem;
+      letter-spacing: .01em;
       cursor: pointer; transition: all .2s;
       display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      box-shadow: 0 4px 14px rgba(31,45,79,.22);
     }
-    .ps2-pyramid-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(245,194,66,.4); }
+    .ps2-pyramid-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(31,45,79,.34);
+      border-color: #FFD66B;
+    }
+    .ps2-pyramid-btn .ps2-pyramid-icon {
+      width: 22px; height: 22px;
+      color: var(--ps2-yellow);
+      flex-shrink: 0;
+      filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
+    }
 
     /* ════ Create Plan File — button in hero ════ */
     .createfile-btn {
@@ -1641,6 +1655,21 @@ const CATEGORIES = [
   { key: 'tax',        icon: '✂️', name: 'ภาษี',           angle: 198 },
 ];
 
+/* Minimal SVG line icons (24×24 viewBox) — replace emoji on the radar.
+   Stroke uses currentColor so we control color from the parent <g>. */
+const RADAR_ICON_PATHS = {
+  /* couch / armchair — retirement */
+  retire:    'M3 16 v-3 a2 2 0 0 1 2 -2 h14 a2 2 0 0 1 2 2 v3 M3 16 h18 M5 16 v3 M19 16 v3 M7 11 v-2 a2 2 0 0 1 2 -2 h6 a2 2 0 0 1 2 2 v2',
+  /* graduation cap */
+  education: 'M2 10 L12 5 L22 10 L12 15 Z M6 12 V17 C6 18.5 8.5 19 12 19 C15.5 19 18 18.5 18 17 V12 M22 10 V16',
+  /* shield + check — coverage */
+  lifeIns:   'M12 3 L4 6 V12 C4 16.5 7.5 20 12 21 C16.5 20 20 16.5 20 12 V6 Z M9 12 L11 14 L15 10',
+  /* heart + pulse — health */
+  healthIns: 'M12 21 L4 13 C2 11 2 7 5 5 C7.5 4 10 5 12 7 C14 5 16.5 4 19 5 C22 7 22 11 20 13 Z M6 12 H9 L10.5 9.5 L13 14.5 L14 12 H18',
+  /* receipt — tax */
+  tax:       'M6 3 H18 V21 L15 19 L12 21 L9 19 L6 21 Z M9 8 H15 M9 12 H15 M9 16 H13'
+};
+
 /* ════════════════════════════════════════════
    HELPERS — sync logic จากหน้าหลักของแต่ละหมวด
 ═══════════════════════════════════════════ */
@@ -2055,7 +2084,13 @@ function render() {
       <!-- Pyramid button -->
       <div style="text-align:center; margin-top:10px;">
         <button class="ps2-pyramid-btn" onclick="openPyramid()">
-          <span style="font-size:1.3rem;">🔺</span>
+          <svg class="ps2-pyramid-icon" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3 L21 20 H3 Z"/>
+            <path d="M7.5 12 H16.5" opacity=".7"/>
+            <path d="M9.5 16.5 H14.5" opacity=".7"/>
+          </svg>
           <span>ดู Financial Pyramid (5 ชั้น)</span>
         </button>
       </div>
@@ -2141,16 +2176,23 @@ function renderRadar(summary) {
     const rad = cat.angle * Math.PI / 180;
     return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)].join(',');
   }).join(' ');
-  /* Labels (icons at outer points) */
+  /* Labels (minimal SVG icons at outer points — no emojis) */
   let labels = '';
+  const ICON_SCALE = 1.15;          /* icon ≈ 27.6 px, fits inside r=22 circle */
+  const ICON_OFFSET = 12 * ICON_SCALE;
   CATEGORIES.forEach(cat => {
     const rad = cat.angle * Math.PI / 180;
     const lr = R + 26;
     const lx = cx + lr * Math.cos(rad);
     const ly = cy + lr * Math.sin(rad);
+    const d = RADAR_ICON_PATHS[cat.key] || '';
     labels += `
-      <circle cx="${lx}" cy="${ly}" r="22" fill="white" stroke="#1B4F8C" stroke-width="2"/>
-      <text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="central" font-size="20">${cat.icon}</text>
+      <circle cx="${lx}" cy="${ly}" r="22" fill="white" stroke="#1F2D4F" stroke-width="2"/>
+      <g transform="translate(${lx - ICON_OFFSET}, ${ly - ICON_OFFSET}) scale(${ICON_SCALE})"
+         fill="none" stroke="#1F2D4F" stroke-width="${2 / ICON_SCALE}"
+         stroke-linecap="round" stroke-linejoin="round">
+        <path d="${d}"/>
+      </g>
     `;
   });
   return `
