@@ -225,26 +225,39 @@ if ('serviceWorker' in navigator
       /* Cross-fade between ⋯ (default) and × (open) */
       .fmenu-fab-icon {
         position: relative;
-        width: 24px; height: 24px;
+        width: 30px; height: 30px;
         display: flex; align-items: center; justify-content: center;
       }
       .fmenu-fab-icon .ic-dots,
       .fmenu-fab-icon .ic-close {
         position: absolute; inset: 0;
         display: flex; align-items: center; justify-content: center;
-        line-height: 1;
         transition: opacity .25s, transform .35s cubic-bezier(.2,.9,.3,1.05);
       }
-      /* ⋯ — three dots, font-size large for visibility */
+      /* ⋯ — CSS dots (3 spans, guaranteed rendering on all fonts) */
       .fmenu-fab-icon .ic-dots {
-        font-size: 2rem; font-weight: 900;
-        letter-spacing: -.05em;
+        gap: 5px;
         opacity: 1; transform: scale(1) rotate(0deg);
       }
-      /* × — close icon */
+      .fmenu-fab-icon .ic-dots .dot {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor;
+        display: inline-block;
+      }
+      /* × — close icon (SVG-style line drawing for clarity) */
       .fmenu-fab-icon .ic-close {
-        font-size: 2rem; font-weight: 400;
         opacity: 0; transform: scale(.5) rotate(-90deg);
+      }
+      .fmenu-fab-icon .ic-close::before,
+      .fmenu-fab-icon .ic-close::after {
+        content: '';
+        position: absolute; top: 50%; left: 50%;
+        width: 20px; height: 2.5px;
+        background: currentColor; border-radius: 2px;
+        transform: translate(-50%, -50%) rotate(45deg);
+      }
+      .fmenu-fab-icon .ic-close::after {
+        transform: translate(-50%, -50%) rotate(-45deg);
       }
       .fmenu-fab.open .fmenu-fab-icon .ic-dots {
         opacity: 0; transform: scale(.5) rotate(90deg);
@@ -358,11 +371,17 @@ if ('serviceWorker' in navigator
       }
       return emoji;
     };
-    /* FAB shows ⋯ (closed) ↔ × (open) — cross-fade */
+    /* FAB shows 3 dots (closed) ↔ × (open) — cross-fade
+       Use CSS-drawn dots (3 spans) instead of unicode ⋯ —
+       guaranteed to render correctly on all systems/fonts */
     const fabIconHTML = `
       <span class="fmenu-fab-icon">
-        <span class="ic-dots">⋯</span>
-        <span class="ic-close">×</span>
+        <span class="ic-dots">
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </span>
+        <span class="ic-close"></span>
       </span>
     `;
 
