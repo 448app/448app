@@ -28,6 +28,40 @@
     .feature-hero h2 { font-size: 1.5rem; font-weight: 800; margin-bottom: 4px; }
     .feature-hero p  { opacity: .85; font-size: .92rem; }
     .feature-hero-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    /* Back button */
+    .tl-back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px 7px 12px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,.18);
+      color: white;
+      border: 1.5px solid rgba(255,255,255,.35);
+      border-radius: 50px;
+      font-family: var(--font);
+      font-size: .82rem; font-weight: 700;
+      cursor: pointer;
+      transition: all .15s;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .tl-back-btn:hover {
+      background: rgba(255,255,255,.95);
+      color: var(--red-primary);
+      border-color: white;
+      transform: translateX(-2px);
+    }
+    .tl-back-arrow {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 18px; height: 18px;
+      background: rgba(255,255,255,.25);
+      border-radius: 50%;
+      font-weight: 800; font-size: .9rem;
+      line-height: 1; transition: all .15s;
+    }
+    .tl-back-btn:hover .tl-back-arrow {
+      background: var(--red-primary);
+      color: white;
+    }
     .client-pick {
       display: flex; align-items: center; gap: 10px;
       background: rgba(255,255,255,.18); border: 1.5px solid rgba(255,255,255,.4);
@@ -643,6 +677,10 @@
     <div class="feature-hero">
       <div class="feature-hero-row">
         <div>
+          <button class="tl-back-btn" onclick="goBack()" title="ย้อนกลับ">
+            <span class="tl-back-arrow">←</span>
+            <span>ย้อนกลับ</span>
+          </button>
           <h2>⏳ Life Timeline</h2>
           <p>เส้นเวลาชีวิตจากอายุปัจจุบันไปจนถึงจุดสิ้นสุด พร้อม milestones สำคัญ</p>
         </div>
@@ -1488,6 +1526,27 @@ function initSidebar() {
 fbAuth.onAuthStateChanged(user => {
   if (!user) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; }
 });
+
+/* Back button — กลับไปหน้าก่อนที่จะกด Timeline ใน fmenu
+   ใช้ history.back() — ถ้าไม่มี history ให้กลับ dashboard */
+function goBack() {
+  /* ตรวจสอบว่ามีหน้าก่อนหน้าใน history หรือเปล่า
+     history.length > 1 = มีหน้าก่อนจริง (ไม่ใช่ landing โดยตรง) */
+  if (window.history.length > 1) {
+    /* บันทึก timestamp ก่อนเรียก back — เพื่อเช็คว่า back สำเร็จมั้ย */
+    const before = Date.now();
+    window.history.back();
+    /* Safety net: ถ้า back() ไม่พาไปไหน (เช่นถูก iframe ครอบ) → fallback */
+    setTimeout(() => {
+      if (Date.now() - before < 200 && document.visibilityState === 'visible') {
+        location.href = 'dashboard.html';
+      }
+    }, 100);
+  } else {
+    location.href = 'dashboard.html';
+  }
+}
+window.goBack = goBack;
 
 (function init() {
   initSidebar();
