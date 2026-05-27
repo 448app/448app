@@ -2427,6 +2427,28 @@ function _pfRenderPyramid(client, summary) {
   if (!summary) return '';
   const layers = computePyramid(client, summary);
   const passedCount = layers.filter(l => l.ok).length;
+  /* Render visual pyramid using the same .py-layer clip-path trapezoid
+     style as the modal — claymation-inspired matching the reference image */
+  const pyramidHtml = layers.map(l => `
+    <div class="py-layer layer-${l.layer}">
+      <span class="py-layer-text">
+        <div class="py-layer-name">${l.title}</div>
+        ${l.titleTh ? `<div class="py-layer-name-th">${l.titleTh}</div>` : ''}
+      </span>
+      <span class="py-layer-status">${l.ok ? '✓' : '⚠'}</span>
+    </div>
+  `).join('');
+
+  /* Detail table below the pyramid */
+  const detailRows = layers.map(l => `
+    <tr>
+      <td><b>L${l.layer}</b></td>
+      <td><b>${l.title}</b>${l.titleTh ? `<br><span style="font-size:.82em;color:#888;">${l.titleTh}</span>` : ''}</td>
+      <td>${l.desc}</td>
+      <td class="${l.ok?'pos':'neg'}">${l.ok?'✓ ผ่าน':'✗ ยังไม่ผ่าน'}</td>
+    </tr>
+  `).join('');
+
   return `
     <div class="pf-doc-section">
       <h4>${_pfIcon('pyramid')} Financial Pyramid · สามเหลี่ยมการเงิน 5 ชั้น
@@ -2434,25 +2456,38 @@ function _pfRenderPyramid(client, summary) {
           ผ่าน ${passedCount}/5 ชั้น
         </span>
       </h4>
-      <table class="pf-doc-table">
-        <thead><tr><th style="width:60px;">ชั้น</th><th>หัวข้อ</th><th>รายละเอียด</th><th style="width:70px;">สถานะ</th></tr></thead>
+
+      <!-- Visual pyramid (clip-path trapezoids, claymation style) -->
+      <div class="pyramid-wrap" style="page-break-inside:avoid;break-inside:avoid;">
+        <div class="pyramid-stack">
+          ${pyramidHtml}
+        </div>
+        <div class="py-tax-side">Tax Planning</div>
+      </div>
+
+      <!-- Detail table -->
+      <table class="pf-doc-table" style="margin-top:18px;">
+        <thead><tr>
+          <th style="width:50px;">ชั้น</th>
+          <th>หัวข้อ</th>
+          <th>รายละเอียด</th>
+          <th style="width:80px;">สถานะ</th>
+        </tr></thead>
         <tbody>
-          ${layers.map(l => `
-            <tr>
-              <td>${l.icon} L${l.layer}</td>
-              <td><b>${l.title}</b>${l.titleTh ? `<br><span style="font-size:.82em;color:#888;">${l.titleTh}</span>` : ''}</td>
-              <td>${l.desc}</td>
-              <td class="${l.ok?'pos':'neg'}">${l.ok?'✓ ผ่าน':'✗ ยังไม่ผ่าน'}</td>
-            </tr>
-          `).join('')}
+          ${detailRows}
           <tr style="background:linear-gradient(135deg,#FFF8E7,#FFFFFF);">
-            <td>✂️ ⊕</td>
+            <td><b style="color:#A88A4F;">⊕</b></td>
             <td><b>Tax Planning</b><br><span style="font-size:.82em;color:#888;">การวางแผนภาษี</span></td>
-            <td>ใช้ร่วมทุกชั้น — ลดหย่อนภาษีให้ครบ ทุกเงินที่ออม/ลงทุน ควรได้สิทธิ์ลดหย่อนสูงสุด</td>
+            <td>ใช้ร่วมทุกชั้น — ทุกเงินที่ออม/ลงทุน ควรได้สิทธิ์ลดหย่อนสูงสุด</td>
             <td style="color:#A88A4F;font-weight:700;">cross-cutting</td>
           </tr>
         </tbody>
       </table>
+
+      <div class="pf-insight">
+        <b>หลักการ:</b> เริ่มจากฐานพีระมิดเสมอ — บริหารกระแสเงินสด + เงินสำรอง → จัดการความเสี่ยง →
+        ออมเป้าหมาย → ลงทุน → ส่งมอบมรดก · ตลอดทั้ง 5 ขั้น Tax Planning ใช้ร่วมเพื่อประหยัดภาษี
+      </div>
     </div>
   `;
 }
