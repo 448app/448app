@@ -47,6 +47,71 @@
     }
     .py-hero p { font-size: 1rem; opacity: .85; position: relative; }
 
+    /* ── Pyramid image display ── */
+    .py-image-card {
+      background: linear-gradient(135deg, #FFFFFF 0%, #FAFAFA 100%);
+      border-radius: 22px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.08);
+      text-align: center;
+      margin-top: 8px;
+    }
+    .py-image {
+      width: 100%; max-width: 1100px;
+      height: auto;
+      border-radius: 16px;
+      cursor: zoom-in;
+      transition: transform .3s cubic-bezier(.2,.9,.3,1.05);
+      box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    }
+    .py-image:hover {
+      transform: scale(1.01);
+      box-shadow: 0 8px 20px rgba(0,0,0,.12);
+    }
+    .py-image-hint {
+      margin-top: 12px;
+      font-size: .82rem; color: var(--gray-500);
+      font-weight: 600;
+    }
+
+    /* ── Lightbox ── */
+    .py-lightbox {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.92);
+      backdrop-filter: blur(8px);
+      z-index: 9999;
+      align-items: center; justify-content: center;
+      padding: 24px;
+      animation: pyLbFadeIn .25s ease-out;
+    }
+    .py-lightbox.open { display: flex; }
+    @keyframes pyLbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .py-lightbox-img {
+      max-width: 100%; max-height: 100%;
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.6);
+      animation: pyLbZoomIn .35s cubic-bezier(.2,.9,.3,1.05);
+    }
+    @keyframes pyLbZoomIn {
+      from { transform: scale(.92); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .py-lightbox-close {
+      position: fixed; top: 24px; right: 24px;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: white; color: #1F2D4F; border: none;
+      font-size: 1.6rem; font-weight: 800; cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s;
+      z-index: 10000;
+    }
+    .py-lightbox-close:hover {
+      background: var(--red-primary); color: white;
+      transform: scale(1.08);
+    }
+
     /* ── Page wrap ── */
     .py-wrap {
       max-width: 1280px; margin: 0 auto; padding: 28px 30px 60px;
@@ -330,71 +395,17 @@
     </div>
 
     <div class="py-wrap">
-      <div class="py-grid">
-        <!-- Pyramid visual -->
-        <div class="py-pyramid-wrap fade-up d1">
-          <div class="py-stack">
-            <span class="py-arrow-up">↑</span>
-            <div class="py-layer py-l5 py-layer-anim" data-target="dist">Wealth<br>Distribution</div>
-            <div class="py-layer py-l4 py-layer-anim" data-target="invest">Investment</div>
-            <div class="py-layer py-l3 py-layer-anim" data-target="serious">Saving For Serious Goal</div>
-            <div class="py-layer py-l2 py-layer-anim" data-target="risk">Risk Management</div>
-            <div class="py-layer py-l1 py-layer-anim" data-target="cash">Cash Flow Management</div>
-            <div class="py-tax-side">Tax Planning</div>
-          </div>
-        </div>
-
-        <!-- Description cards -->
-        <div class="py-desc-list">
-          <div class="py-desc fade-up d2" data-key="dist">
-            <div class="py-desc-icon">👑</div>
-            <div class="py-desc-body">
-              <div class="py-desc-title">การส่งมอบความมั่งคั่ง</div>
-              <div class="py-desc-text">ถ่ายโอนให้ผู้รับมรดกจาก<b>การวางแผนมรดก</b> · ครอบครัว · บ้าน · รถ</div>
-            </div>
-            <button class="py-desc-cta" onclick="alert('Wealth Distribution — เปิดเร็วๆนี้')">ดูแผน →</button>
-          </div>
-
-          <div class="py-desc fade-up d3" data-key="invest">
-            <div class="py-desc-icon">📈</div>
-            <div class="py-desc-body">
-              <div class="py-desc-title">Life Style — Investment Planning</div>
-              <div class="py-desc-text">ลงทุนเพื่อเพิ่มความมั่งคั่งและสนับสนุน <b>ไลฟ์สไตล์</b> ที่ต้องการ</div>
-            </div>
-            <button class="py-desc-cta" onclick="location.href='portfolio.html'">พอร์ตแนะนำ →</button>
-          </div>
-
-          <div class="py-desc fade-up d4" data-key="serious">
-            <div class="py-desc-icon">🎯</div>
-            <div class="py-desc-body">
-              <div class="py-desc-title">Wealth Accumulation</div>
-              <div class="py-desc-text"><b>Retirement Planning</b> · <b>Education Planning</b> — สะสมเงินเพื่อเป้าหมายสำคัญ</div>
-            </div>
-            <button class="py-desc-cta" onclick="location.href='retirement.html'">วางแผน →</button>
-          </div>
-
-          <div class="py-desc fade-up d5" data-key="risk">
-            <div class="py-desc-icon">🛡️</div>
-            <div class="py-desc-body">
-              <div class="py-desc-title">Transfer Risk (โอนย้ายความเสี่ยง)</div>
-              <div class="py-desc-text"><b>ชีวิต · สุขภาพ · ทรัพย์สิน</b> — ใช้ประกันโอนความเสี่ยงให้บริษัทประกัน</div>
-            </div>
-            <button class="py-desc-cta" onclick="location.href='life-insurance.html'">ดูประกัน →</button>
-          </div>
-
-          <div class="py-desc fade-up d6" data-key="cash">
-            <div class="py-desc-icon">💰</div>
-            <div class="py-desc-body">
-              <div class="py-desc-title">การบริหารรายรับรายจ่ายและหนี้สิน</div>
-              <div class="py-desc-text">มีเงินสำรองทุกเดือน <b>3–6 เท่า</b>ของค่าใช้จ่ายต่อเดือน · จัดการหนี้สิน</div>
-            </div>
-            <button class="py-desc-cta" onclick="location.href='financial.html'">กระแสเงินสด →</button>
-          </div>
-        </div>
+      <!-- Pyramid image (claymation reference) -->
+      <div class="py-image-card fade-up d1">
+        <img src="pyramid-image.png"
+             alt="สามเหลี่ยมการเงิน — 5 ขั้นจากฐานสู่ยอด"
+             class="py-image"
+             onclick="openPyramidLightbox()">
+        <div class="py-image-hint">💡 คลิกที่รูปเพื่อดูขนาดเต็มจอ</div>
       </div>
 
       <!-- Footer note -->
-      <div class="py-footer fade-up d6">
+      <div class="py-footer fade-up d2">
         <div class="py-footer-icon">💡</div>
         <div class="py-footer-text">
           <b>เริ่มจากฐานพีระมิดเสมอ</b> — บริหารรายรับรายจ่ายและเงินสำรองให้พร้อมก่อน
@@ -402,6 +413,12 @@
           และส่งมอบความมั่งคั่ง · ตลอดทั้ง 5 ขั้น <b>Tax Planning</b> เป็นส่วนที่ใช้ร่วมเพื่อประหยัดภาษีในทุกช่วง
         </div>
       </div>
+    </div>
+
+    <!-- Lightbox overlay -->
+    <div class="py-lightbox" id="py-lightbox" onclick="if(event.target===this)closePyramidLightbox()">
+      <button class="py-lightbox-close" onclick="closePyramidLightbox()" title="ปิด">✕</button>
+      <img src="pyramid-image.png" alt="สามเหลี่ยมการเงิน" class="py-lightbox-img">
     </div>
   </main>
 </div>
@@ -438,28 +455,26 @@ fbAuth.onAuthStateChanged(user => {
   } catch(e){}
 })();
 
-/* Layer ↔ description sync — hover/click a layer highlights matching desc */
-function syncSelection(key) {
-  document.querySelectorAll('.py-layer').forEach(l => {
-    l.classList.toggle('active', l.dataset.target === key);
-  });
-  document.querySelectorAll('.py-desc').forEach(d => {
-    d.classList.toggle('active', d.dataset.key === key);
-  });
+/* Pyramid lightbox — click image to view fullscreen */
+function openPyramidLightbox() {
+  const lb = document.getElementById('py-lightbox');
+  if (!lb) return;
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('keydown', _pyEscHandler);
 }
-document.querySelectorAll('.py-layer').forEach(l => {
-  l.addEventListener('mouseenter', () => syncSelection(l.dataset.target));
-  l.addEventListener('click', () => {
-    const t = l.dataset.target;
-    syncSelection(t);
-    /* scroll matching desc into view on mobile */
-    const desc = document.querySelector(`.py-desc[data-key="${t}"]`);
-    if (desc) desc.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  });
-});
-document.querySelectorAll('.py-desc').forEach(d => {
-  d.addEventListener('mouseenter', () => syncSelection(d.dataset.key));
-});
+function closePyramidLightbox() {
+  const lb = document.getElementById('py-lightbox');
+  if (!lb) return;
+  lb.classList.remove('open');
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', _pyEscHandler);
+}
+function _pyEscHandler(e) {
+  if (e.key === 'Escape') closePyramidLightbox();
+}
+window.openPyramidLightbox  = openPyramidLightbox;
+window.closePyramidLightbox = closePyramidLightbox;
 </script>
 
 </body>
