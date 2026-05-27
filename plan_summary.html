@@ -139,25 +139,92 @@
     }
     .pyramid-close:hover { background: var(--gray-200); }
 
-    /* Pyramid layers */
+    /* Pyramid layers — claymation-inspired red/maroon palette */
+    .pyramid-wrap {
+      position: relative; margin: 24px auto; max-width: 540px;
+    }
     .pyramid-stack {
-      display: flex; flex-direction: column; gap: 6px;
-      margin: 24px auto; max-width: 480px;
+      display: flex; flex-direction: column; gap: 4px;
+      filter: drop-shadow(0 8px 14px rgba(120,30,30,.15));
     }
     .py-layer {
-      padding: 16px 20px; border-radius: 10px; color: white;
+      padding: 14px 18px;
+      color: white;
       display: flex; align-items: center; justify-content: space-between;
       font-weight: 700;
+      transition: transform .2s;
     }
-    .py-layer.layer-1 { width: 50%;  background: linear-gradient(135deg,#C9A961,#DC3545); align-self: center; }
-    .py-layer.layer-2 { width: 70%;  background: linear-gradient(135deg,#FFB74D,#F39C12); align-self: center; }
-    .py-layer.layer-3 { width: 85%;  background: linear-gradient(135deg,#64B5F6,#1976D2); align-self: center; }
-    .py-layer.layer-4 { width: 100%; background: linear-gradient(135deg,#81C784,#28a745); align-self: center; }
-    .py-layer-icon { font-size: 1.4rem; }
-    .py-layer-text { flex: 1; padding-left: 12px; }
-    .py-layer-name { font-size: .92rem; }
-    .py-layer-desc { font-size: .76rem; font-weight: 500; opacity: .92; margin-top: 2px; }
-    .py-layer-status { font-size: 1.4rem; }
+    .py-layer:hover { transform: scale(1.02); filter: brightness(1.08); }
+
+    /* 5 layers — from top to base, red gradient darker→lighter
+       Each uses clip-path to create trapezoidal pyramid shape */
+    .py-layer.layer-5 {
+      width: 38%;
+      background: linear-gradient(135deg, #6B1F2A, #8B2C36);
+      clip-path: polygon(15% 0, 85% 0, 92% 100%, 8% 100%);
+      align-self: center;
+      padding: 14px 30px;
+    }
+    .py-layer.layer-4 {
+      width: 56%;
+      background: linear-gradient(135deg, #7E2530, #9C2F3C);
+      clip-path: polygon(12% 0, 88% 0, 92% 100%, 8% 100%);
+      align-self: center;
+      padding: 14px 28px;
+    }
+    .py-layer.layer-3 {
+      width: 72%;
+      background: linear-gradient(135deg, #8B2C36, #A53442);
+      clip-path: polygon(10% 0, 90% 0, 93% 100%, 7% 100%);
+      align-self: center;
+      padding: 14px 26px;
+    }
+    .py-layer.layer-2 {
+      width: 86%;
+      background: linear-gradient(135deg, #9C2F3C, #B23B48);
+      clip-path: polygon(8% 0, 92% 0, 94% 100%, 6% 100%);
+      align-self: center;
+      padding: 14px 26px;
+    }
+    .py-layer.layer-1 {
+      width: 100%;
+      background: linear-gradient(135deg, #A53442, #BC3F50);
+      clip-path: polygon(6% 0, 94% 0, 100% 100%, 0 100%);
+      align-self: center;
+      padding: 14px 30px;
+    }
+
+    .py-layer-icon {
+      font-size: 1.4rem;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .py-layer-text { flex: 1; padding-left: 10px; min-width: 0; }
+    .py-layer-name { font-size: .9rem; line-height: 1.2; }
+    .py-layer-name-th { font-size: .76rem; opacity: .85; font-weight: 500; }
+    .py-layer-desc { font-size: .72rem; font-weight: 400; opacity: .85; margin-top: 3px; line-height: 1.35; }
+    .py-layer-status { font-size: 1.2rem; flex-shrink: 0; }
+
+    /* Tax Planning side label — gold pill rotated 90° */
+    .py-tax-side {
+      position: absolute; left: -32px; top: 50%;
+      transform: translateY(-50%) rotate(-90deg); transform-origin: center;
+      background: linear-gradient(135deg, #C9A961, #B8924A);
+      color: white;
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-weight: 800; font-size: .82rem;
+      box-shadow: 0 4px 10px rgba(168,138,79,.4);
+      letter-spacing: .05em; white-space: nowrap;
+      border: 1.5px solid rgba(255,255,255,.4);
+      pointer-events: none;
+    }
+    @media (max-width: 600px) {
+      .py-tax-side { left: -24px; padding: 6px 12px; font-size: .72rem; }
+      .py-layer-name { font-size: .82rem; }
+      .py-layer-desc { font-size: .68rem; }
+    }
 
     .py-legend {
       background: var(--gray-50); padding: 14px 18px; border-radius: 10px;
@@ -690,12 +757,13 @@
 <div class="pyramid-overlay" id="pyramid-modal" onclick="if(event.target===this)closePyramid()">
   <div class="pyramid-modal">
     <button class="pyramid-close" onclick="closePyramid()">✕</button>
-    <h3>🔺 Financial Pyramid</h3>
-    <div class="pm-subtitle">โครงสร้างทางการเงินที่มั่นคง 4 ชั้น</div>
+    <h3>🔺 สามเหลี่ยมการเงิน (Financial Pyramid)</h3>
+    <div class="pm-subtitle">โครงสร้างทางการเงินที่มั่นคง 5 ชั้น · จากฐานสู่ยอด</div>
     <div id="pyramid-stack-container"></div>
     <div class="py-legend">
-      <b>หลักการ:</b> ฐานพีระมิดต้องแน่นก่อน — มีสภาพคล่อง + ป้องกันความเสี่ยง — แล้วจึงเดินหน้าออม + ลงทุน
-      ตามลำดับ ห้ามข้ามชั้น
+      <b>หลักการ:</b> เริ่มจากฐานพีระมิดเสมอ — บริหารรายรับรายจ่ายและเงินสำรองให้พร้อมก่อน
+      จึงจัดการความเสี่ยงด้วยประกัน แล้วสะสมเป้าหมายสำคัญ ลงทุน และส่งมอบความมั่งคั่ง
+      · ตลอดทั้ง 5 ขั้น <b style="color:#C9A961">Tax Planning</b> เป็นส่วนที่ใช้ร่วมเพื่อประหยัดภาษีในทุกช่วง
     </div>
   </div>
 </div>
@@ -1012,42 +1080,75 @@ function statusOf(pct) {
 ═══════════════════════════════════════════ */
 function computePyramid(client, summary) {
   if (!client) return null;
-  /* Layer 1 (top): Risk Mgmt — ประกันชีวิต+สุขภาพ
-     Layer 2: เงินออม/ลงทุน — เกษียณ+การศึกษา
-     Layer 3: สภาพคล่อง — กองทุนฉุกเฉิน
-     Layer 4 (base): ภาษี — optimize */
+  /* 5 ชั้น (จากยอด → ฐาน) ตามรูปสามเหลี่ยมการเงิน:
+     Layer 5 (top): Wealth Distribution — การส่งมอบความมั่งคั่ง (มรดก)
+     Layer 4:      Investment — Life Style / Investment Planning
+     Layer 3:      Saving For Serious Goal — Retirement + Education
+     Layer 2:      Risk Management — Transfer Risk (ชีวิต/สุขภาพ/ทรัพย์สิน)
+     Layer 1 (base): Cash Flow Management — รายรับรายจ่าย + เงินสำรอง 3-6 เท่า
+     บวก Tax Planning (cross-cutting, ใช้ได้ทุกชั้น) */
+
+  /* ฐานคำนวณ */
   const monthlyExp = client.cashflow
     ? (Number(client.cashflow.expFixed||0) + Number(client.cashflow.expVariable||0) + Number(client.cashflow.expDebt||0))
     : 0;
   const liquidAssets = (client.assets||[])
     .filter(a => ['cash','deposit','bond'].includes(a.type))
     .reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const emerTarget = monthlyExp * 6;
-  const emerOk = emerTarget > 0 ? liquidAssets >= emerTarget : false;
+  /* เงินสำรอง 3-6 เท่า (ใช้ขั้นต่ำ 3 เท่าเป็น pass criteria) */
+  const emerMin = monthlyExp * 3;
+  const emerOk = emerMin > 0 ? liquidAssets >= emerMin : false;
+
+  /* ลงทุน — เช็คว่ามีสินทรัพย์ประเภทลงทุน */
+  const investTypes = ['stock','mutual','rmf','ssf','thaiesg','ltf','unitlinked','realestate'];
+  const investValue = (client.assets||[])
+    .filter(a => investTypes.includes(a.type))
+    .reduce((s,a) => s + Number(a.currentValue||0), 0);
+  const investOk = investValue > 0;
+
+  /* Wealth Distribution — placeholder: เช็คว่ามี will/estate flag (ไม่มี data → false) */
+  const hasWill = !!(client.will || client.estatePlan);
+  const wealthDistOk = hasWill;
 
   return [
     {
-      layer: 1, title: 'ลงทุนเสริมความมั่งคั่ง',
-      desc: 'พอร์ตหุ้น/กองทุน/อสังหาฯ เพื่อเงินต้นเติบโต',
-      icon: '📈',
-      ok: summary.retire.pct >= 50,
+      layer: 5,
+      title: 'Wealth Distribution',
+      titleTh: 'การส่งมอบความมั่งคั่ง',
+      desc: 'การวางแผนมรดก · ส่งต่อทรัพย์สินให้ผู้รับมรดก',
+      icon: '👑',
+      ok: wealthDistOk,
     },
     {
-      layer: 2, title: 'ออมเพื่อเป้าหมาย',
-      desc: 'เกษียณ + การศึกษาบุตร + เป้าหมายชีวิต',
-      icon: '💰',
+      layer: 4,
+      title: 'Investment',
+      titleTh: 'การลงทุน',
+      desc: 'Life Style · Investment Planning เพื่อความมั่งคั่งและไลฟ์สไตล์',
+      icon: '📈',
+      ok: investOk,
+    },
+    {
+      layer: 3,
+      title: 'Saving For Serious Goal',
+      titleTh: 'ออมเพื่อเป้าหมายสำคัญ',
+      desc: 'Wealth Accumulation · Retirement + Education Planning',
+      icon: '🎯',
       ok: summary.retire.pct >= 30 || summary.education.pct >= 30,
     },
     {
-      layer: 3, title: 'การจัดการความเสี่ยง',
-      desc: 'ประกันชีวิต + ประกันสุขภาพ ครอบคลุม',
+      layer: 2,
+      title: 'Risk Management',
+      titleTh: 'การบริหารความเสี่ยง',
+      desc: 'Transfer Risk · ชีวิต · สุขภาพ · ทรัพย์สิน',
       icon: '🛡️',
       ok: summary.lifeIns.pct >= 50 && summary.healthIns.pct >= 50,
     },
     {
-      layer: 4, title: 'สภาพคล่อง',
-      desc: 'กองทุนฉุกเฉิน 6 เท่าของรายจ่าย',
-      icon: '💧',
+      layer: 1,
+      title: 'Cash Flow Management',
+      titleTh: 'บริหารรายรับรายจ่าย',
+      desc: 'มีเงินสำรอง 3–6 เท่าของรายจ่าย + จัดการหนี้สิน',
+      icon: '💰',
       ok: emerOk,
     },
   ];
@@ -1119,7 +1220,7 @@ function render() {
       <div style="text-align:center; margin-top:10px;">
         <button class="ps2-pyramid-btn" onclick="openPyramid()">
           <span style="font-size:1.3rem;">🔺</span>
-          <span>ดู Financial Pyramid (4 ชั้น)</span>
+          <span>ดู Financial Pyramid (5 ชั้น)</span>
         </button>
       </div>
     </div>
@@ -1234,21 +1335,23 @@ function openPyramid() {
   const summary = computeSummary(client);
   if (!summary) return;
   const layers = computePyramid(client, summary);
-  /* Render bottom→top in stack (base = layer 4 first in DOM = top of stack visually inverted)
-     But we want pyramid shape with smallest on top, so render layer 1 → layer 4 sequentially,
-     using width % to make pyramid shape */
+  /* 5 ชั้น (top → base) — layer 5 อยู่บนสุดในรายการ → render บนสุดของ stack */
   const html = layers.map(l => `
     <div class="py-layer layer-${l.layer}">
       <span class="py-layer-icon">${l.icon}</span>
       <div class="py-layer-text">
         <div class="py-layer-name">${l.title}</div>
+        ${l.titleTh ? `<div class="py-layer-name-th">${l.titleTh}</div>` : ''}
         <div class="py-layer-desc">${l.desc}</div>
       </div>
-      <span class="py-layer-status">${l.ok ? '✅' : '❌'}</span>
+      <span class="py-layer-status">${l.ok ? '✅' : '⚠️'}</span>
     </div>
   `).join('');
   document.getElementById('pyramid-stack-container').innerHTML =
-    '<div class="pyramid-stack">' + html + '</div>';
+    `<div class="pyramid-wrap">
+       <div class="pyramid-stack">${html}</div>
+       <div class="py-tax-side">Tax Planning</div>
+     </div>`;
   document.getElementById('pyramid-modal').classList.add('open');
 }
 
@@ -1666,18 +1769,24 @@ function _pfRenderPyramid(client, summary) {
   const layers = computePyramid(client, summary);
   return `
     <div class="pf-doc-section">
-      <h4>🔺 Financial Pyramid — โครงสร้างทางการเงิน 4 ชั้น</h4>
+      <h4>🔺 Financial Pyramid — สามเหลี่ยมการเงิน 5 ชั้น</h4>
       <table class="pf-doc-table">
         <thead><tr><th style="width:60px;">ชั้น</th><th>หัวข้อ</th><th>รายละเอียด</th><th style="width:70px;">สถานะ</th></tr></thead>
         <tbody>
           ${layers.map(l => `
             <tr>
               <td>${l.icon} L${l.layer}</td>
-              <td><b>${l.title}</b></td>
+              <td><b>${l.title}</b>${l.titleTh ? `<br><span style="font-size:.82em;color:#888;">${l.titleTh}</span>` : ''}</td>
               <td>${l.desc}</td>
               <td class="${l.ok?'pos':'neg'}">${l.ok?'✓ ผ่าน':'✗ ยังไม่ผ่าน'}</td>
             </tr>
           `).join('')}
+          <tr style="background:linear-gradient(135deg,#FFF8E7,#FFFFFF);">
+            <td>✂️ ⊕</td>
+            <td><b>Tax Planning</b><br><span style="font-size:.82em;color:#888;">การวางแผนภาษี</span></td>
+            <td>ใช้ร่วมทุกชั้น — ลดหย่อนภาษีให้ครบ ทุกเงินที่ออม/ลงทุน ควรได้สิทธิ์ลดหย่อนสูงสุด</td>
+            <td style="color:#A88A4F;font-weight:700;">cross-cutting</td>
+          </tr>
         </tbody>
       </table>
     </div>
