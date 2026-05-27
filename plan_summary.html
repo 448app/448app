@@ -1946,8 +1946,9 @@ function renderPlanFileStep() {
     foot.innerHTML = `
       <button class="pf-btn pf-btn-secondary" onclick="_pfStep=1; renderPlanFileStep();">← กลับไปแก้ไข</button>
       <div style="display:flex; gap:8px;">
-        <button class="pf-btn pf-btn-secondary" onclick="window.print()">🖨️ พิมพ์</button>
-        <button class="pf-btn pf-btn-success" onclick="downloadPlanPDF()">📥 ดาวน์โหลด PDF</button>
+        <button class="pf-btn pf-btn-success" onclick="downloadPlanPDF()" title="เปิดหน้าต่างพิมพ์ → เลือก 'Save as PDF'">
+          📥 บันทึกเป็น PDF
+        </button>
       </div>
     `;
   }
@@ -2954,112 +2955,138 @@ function _pfRenderGoals(c) {
 }
 
 /* ════════════════════════════════════════════════
-   PDF EXPORT — html2pdf.js
-   Multiple fixes for correctness:
-   1. Wait for fonts to load (Thai chars rendered correctly)
-   2. Clone element to OFF-SCREEN container (avoid scrollable wrap clipping)
-   3. Set explicit width matching A4 print area (210mm @ 96dpi ≈ 794px)
-   4. Override max-height/overflow on clone (so full content captured)
-   5. Force SVG explicit dimensions (radar chart wasn't fully captured)
-   6. Avoid page break inside .pf-doc-section / .pf-cover / .pf-agent-page
+   PDF EXPORT — Use browser native print → Save as PDF
+
+   html2pdf.js produced too many artifacts (positions broken, Thai
+   chars distorted, radar half-captured) because it does HTML → Canvas
+   → PDF, losing text fidelity & breaking layout.
+
+   Strategy: Open a new window with ONLY the document content + print
+   CSS, then trigger window.print(). Browser handles everything natively:
+   - Perfect Thai text rendering
+   - Correct page pagination via CSS @page rules
+   - Images & SVGs render exactly as in browser
+   - User sees standard print dialog → clicks "Save as PDF"
 ═══════════════════════════════════════════════ */
 async function downloadPlanPDF() {
   const src = document.getElementById('pf-document');
   if (!src) { alert('ไม่พบเอกสาร'); return; }
-  const client = getCurrent();
-  const clientName = ((client.firstName||'') + '-' + (client.lastName||'')).trim() || 'client';
-  const dateTag = new Date().toISOString().slice(0,10);
-  const filename = `plan-summary-${clientName}-${dateTag}.pdf`;
   const btn = document.querySelector('#pf-footer .pf-btn-success');
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังสร้าง PDF...'; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังเตรียม...'; }
 
-  /* (1) Wait for Thai fonts to fully load — fixes character distortion */
   try {
+    /* Wait for fonts before opening print window */
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
-  } catch(_) {}
 
-  /* (2) Clone the document to an off-screen wrapper. This bypasses any
-     scrollable parent (pf-preview-wrap has max-height + overflow-y) that
-     can clip what html2canvas captures */
-  const clone = src.cloneNode(true);
-  /* (3) A4 print width @ ~96dpi: 210mm - margins ≈ 780px content area
-     We use 800px to match the existing .pf-document max-width */
-  const PRINT_WIDTH = 800;
-  const offscreen = document.createElement('div');
-  offscreen.id = 'pf-pdf-staging';
-  offscreen.style.cssText = `
-    position: fixed;
-    left: -10000px;
-    top: 0;
-    width: ${PRINT_WIDTH}px;
+    const client = getCurrent();
+    const clientName = ((client.firstName||'') + ' ' + (client.lastName||'')).trim() || 'ลูกค้า';
+    const docHTML = src.outerHTML;
+
+    /* Gather all stylesheets from current page so the print window matches */
+    const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+      .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
+    const fontLink = `<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">`;
+    /* Copy all inline <style> blocks from current page (they contain pf-*, pf-cover-*, etc.) */
+    const inlineStyles = Array.from(document.querySelectorAll('style'))
+      .map(s => `<style>${s.textContent}</style>`).join('\n');
+
+    /* Build a clean standalone print page */
+    const printHTML = `<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>สรุปแผนการเงิน — ${clientName}</title>
+${fontLink}
+${styleLinks}
+${inlineStyles}
+<style>
+  /* Reset surrounding chrome */
+  html, body {
+    margin: 0; padding: 0;
     background: white;
-    z-index: -1;
-    /* important: no max-height / overflow so full content renders */
-    max-height: none;
-    overflow: visible;
-  `;
-  /* (4) Override max-height/overflow on clone for full-content capture */
-  clone.style.maxHeight = 'none';
-  clone.style.overflow = 'visible';
-  clone.style.maxWidth = PRINT_WIDTH + 'px';
-  clone.style.margin = '0';
-  offscreen.appendChild(clone);
-  document.body.appendChild(offscreen);
-
-  /* (5) Force explicit width/height on all SVGs (radar chart was being
-     captured incorrectly because html2canvas needs explicit dims) */
-  clone.querySelectorAll('svg').forEach(svg => {
-    const rect = svg.getBoundingClientRect();
-    if (rect.width > 0 && !svg.getAttribute('width')) {
-      svg.setAttribute('width', rect.width);
-      svg.setAttribute('height', rect.height);
+    font-family: 'Sarabun', sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  /* Make .pf-document fill the page nicely */
+  .pf-document {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+  }
+  /* @page rules — A4 with reasonable margins */
+  @page {
+    size: A4 portrait;
+    margin: 0;  /* document has its own padding */
+  }
+  @media print {
+    /* Each cover/agent page on its own */
+    .pf-cover { page-break-after: always; break-after: page; }
+    .pf-agent-page { page-break-before: always; break-before: page; }
+    /* Sections should not split if possible */
+    .pf-doc-section,
+    .pf-doc-table,
+    .pf-radar-wrap,
+    .pf-kpi-grid,
+    .pf-doc-progress {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
-    /* Ensure viewBox so it scales correctly */
-    if (!svg.getAttribute('viewBox') && svg.getAttribute('width')) {
-      const w = svg.getAttribute('width');
-      const h = svg.getAttribute('height');
-      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    /* Ensure all colors print */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+</style>
+</head>
+<body>
+${docHTML}
+<script>
+  /* Wait for fonts to load then auto-print */
+  (async function() {
+    try {
+      if (document.fonts && document.fonts.ready) {
+        await document.fonts.ready;
+      }
+      /* Give images/SVGs a moment to layout */
+      await new Promise(r => setTimeout(r, 400));
+      window.print();
+      /* Close after print dialog closes (best-effort) */
+      window.addEventListener('afterprint', () => {
+        setTimeout(() => window.close(), 200);
+      });
+    } catch(e) { console.error(e); window.print(); }
+  })();
+<\/script>
+</body>
+</html>`;
+
+    /* Open in new window — pop-up needs to be allowed by user.
+       Some browsers/iOS PWAs block popups → fallback to data URL nav. */
+    const w = window.open('', '_blank', 'width=900,height=1200');
+    if (w) {
+      w.document.open();
+      w.document.write(printHTML);
+      w.document.close();
+    } else {
+      /* Popup blocked — fallback: use Blob URL navigation */
+      const blob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 60000);
+      alert('กรุณาอนุญาต Popup สำหรับเว็บนี้ — หรือเปิดแท็บใหม่ที่ปรากฏ แล้วกด Save as PDF ในกล่อง Print');
     }
-  });
-
-  /* Give the browser one tick to layout the offscreen clone before capture */
-  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-  const opts = {
-    margin: [10, 8, 12, 8],
-    filename,
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: {
-      scale: 2,
-      useCORS: true,
-      allowTaint: true,
-      letterRendering: true,
-      logging: false,
-      windowWidth: PRINT_WIDTH,           /* (6) match clone width — critical */
-      backgroundColor: '#FFFFFF',         /* avoid transparent → black artifacts */
-      scrollX: 0,
-      scrollY: 0,
-    },
-    jsPDF: {
-      unit: 'mm',
-      format: 'a4',
-      orientation: 'portrait',
-      compress: true,
-    },
-    pagebreak: {
-      mode: ['css', 'legacy'],
-      avoid: ['.pf-doc-section', '.pf-cover', '.pf-agent-page', '.pf-doc-table', '.pf-kpi-grid', '.pf-radar-wrap', '.pf-doc-progress'],
-    },
-  };
-
-  try {
-    await html2pdf().set(opts).from(clone).save();
   } catch (err) {
-    console.error('PDF generation error', err);
-    alert('สร้าง PDF ไม่สำเร็จ: ' + (err.message||err));
+    console.error('PDF print error', err);
+    alert('ไม่สำเร็จ: ' + (err.message||err));
   } finally {
-    /* Always clean up the offscreen staging element */
-    try { document.body.removeChild(offscreen); } catch(_){}
     if (btn) { btn.disabled = false; btn.innerHTML = '📥 ดาวน์โหลด PDF'; }
   }
 }
