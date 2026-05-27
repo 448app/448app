@@ -416,9 +416,32 @@
     .pf-section-item input[type="checkbox"] {
       width: 18px; height: 18px; accent-color: var(--red-primary); cursor: pointer; flex-shrink: 0;
     }
-    .pf-section-item .pf-si-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .pf-section-item .pf-si-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--gray-100);
+      color: var(--gray-600);
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; /* emoji fallback size */
+      flex-shrink: 0;
+      transition: background .15s, color .15s;
+    }
+    .pf-section-item .pf-si-icon svg {
+      width: 18px; height: 18px; display: block;
+    }
     .pf-section-item .pf-si-name { font-weight: 700; font-size: .9rem; color: var(--gray-800); }
     .pf-section-item.pf-checked { border-color: var(--red-primary); background: #F4F6FA; }
+    .pf-section-item.pf-checked .pf-si-icon {
+      background: var(--red-primary);
+      color: white;
+    }
+    .pf-section-item:hover .pf-si-icon {
+      background: var(--red-soft);
+      color: var(--red-primary);
+    }
+    .pf-section-item.pf-checked:hover .pf-si-icon {
+      background: var(--red-dark);
+      color: white;
+    }
 
     /* preview content */
     .pf-preview-wrap {
@@ -1362,22 +1385,32 @@ function closePyramid() {
 /* ════════════════════════════════════════════
    PLAN FILE MODAL — สร้างไฟล์สรุปแผน
 ═══════════════════════════════════════════ */
+/* Use SVG icon names from IconLib (icons.js) — minimal line-style.
+   Fallback emoji shown if IconLib not loaded */
 const PF_SECTIONS = [
-  { key: 'cover',     icon: '📕', name: 'หน้าปก' },
-  { key: 'client',    icon: '👤', name: 'ข้อมูลลูกค้า' },
-  { key: 'summary',   icon: '📋', name: 'สรุปแผน 5 หมวด' },
-  { key: 'pyramid',   icon: '🔺', name: 'Financial Pyramid' },
-  { key: 'cashflow',  icon: '💰', name: 'กระแสเงินสด' },
-  { key: 'networth',  icon: '⚖️', name: 'งบการเงิน' },
-  { key: 'retire',    icon: '🛋️', name: 'แผนเกษียณ' },
-  { key: 'education', icon: '🎓', name: 'แผนการศึกษาบุตร' },
-  { key: 'lifeIns',   icon: '☂️', name: 'แผนคุ้มครองชีวิต' },
-  { key: 'healthIns', icon: '⚕️', name: 'แผนประกันสุขภาพ' },
-  { key: 'tax',       icon: '✂️', name: 'แผนภาษี' },
-  { key: 'policies',  icon: '📊', name: 'รายการกรมธรรม์' },
-  { key: 'goals',     icon: '🎯', name: 'เป้าหมายชีวิต' },
-  { key: 'agent',     icon: '💼', name: 'Profile ตัวแทน' },
+  { key: 'cover',     svg: 'book',       emoji: '📕', name: 'หน้าปก' },
+  { key: 'client',    svg: 'users',      emoji: '👤', name: 'ข้อมูลลูกค้า' },
+  { key: 'summary',   svg: 'clipboard',  emoji: '📋', name: 'สรุปแผน 5 หมวด' },
+  { key: 'pyramid',   svg: 'pyramid',    emoji: '🔺', name: 'Financial Pyramid' },
+  { key: 'cashflow',  svg: 'cashflow',   emoji: '💰', name: 'กระแสเงินสด' },
+  { key: 'networth',  svg: 'balance',    emoji: '⚖️', name: 'งบการเงิน' },
+  { key: 'retire',    svg: 'retirement', emoji: '🛋️', name: 'แผนเกษียณ' },
+  { key: 'education', svg: 'education',  emoji: '🎓', name: 'แผนการศึกษาบุตร' },
+  { key: 'lifeIns',   svg: 'umbrella',   emoji: '☂️', name: 'แผนคุ้มครองชีวิต' },
+  { key: 'healthIns', svg: 'medical',    emoji: '⚕️', name: 'แผนประกันสุขภาพ' },
+  { key: 'tax',       svg: 'tax',        emoji: '✂️', name: 'แผนภาษี' },
+  { key: 'policies',  svg: 'chartBar',   emoji: '📊', name: 'รายการกรมธรรม์' },
+  { key: 'goals',     svg: 'goals',      emoji: '🎯', name: 'เป้าหมายชีวิต' },
+  { key: 'agent',     svg: 'briefcase',  emoji: '💼', name: 'Profile ตัวแทน' },
 ];
+/* Render icon — SVG from IconLib, fallback to emoji */
+function _pfRenderIcon(section) {
+  if (window.IconLib && window.IconLib.getIcon && section.svg) {
+    const svg = window.IconLib.getIcon(section.svg, { size: 20 });
+    if (svg) return svg;
+  }
+  return section.emoji || '•';
+}
 let _pfSelected = new Set(PF_SECTIONS.map(s => s.key));   /* default: ทั้งหมด */
 let _pfStep = 1;
 
@@ -1412,7 +1445,7 @@ function renderPlanFileStep() {
           <label class="pf-section-item ${_pfSelected.has(s.key) ? 'pf-checked' : ''}" data-key="${s.key}">
             <input type="checkbox" ${_pfSelected.has(s.key) ? 'checked' : ''}
                    onchange="togglePlanSection('${s.key}', this.checked)">
-            <span class="pf-si-icon">${s.icon}</span>
+            <span class="pf-si-icon">${_pfRenderIcon(s)}</span>
             <span class="pf-si-name">${s.name}</span>
           </label>
         `).join('')}
