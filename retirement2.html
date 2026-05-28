@@ -507,7 +507,12 @@ function annualContribOf(a) {
 function getDerivedData(client) {
   const annualIncome = Number(client.income) ||
     (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
-  const retireAssets = (client.assets || []).filter(a => ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type));
+  /* Include both retire-type assets AND assets that the user explicitly
+     tagged with appliedTo === 'retire' (via the apply-to button on the
+     assets page). Matches the filter used in retirement.html line 633
+     and confirmPull() line 971. */
+  const retireAssets = (client.assets || []).filter(a =>
+    ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
   const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
   const currentMonthlyContrib = retireAssets.reduce((s,a) => s + annualContribOf(a), 0) / 12;
   return { annualIncome, currentSavings, currentMonthlyContrib };
