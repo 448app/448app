@@ -434,10 +434,47 @@
     }
     .ms-overlay.open { display: flex; }
     .ms-modal {
-      background: white; border-radius: 14px; max-width: 480px; width: 100%;
+      background: white; border-radius: 14px; max-width: 520px; width: 100%;
       padding: 26px 28px; position: relative;
+      max-height: 92vh; overflow-y: auto;
     }
     .ms-modal h3 { font-size: 1.15rem; font-weight: 800; color: var(--gray-800); margin-bottom: 14px; }
+
+    /* ── Quick-pick preset milestones ── */
+    .ms-preset-section { margin-bottom: 6px; }
+    .ms-preset-group { margin-bottom: 12px; }
+    .ms-preset-label {
+      font-size: .8rem; font-weight: 800; color: var(--gray-700);
+      margin-bottom: 7px; display: flex; align-items: center; gap: 5px;
+    }
+    .ms-preset-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .ms-preset-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 13px; border-radius: 50px;
+      background: var(--gray-50, #F9FAFB);
+      border: 1.5px solid var(--gray-300);
+      color: var(--gray-700);
+      font-family: var(--font); font-weight: 700; font-size: .82rem;
+      cursor: pointer; transition: all .15s;
+    }
+    .ms-preset-chip:hover {
+      border-color: var(--red-primary); color: var(--red-primary);
+      background: var(--red-soft, #FEF2F2); transform: translateY(-1px);
+    }
+    .ms-preset-chip.selected {
+      background: var(--red-primary); color: white;
+      border-color: var(--red-primary);
+    }
+    .ms-preset-chip .chip-ico { font-size: .95rem; }
+    .ms-preset-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 14px 0 14px; color: var(--gray-400);
+      font-size: .8rem; font-weight: 600;
+    }
+    .ms-preset-divider::before,
+    .ms-preset-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--gray-200);
+    }
     .ms-form-row { margin-bottom: 12px; }
     .ms-form-row label {
       display: block; font-size: .82rem; font-weight: 700;
@@ -705,6 +742,32 @@
 <div class="ms-overlay" id="ms-modal" onclick="if(event.target===this)closeMsModal()">
   <div class="ms-modal">
     <h3 id="ms-modal-title">➕ เพิ่ม Milestone</h3>
+
+    <!-- Quick-pick presets (hidden in edit mode) -->
+    <div class="ms-preset-section" id="ms-preset-section">
+      <div class="ms-preset-group">
+        <div class="ms-preset-label">🎯 เป้าหมาย</div>
+        <div class="ms-preset-chips">
+          <button type="button" class="ms-preset-chip" data-name="เกษียณ" data-icon="🛋️"><span class="chip-ico">🛋️</span>เกษียณ</button>
+          <button type="button" class="ms-preset-chip" data-name="โอนย้ายความเสี่ยง" data-icon="🛡️"><span class="chip-ico">🛡️</span>โอนย้ายความเสี่ยง</button>
+          <button type="button" class="ms-preset-chip" data-name="ซื้อรถใหม่" data-icon="🚗"><span class="chip-ico">🚗</span>ซื้อรถใหม่</button>
+          <button type="button" class="ms-preset-chip" data-name="เที่ยวครั้งใหญ่" data-icon="✈️"><span class="chip-ico">✈️</span>เที่ยวครั้งใหญ่</button>
+          <button type="button" class="ms-preset-chip" data-name="รีโนเวทบ้าน" data-icon="🏠"><span class="chip-ico">🏠</span>รีโนเวทบ้าน</button>
+        </div>
+      </div>
+      <div class="ms-preset-group">
+        <div class="ms-preset-label">📋 หน้าที่/ความรับผิดชอบ</div>
+        <div class="ms-preset-chips">
+          <button type="button" class="ms-preset-chip" data-name="ดูแลพ่อแม่" data-icon="👴"><span class="chip-ico">👴</span>ดูแลพ่อแม่</button>
+          <button type="button" class="ms-preset-chip" data-name="ส่งลูกเรียน" data-icon="🎓"><span class="chip-ico">🎓</span>ส่งลูกเรียน</button>
+          <button type="button" class="ms-preset-chip" data-name="ดูแลคู่สมรส" data-icon="💍"><span class="chip-ico">💍</span>ดูแลคู่สมรส</button>
+          <button type="button" class="ms-preset-chip" data-name="จัดการหนี้สิน" data-icon="💸"><span class="chip-ico">💸</span>จัดการหนี้สิน</button>
+          <button type="button" class="ms-preset-chip" data-name="ส่งต่อมรดก" data-icon="🎁"><span class="chip-ico">🎁</span>ส่งต่อมรดก</button>
+        </div>
+      </div>
+      <div class="ms-preset-divider">หรือกรอกเอง</div>
+    </div>
+
     <div class="ms-form-row">
       <label>ชื่อเหตุการณ์ *</label>
       <input id="msf-name" type="text" placeholder="เช่น ซื้อบ้านหลังที่ 2">
@@ -718,6 +781,8 @@
         <label>ไอคอน</label>
         <select id="msf-icon">
           <option value="🎯">🎯 ทั่วไป</option>
+          <option value="🛋️">🛋️ เกษียณ</option>
+          <option value="🛡️">🛡️ ประกัน/ความเสี่ยง</option>
           <option value="🏠">🏠 บ้าน</option>
           <option value="🚗">🚗 รถ</option>
           <option value="✈️">✈️ ท่องเที่ยว</option>
@@ -725,6 +790,9 @@
           <option value="💼">💼 ธุรกิจ</option>
           <option value="💍">💍 แต่งงาน</option>
           <option value="👶">👶 ครอบครัว</option>
+          <option value="👴">👴 พ่อแม่</option>
+          <option value="💸">💸 หนี้สิน</option>
+          <option value="🎁">🎁 มรดก</option>
           <option value="🏥">🏥 สุขภาพ</option>
           <option value="🎉">🎉 งานสำคัญ</option>
           <option value="📅">📅 อื่นๆ</option>
@@ -1084,6 +1152,10 @@ function resetRange() {
 function openMsModal(id, prefillAge) {
   editingMsId = id || null;
   document.getElementById('ms-modal-title').textContent = id ? '✏️ แก้ไข Milestone' : '➕ เพิ่ม Milestone';
+  /* Quick-pick presets only make sense when ADDING — hide them in edit mode */
+  const presetSection = document.getElementById('ms-preset-section');
+  if (presetSection) presetSection.style.display = id ? 'none' : '';
+  _clearPresetSelection();
   if (id) {
     const c = getCurrent();
     const ms = (c.timelineMilestones || []).find(m => m.id === id);
@@ -1105,6 +1177,27 @@ function openMsModal(id, prefillAge) {
   document.getElementById('ms-modal').classList.add('open');
   setTimeout(() => document.getElementById('msf-name').focus(), 50);
 }
+
+/* Quick-pick preset chips — clicking fills name + icon, then user sets age.
+   Wired once via event delegation. */
+function _clearPresetSelection() {
+  document.querySelectorAll('.ms-preset-chip.selected')
+    .forEach(c => c.classList.remove('selected'));
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const sec = document.getElementById('ms-preset-section');
+  if (!sec) return;
+  sec.addEventListener('click', (e) => {
+    const chip = e.target.closest('.ms-preset-chip');
+    if (!chip) return;
+    _clearPresetSelection();
+    chip.classList.add('selected');
+    document.getElementById('msf-name').value = chip.dataset.name || '';
+    document.getElementById('msf-icon').value = chip.dataset.icon || '🎯';
+    /* move focus to age — name is already filled */
+    setTimeout(() => document.getElementById('msf-age').focus(), 30);
+  });
+});
 
 function closeMsModal() {
   document.getElementById('ms-modal').classList.remove('open');
