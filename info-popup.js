@@ -26,11 +26,13 @@
     .info-pop-overlay.open { display: flex; }
     .info-pop-card {
       background: #fff; border-radius: 16px; padding: 22px 26px;
-      width: 100%; max-width: 420px;
+      width: 100%; max-width: 520px;
+      max-height: 85vh; overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,.28);
       animation: info-pop-in .18s ease-out;
       font-family: 'Sarabun', sans-serif;
     }
+    .info-pop-card.wide { max-width: 640px; }
     @keyframes info-pop-in {
       from { transform: translateY(8px) scale(.96); opacity: 0; }
       to   { transform: translateY(0) scale(1); opacity: 1; }
@@ -60,6 +62,34 @@
     .info-pop-body {
       font-size: .92rem; line-height: 1.55; color: #333;
       white-space: pre-wrap;
+    }
+    /* When body contains HTML (table/list), disable pre-wrap */
+    .info-pop-body.html-mode { white-space: normal; }
+    .info-pop-body.html-mode p { margin: 0 0 10px; }
+    .info-pop-body.html-mode ul { margin: 0 0 10px; padding-left: 20px; }
+    .info-pop-body.html-mode li { margin-bottom: 4px; }
+    .info-pop-body.html-mode table {
+      width: 100%; border-collapse: collapse;
+      font-size: .85rem; margin: 8px 0 10px;
+    }
+    .info-pop-body.html-mode th {
+      background: #0F1A2F; color: #fff;
+      padding: 7px 8px; text-align: left;
+      font-weight: 700; font-size: .82rem;
+    }
+    .info-pop-body.html-mode th.center, .info-pop-body.html-mode td.center { text-align: center; }
+    .info-pop-body.html-mode td {
+      padding: 6px 8px; border-bottom: 1px solid #E5E7EB;
+      vertical-align: top;
+    }
+    .info-pop-body.html-mode tr:nth-child(even) td { background: #F9FAFB; }
+    .info-pop-body.html-mode .yes  { color: #16A34A; font-weight: 700; }
+    .info-pop-body.html-mode .no   { color: #9CA3AF; }
+    .info-pop-body.html-mode .note {
+      font-size: .82rem; color: #6B7280;
+      margin-top: 10px; padding: 8px 10px;
+      background: #F0F2F7; border-radius: 6px;
+      border-left: 3px solid #0F1A2F;
     }
     /* Trigger button (drop-in for inline ⓘ icons) */
     .info-pop-trigger {
@@ -116,15 +146,31 @@
     }
   });
 
-  /* ── Global API ── */
-  window.openInfoPopup = function (title, body, icon) {
-    const modal = document.getElementById('info-pop-modal');
-    if (!modal) { inject(); }
-    const m = document.getElementById('info-pop-modal');
+  /* ── Global API ──
+     openInfoPopup(title, body, icon)            — plain text (white-space:pre-wrap)
+     openInfoPopup(title, body, icon, opts)
+       opts = { html: true }                     — body is HTML (table/list allowed)
+       opts = { wide: true }                     — wider card (640px) for tables
+   */
+  window.openInfoPopup = function (title, body, icon, opts) {
+    if (!document.getElementById('info-pop-modal')) inject();
+    const m       = document.getElementById('info-pop-modal');
+    const card    = m.querySelector('.info-pop-card');
+    const bodyEl  = document.getElementById('info-pop-body');
     document.getElementById('info-pop-title').textContent = title || 'รายละเอียด';
-    document.getElementById('info-pop-body').textContent  = body  || '';
     document.getElementById('info-pop-icon').textContent  = icon  || '💎';
+    opts = opts || {};
+    if (opts.html) {
+      bodyEl.classList.add('html-mode');
+      bodyEl.innerHTML = body || '';
+    } else {
+      bodyEl.classList.remove('html-mode');
+      bodyEl.textContent = body || '';
+    }
+    card.classList.toggle('wide', !!opts.wide);
     m.classList.add('open');
+    /* Scroll body back to top each time popup opens */
+    card.scrollTop = 0;
   };
   window.closeInfoPopup = function () {
     const m = document.getElementById('info-pop-modal');

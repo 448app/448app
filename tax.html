@@ -535,13 +535,13 @@
                 </th>
                 <th class="col-num"><span class="t2-th-label">รายรับ</span></th>
                 <th class="col-num">
-                  <span class="t2-th-label-it">หักค่าใช้จ่าย <button class="t2-info" type="button" aria-label="ดูรายละเอียด"
-                    onclick="openInfoPopup('หักค่าใช้จ่ายเหมา','หักตามอัตราเหมา (% ของรายรับตามประเภทเงินได้) — สูงสุดตามกฎหมายกำหนด ไม่ต้องมีหลักฐาน เหมาะกับผู้มีรายจ่ายน้อย','🧾')">i</button></span>
+                  <span class="t2-th-label-it">หักค่าใช้จ่าย <button class="t2-info" type="button" aria-label="ดูตารางอัตราหักค่าใช้จ่าย"
+                    onclick="showDeductionInfo('flat')">i</button></span>
                   <span class="t2-th-label">เหมา</span>
                 </th>
                 <th class="col-num">
-                  <span class="t2-th-label-it">หักค่าใช้จ่าย <button class="t2-info" type="button" aria-label="ดูรายละเอียด"
-                    onclick="openInfoPopup('หักค่าใช้จ่ายตามจริง','หักตามจริง (ต้องมีหลักฐาน เช่น ใบเสร็จ บิล) — ใส่ค่าจริงที่จ่ายไป ระบบจะเลือกค่าที่สูงกว่าระหว่างเหมา/ตามจริงให้อัตโนมัติ เพื่อประหยัดภาษีสูงสุด','🧾')">i</button></span>
+                  <span class="t2-th-label-it">หักค่าใช้จ่าย <button class="t2-info" type="button" aria-label="ดูตารางอัตราหักค่าใช้จ่าย"
+                    onclick="showDeductionInfo('actual')">i</button></span>
                   <span class="t2-th-label">ตามจริง</span>
                 </th>
               </tr>
@@ -961,6 +961,62 @@
 
   function val(id) { return parseMoney(document.getElementById(id)); }
   function fmt(n)  { return '฿ ' + Math.round(n).toLocaleString('th-TH'); }
+
+  /* ════════════════════════════════════════════
+     DEDUCTION RATE TABLE — shown in the ⓘ popup next to the
+     "หักค่าใช้จ่าย — เหมา" and "ตามจริง" headers.
+     Reference: ตารางสรุปค่าใช้จ่ายตามประเภทเงินได้ (Planista)
+  ═══════════════════════════════════════════ */
+  const DEDUCTION_TABLE_HTML = `
+    <p>หักค่าใช้จ่ายจากรายรับตามประเภทเงินได้ (มาตรา 40):</p>
+    <table>
+      <thead>
+        <tr>
+          <th>ประเภทเงินได้</th>
+          <th class="center">เหมา</th>
+          <th class="center">ตามจริง</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><b>40(1)</b> เงินเดือน โบนัส</td><td>50% ไม่เกิน 100,000</td><td class="center no">−</td></tr>
+        <tr><td><b>40(2)</b> ค่านายหน้า เงินประจำ</td><td>(1)+(2) รวม ≤ 100,000</td><td class="center no">−</td></tr>
+        <tr><td><b>40(3)</b> ค่าลิขสิทธิ์</td><td>50% ไม่เกิน 100,000</td><td class="center yes">ได้</td></tr>
+        <tr><td><b>40(4)</b> ดอกเบี้ย เงินปันผล</td><td>หักไม่ได้</td><td class="center no">−</td></tr>
+        <tr>
+          <td><b>40(5)</b> ค่าเช่า</td>
+          <td>
+            • บ้าน/โรงเรือน/แพ 30%<br>
+            • ยานพาหนะ 30%<br>
+            • ที่ดินเกษตร 20%<br>
+            • ที่ดินไม่ใช้เกษตร 15%<br>
+            • ทรัพย์สินอื่น 10%
+          </td>
+          <td class="center yes">ได้</td>
+        </tr>
+        <tr>
+          <td><b>40(6)</b> วิชาชีพอิสระ</td>
+          <td>
+            • แพทย์/โรคศิลป 60%<br>
+            • กฎหมาย/วิศวะ/สถาปัตย์/บัญชี/ประณีตศิลป์ 30%
+          </td>
+          <td class="center yes">ได้</td>
+        </tr>
+        <tr><td><b>40(7)</b> รับเหมา (ค่าแรง+ค่าของ)</td><td>60%</td><td class="center yes">ได้</td></tr>
+        <tr><td><b>40(8)</b> เงินได้อื่นๆ</td><td>40% หรือ 60%</td><td class="center yes">ได้</td></tr>
+      </tbody>
+    </table>
+    <div class="note">
+      <b>เหมา</b> = หักตามอัตรา % ไม่ต้องมีหลักฐาน<br>
+      <b>ตามจริง</b> = หักตามใบเสร็จ/บิลจริง (ต้องเก็บหลักฐาน)<br>
+      ระบบจะเลือกค่าที่ <b>สูงกว่า</b> ระหว่างเหมา/ตามจริงให้อัตโนมัติ — เพื่อประหยัดภาษีสูงสุด
+    </div>
+  `;
+  function showDeductionInfo(mode) {
+    const title = mode === 'flat'
+      ? 'หักค่าใช้จ่ายแบบเหมา'
+      : 'หักค่าใช้จ่ายตามจริง';
+    openInfoPopup(title, DEDUCTION_TABLE_HTML, '🧾', { html: true, wide: true });
+  }
 
   function calculate() {
     // ─── Income breakdown by 40(1)-(8) ───
