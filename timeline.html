@@ -411,6 +411,15 @@
       display: flex; align-items: center; gap: 6px;
     }
     .btn-add-ms:hover { background: var(--red-dark); }
+    .btn-restore-hidden {
+      padding: 8px 14px; background: white;
+      border: 1.5px solid var(--gray-300); color: var(--gray-700);
+      border-radius: 8px; cursor: pointer;
+      font-family: var(--font); font-weight: 700; font-size: .82rem;
+      margin-right: 8px;
+      transition: all .15s;
+    }
+    .btn-restore-hidden:hover { background: var(--gray-100); border-color: var(--gray-400); color: #222; }
     .btn-reset-range {
       padding: 7px 12px; background: white; border: 1.5px solid var(--gray-300);
       color: var(--gray-600); border-radius: 8px; cursor: pointer;
@@ -539,14 +548,22 @@
       padding: 14px 24px; background: var(--gray-50);
       border-radius: 0 0 16px 16px;
       display: flex; gap: 10px; justify-content: flex-end;
+      flex-wrap: wrap;
     }
     .msd-btn {
       padding: 9px 18px; border-radius: 8px; font-family: var(--font);
       font-weight: 700; font-size: .88rem; cursor: pointer; border: none;
+      transition: all .15s;
     }
     .msd-btn.secondary { background: white; color: var(--gray-700); border: 1.5px solid var(--gray-300); }
+    .msd-btn.secondary:hover { background: var(--gray-100); }
     .msd-btn.primary   { background: var(--red-primary); color: white; }
     .msd-btn.primary:hover { background: var(--red-dark); }
+    .msd-btn.danger {
+      background: white; color: #B02030; border: 1.5px solid #FECACA;
+      margin-right: auto;   /* push delete to the LEFT, others to the right */
+    }
+    .msd-btn.danger:hover { background: #FEE2E2; border-color: #B02030; }
     .ms-item.is-custom .ms-info { padding-right: 8px; }
     .ms-delete-btn {
       background: transparent; border: none; cursor: pointer;
@@ -738,6 +755,7 @@
     </div>
     <div class="msd-body" id="ms-detail-body"></div>
     <div class="msd-footer">
+      <button class="msd-btn danger" id="ms-detail-delete">🗑️ ลบ</button>
       <button class="msd-btn secondary" onclick="closeMsDetailModal()">ปิด</button>
       <button class="msd-btn primary" id="ms-detail-nav">🎯 ไปจัดการ</button>
     </div>
@@ -800,6 +818,21 @@ function openMsDetailModal(idx) {
   };
   /* hide nav button ถ้า type ไม่มี destination (เช่น custom เปิด edit modal เลย) */
   navBtn.textContent = m.type === 'custom' ? '✏️ แก้ไข' : '🎯 ไปจัดการ';
+
+  /* ปุ่ม "🗑️ ลบ" — custom: ลบจริง; type อื่น: ซ่อนจากไทม์ไลน์เท่านั้น */
+  const delBtn = document.getElementById('ms-detail-delete');
+  if (m.type === 'custom') {
+    delBtn.textContent = '🗑️ ลบ';
+    delBtn.title = 'ลบ Milestone นี้ออกถาวร';
+    delBtn.onclick = () => {
+      closeMsDetailModal();
+      deleteCustomMs(m.customId);
+    };
+  } else {
+    delBtn.textContent = '🗑️ ลบจากไทม์ไลน์';
+    delBtn.title = 'ซ่อนจากไทม์ไลน์ (ข้อมูลที่หน้าต้นทางยังคงอยู่)';
+    delBtn.onclick = () => hideMilestone(m.hideKey, m.name);
+  }
   document.getElementById('ms-detail-modal').classList.add('open');
 }
 
@@ -991,8 +1024,26 @@ function computeMilestones(client) {
     });
   });
 
+  /* Generate a stable hideKey per milestone — used to mark it as
+     "ลบจากไทม์ไลน์" via client.timelineHidden[] without touching source data. */
+  items.forEach(m => { m.hideKey = makeHideKey(m); });
+
+  /* Filter hidden milestones */
+  const hidden = new Set((client.timelineHidden || []));
+  const visible = items.filter(m => !hidden.has(m.hideKey));
+
   /* sort by parentAge */
-  return items.sort((a,b) => a.parentAge - b.parentAge);
+  return visible.sort((a,b) => a.parentAge - b.parentAge);
+}
+
+/* Generate stable key for a milestone (used by hide mechanism).
+   Round parentAge to avoid floating-point drift between renders. */
+function makeHideKey(m) {
+  const age = Math.round(Number(m.parentAge) || 0);
+  if (m.type === 'custom') return `custom:${m.customId}`;
+  /* strip HTML entities from escaped name for stable key */
+  const cleanName = String(m.name || '').replace(/&[a-z#0-9]+;/g, '').trim();
+  return `${m.type}:${cleanName}:${age}`;
 }
 
 /* ════════════════════════════════════════════
@@ -1102,6 +1153,34 @@ function deleteCustomMs(id) {
   render();
 }
 
+/* ════════════════════════════════════════════
+   HIDE MILESTONE — ซ่อนจากไทม์ไลน์ (ไม่ลบข้อมูลที่หน้าต้นทาง)
+   - ใช้กับ child / goal / resp / retire (ที่ลบจริงไม่ได้ หรืออันตราย)
+   - เก็บ hideKey ลง client.timelineHidden[] (Set ของ string)
+   - คลิก "🗑️ ลบจากไทม์ไลน์" → confirm → push key → render
+═══════════════════════════════════════════ */
+function hideMilestone(hideKey, label) {
+  if (!hideKey) return;
+  if (!confirm(`ลบ "${label || 'รายการนี้'}" ออกจากไทม์ไลน์?\n(ข้อมูลที่หน้าต้นทางยังคงอยู่)`)) return;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!Array.isArray(c.timelineHidden)) c.timelineHidden = [];
+    if (!c.timelineHidden.includes(hideKey)) c.timelineHidden.push(hideKey);
+  });
+  closeMsDetailModal();
+  render();
+}
+/* คืนค่ารายการที่ซ่อนไว้ทั้งหมด (เผื่อมี toolbar "แสดงทั้งหมด" ในอนาคต) */
+function restoreAllHidden() {
+  if (!confirm('แสดงทุกรายการที่ซ่อนไว้กลับมา?')) return;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (c) c.timelineHidden = [];
+  });
+  render();
+}
+
 /* คลิก milestone → ไปหน้าจัดการของ type นั้นๆ (global scope — เรียกจาก HTML onclick)
    - child  → education.html (จัดการบุตร + แผนการศึกษา)
    - goal   → goals.html (เป้าหมายชีวิต)
@@ -1206,6 +1285,10 @@ function render() {
         <span style="font-size:.78rem;color:var(--gray-400);">ปี</span>
       </div>
       <div class="tl-toolbar-spacer"></div>
+      ${(client.timelineHidden && client.timelineHidden.length)
+        ? `<button class="btn-restore-hidden" onclick="restoreAllHidden()"
+                   title="คืนค่ารายการที่ซ่อนไว้ทั้งหมด">👁 แสดงที่ซ่อน (${client.timelineHidden.length})</button>`
+        : ''}
       <button class="btn-add-ms" onclick="openMsModal()">➕ เพิ่ม Milestone</button>
     </div>
 
