@@ -428,6 +428,10 @@ function getTaxInputs() {
   if (!c.taxInputs.improve) c.taxInputs.improve = {};
   return c.taxInputs;
 }
+/* saveField — save value to localStorage only, NO render.
+   Calling render() on every oninput destroys the focused <input> (whole
+   table is rebuilt via wrap.innerHTML), which is why each keystroke
+   "kicks out" the cursor. Callers trigger render() on onblur/onchange. */
 function saveField(scope, key, value) {
   const n = Number(value) || 0;
   updateUser(u => {
@@ -441,7 +445,6 @@ function saveField(scope, key, value) {
       c.taxInputs[key] = n;
     }
   });
-  render();
 }
 function saveExtraDonate(scope, value) {
   const n = Number(value) || 0;
@@ -456,6 +459,15 @@ function saveExtraDonate(scope, value) {
       c.taxInputs.eduDonate = n;
     }
   });
+}
+/* commitField — save + render. Use on blur/change after user is done typing.
+   Also updates totals in-place by triggering full render. */
+function commitField(scope, key, value) {
+  saveField(scope, key, value);
+  render();
+}
+function commitExtraDonate(scope, value) {
+  saveExtraDonate(scope, value);
   render();
 }
 
@@ -648,8 +660,16 @@ function render() {
       <div class="t3-sum">
         <div class="t3-sum-lbl">เงินบริจาคเพื่อการศึกษา การกีฬา การพัฒนาสังคม และโรงพยาบาลรัฐ <button class="t3-info" type="button" aria-label="ดูรายละเอียด"
           onclick="openInfoPopup('เงินบริจาค (หัก 2 เท่า)','เงินบริจาคเพื่อการศึกษา การกีฬา การพัฒนาสังคม และโรงพยาบาลของรัฐ — หักลดหย่อนได้ 2 เท่าของจำนวนที่บริจาคจริง แต่ไม่เกิน 10% ของรายได้หลังหักค่าใช้จ่ายและค่าลดหย่อนทั่วไป','🧾')">i</button></div>
-        <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${cur.eduDonate||''}" min="0" placeholder="0" oninput="saveExtraDonate('cur', this.value)" style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
-        <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${imp.eduDonate||''}" min="0" placeholder="0" oninput="saveExtraDonate('imp', this.value)" style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
+        <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${cur.eduDonate||''}" min="0" placeholder="0"
+          oninput="saveExtraDonate('cur', this.value)"
+          onblur="commitExtraDonate('cur', this.value)"
+          onchange="commitExtraDonate('cur', this.value)"
+          style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
+        <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${imp.eduDonate||''}" min="0" placeholder="0"
+          oninput="saveExtraDonate('imp', this.value)"
+          onblur="commitExtraDonate('imp', this.value)"
+          onchange="commitExtraDonate('imp', this.value)"
+          style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
       </div>
       <div class="t3-sum">
         <div class="t3-sum-lbl">รายได้สุทธิ</div>
@@ -767,12 +787,16 @@ function renderRow(row, ti, cur, imp, num) {
   const cap = row.cap(annualIncome);
   const valCur = getValue(ti, 'cur', row.key, row.defaultVal);
   const valImp = getValue(ti, 'imp', row.key, row.defaultVal);
-  /* Show readonly gray pill (with hint text) if value is 0; editable pill if user has entered a value */
+  /* Show readonly gray pill (with hint text) if value is 0; editable pill if user has entered a value.
+     oninput = save-only (no render → focus preserved); onblur/onchange = commit (save + render). */
   const renderCell = (scope, v) => {
     if (v > 0) {
-      return `<div class="t3-pill"><input type="number" value="${v}" min="0" oninput="saveField('${scope}','${row.key}',this.value)"></div>`;
+      return `<div class="t3-pill"><input type="number" value="${v}" min="0"
+        oninput="saveField('${scope}','${row.key}',this.value)"
+        onblur="commitField('${scope}','${row.key}',this.value)"
+        onchange="commitField('${scope}','${row.key}',this.value)"></div>`;
     }
-    return `<div class="t3-pill readonly" onclick="this.outerHTML='<div class=\\'t3-pill\\'><input type=\\'number\\' value=\\'\\' min=\\'0\\' autofocus oninput=&quot;saveField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot;></div>'">
+    return `<div class="t3-pill readonly" onclick="this.outerHTML='<div class=\\'t3-pill\\'><input type=\\'number\\' value=\\'\\' min=\\'0\\' autofocus oninput=&quot;saveField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot; onblur=&quot;commitField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot; onchange=&quot;commitField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot;></div>'">
       <span>${cap.text || '—'}</span>
     </div>`;
   };
