@@ -101,10 +101,16 @@
     .ast-row-icon { font-size: 1rem; opacity: .85; }
     .ast-info {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 16px; height: 16px; border-radius: 50%;
+      width: 18px; height: 18px; border-radius: 50%;
       background: var(--ast-blue-soft); color: var(--ast-blue);
-      font-size: .68rem; font-weight: 700; cursor: help;
+      font-size: .72rem; font-weight: 700; cursor: pointer;
       font-family: serif; font-style: italic;
+      border: none; padding: 0;
+      transition: all .15s;
+    }
+    .ast-info:hover, .ast-info:focus {
+      background: var(--ast-blue); color: white;
+      transform: scale(1.1); outline: none;
     }
 
     /* ════ Input cells (underline style) ════ */
@@ -299,25 +305,49 @@
       padding: 0 4px 2px;
     }
 
-    /* ════ Tooltip ════ */
-    .ast-tooltip {
-      position: absolute; z-index: 80; bottom: calc(100% + 8px); left: 50%;
-      transform: translateX(-50%) translateY(4px);
-      background: #222; color: white; padding: 8px 12px;
-      border-radius: 8px; font-size: .8rem; font-weight: 500; line-height: 1.45;
-      max-width: 260px; min-width: 180px; pointer-events: none;
-      opacity: 0; transition: all .15s; box-shadow: 0 6px 20px rgba(0,0,0,.2);
-      white-space: normal; text-align: left;
+    /* ════ Info popup modal ════ */
+    .ast-info-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
+      z-index: 250; align-items: center; justify-content: center; padding: 20px;
     }
-    .ast-tooltip::after {
-      content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-      border: 6px solid transparent; border-top-color: #222;
+    .ast-info-overlay.open { display: flex; }
+    .ast-info-card {
+      background: white; border-radius: 16px; padding: 22px 26px;
+      width: 100%; max-width: 420px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.28);
+      animation: ast-pop-in .18s ease-out;
     }
-    .ast-info:hover + .ast-tooltip,
-    .ast-info:focus + .ast-tooltip {
-      opacity: 1; transform: translateX(-50%) translateY(0);
+    @keyframes ast-pop-in {
+      from { transform: translateY(8px) scale(.96); opacity: 0; }
+      to   { transform: translateY(0) scale(1); opacity: 1; }
     }
-    .ast-info-wrap { position: relative; display: inline-block; }
+    .ast-info-head {
+      display: flex; align-items: center; gap: 12px;
+      padding-bottom: 12px; border-bottom: 1.5px solid var(--ast-divider);
+      margin-bottom: 14px;
+    }
+    .ast-info-icon-big {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--ast-blue-soft); color: var(--ast-blue);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; flex-shrink: 0;
+    }
+    .ast-info-head h3 {
+      flex: 1; font-size: 1.1rem; font-weight: 800;
+      color: var(--ast-blue); margin: 0;
+    }
+    .ast-info-close {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--gray-100); border: none; cursor: pointer;
+      font-size: .95rem; color: var(--gray-600); flex-shrink: 0;
+      transition: all .15s;
+    }
+    .ast-info-close:hover { background: var(--gray-200); color: #222; }
+    .ast-info-body {
+      font-size: .92rem; line-height: 1.55; color: #333;
+      white-space: pre-wrap;
+    }
+    .ast-info-wrap { display: inline-block; }
 
     /* Mini formula chip next to PVD */
     .ast-formula-chip {
@@ -439,6 +469,18 @@
       <button class="ast-apply-close" onclick="closeApplyModal()" title="ปิด">✕</button>
     </div>
     <div class="ast-apply-options" id="ast-apply-options"></div>
+  </div>
+</div>
+
+<!-- Info popup modal — opens when ⓘ icon is clicked -->
+<div class="ast-info-overlay" id="ast-info-modal" onclick="if(event.target===this)closeInfoModal()">
+  <div class="ast-info-card">
+    <div class="ast-info-head">
+      <div class="ast-info-icon-big" id="ast-info-icon">💎</div>
+      <h3 id="ast-info-title">รายละเอียด</h3>
+      <button class="ast-info-close" onclick="closeInfoModal()" title="ปิด">✕</button>
+    </div>
+    <div class="ast-info-body" id="ast-info-body"></div>
   </div>
 </div>
 
@@ -747,6 +789,26 @@ function closeApplyModal() {
   document.getElementById('ast-apply-modal').classList.remove('open');
   _astApplyType = null;
 }
+
+/* ════════════════════════════════════════════
+   INFO POPUP — opens when ⓘ icon is clicked
+   Replaces the old CSS hover-tooltip (broken UX on touch devices).
+═══════════════════════════════════════════ */
+function openInfoPopup(title, body, icon) {
+  document.getElementById('ast-info-title').textContent = title || 'รายละเอียด';
+  document.getElementById('ast-info-body').textContent  = body  || '';
+  document.getElementById('ast-info-icon').textContent  = icon  || '💎';
+  document.getElementById('ast-info-modal').classList.add('open');
+}
+function closeInfoModal() {
+  document.getElementById('ast-info-modal').classList.remove('open');
+}
+/* Close modals on Esc */
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  closeInfoModal();
+  closeApplyModal();
+});
 
 function setApplyTo(value) {
   const type = _astApplyType;
@@ -1120,8 +1182,12 @@ function renderRow(row) {
         <span class="ast-row-name">
           <span class="ast-row-icon">${_renderAssetIcon(t)}</span>${t.label}
           <span class="ast-info-wrap">
-            <span class="ast-info" tabindex="0">i</span>
-            <span class="ast-tooltip">${row.info}</span>
+            <button class="ast-info" type="button"
+                    data-title="${_astEscapeAttr(t.label)}"
+                    data-icon="${_astEscapeAttr(t.icon)}"
+                    data-info="${_astEscapeAttr(row.info)}"
+                    onclick="openInfoPopup(this.dataset.title, this.dataset.info, this.dataset.icon)"
+                    aria-label="ดูรายละเอียด">i</button>
           </span>
           ${f.badge ? `<span class="ast-row-badge" title="กองทุนสำรองเลี้ยงชีพ — นายจ้างจ่ายสมทบ">${f.badge}</span>` : ''}
         </span>
