@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>448 Wealth Management — QR Code</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- QR generator library (small, no dependencies) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F2D4F">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    *,*::before,*::after { box-sizing: border-box; }
+    html,body { margin:0; padding:0; }
+    body {
+      min-height: 100vh;
+      font-family: 'Sarabun', sans-serif;
+      background:
+        radial-gradient(ellipse at 30% 20%, rgba(245,194,66,.18) 0%, transparent 50%),
+        radial-gradient(ellipse at 70% 80%, rgba(31,45,79,.95) 0%, #0F1A2F 80%),
+        #0F1A2F;
+      color: #1F2D4F;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px 18px;
+    }
+    .qr-card {
+      background: white; border-radius: 24px;
+      padding: 36px 38px 32px;
+      max-width: 460px; width: 100%;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,.45);
+      border-top: 5px solid #F5C242;
+      position: relative;
+    }
+    .qr-brand {
+      font-size: 2.6rem; font-weight: 800;
+      color: #1F2D4F; letter-spacing: -.02em;
+      line-height: 1; margin-bottom: 6px;
+    }
+    .qr-tagline {
+      color: #6B7280; font-size: .9rem;
+      letter-spacing: .04em; text-transform: uppercase;
+      margin-bottom: 26px;
+    }
+    .qr-canvas-wrap {
+      display: inline-block;
+      padding: 18px;
+      background: white;
+      border: 1.5px solid #E0E0E0;
+      border-radius: 14px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.08);
+    }
+    #qr-canvas { display: inline-block; }
+    #qr-canvas img, #qr-canvas canvas { display: block; }
+    .qr-instruction {
+      margin-top: 22px; color: #1F2D4F;
+      font-size: 1.08rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .qr-url {
+      margin-top: 12px; padding: 11px 16px;
+      background: #F0F2F7;
+      border-radius: 10px;
+      font-size: .82rem; color: #1F2D4F;
+      font-weight: 600;
+      word-break: break-all;
+      font-family: ui-monospace, 'SF Mono', monospace;
+    }
+    .qr-actions {
+      margin-top: 22px;
+      display: flex; gap: 10px;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .qr-btn {
+      padding: 11px 22px; border-radius: 50px;
+      background: linear-gradient(135deg, #1F2D4F 0%, #2A3B66 100%);
+      color: white; border: 2px solid transparent;
+      font-family: inherit; font-weight: 800; cursor: pointer;
+      font-size: .9rem;
+      display: inline-flex; align-items: center; gap: 6px;
+      transition: all .2s;
+      box-shadow: 0 3px 10px rgba(31,45,79,.25);
+    }
+    .qr-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(31,45,79,.35);
+      border-color: #F5C242;
+    }
+    .qr-btn.outline {
+      background: white; color: #1F2D4F;
+      border: 1.5px solid #1F2D4F;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+    .qr-btn.outline:hover {
+      background: #F0F2F7;
+    }
+    .qr-pwa-hint {
+      margin-top: 22px; padding-top: 18px;
+      font-size: .82rem; color: #6B7280;
+      line-height: 1.6;
+      border-top: 1px dashed #D1D5DB;
+      text-align: left;
+    }
+    .qr-pwa-hint b { color: #1F2D4F; }
+    .qr-pwa-hint .step {
+      display: flex; gap: 8px; margin-top: 6px;
+      align-items: flex-start;
+    }
+    .qr-pwa-hint .step-num {
+      display: inline-flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      width: 18px; height: 18px;
+      background: #F5C242; color: #1F2D4F;
+      border-radius: 50%; font-size: .68rem; font-weight: 800;
+    }
+    .qr-back {
+      position: absolute; top: 14px; left: 14px;
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #F0F2F7; color: #1F2D4F;
+      border: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.05rem; font-weight: 700;
+      transition: all .15s;
+    }
+    .qr-back:hover { background: #1F2D4F; color: white; }
+    .qr-toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1F2D4F; color: white;
+      padding: 12px 20px; border-radius: 50px;
+      font-size: .88rem; font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      opacity: 0;
+      transition: all .25s;
+      z-index: 100;
+    }
+    .qr-toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    @media (max-width: 420px) {
+      .qr-card { padding: 28px 22px 24px; border-radius: 18px; }
+      .qr-brand { font-size: 2.2rem; }
+      .qr-actions { flex-direction: column; }
+      .qr-btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="qr-card">
+    <button class="qr-back" onclick="goBack()" title="กลับ" aria-label="กลับ">←</button>
+    <div class="qr-brand">448</div>
+    <div class="qr-tagline">Wealth Management Plan</div>
+
+    <div class="qr-canvas-wrap">
+      <div id="qr-canvas"></div>
+    </div>
+
+    <div class="qr-instruction">
+      <span>📱</span><span>สแกน QR เพื่อเปิดแอป</span>
+    </div>
+    <div class="qr-url" id="qr-url-text">https://448app.github.io/448app/</div>
+
+    <div class="qr-actions">
+      <button class="qr-btn" onclick="downloadQR()">⬇ บันทึก QR เป็นรูป</button>
+      <button class="qr-btn outline" onclick="copyURL()">📋 คัดลอก URL</button>
+    </div>
+
+    <div class="qr-pwa-hint">
+      <b>💡 ติดตั้งเป็นแอปบนเครื่อง (PWA)</b>
+      <div class="step"><span class="step-num">1</span><span>เปิดลิงก์ด้วย Safari (iOS) หรือ Chrome (Android)</span></div>
+      <div class="step"><span class="step-num">2</span><span>กดปุ่ม <b>แชร์ ↑</b> (iOS) หรือ <b>เมนู ⋮</b> (Android)</span></div>
+      <div class="step"><span class="step-num">3</span><span>เลือก <b>"เพิ่มไปที่หน้าจอโฮม"</b></span></div>
+    </div>
+  </div>
+
+  <div class="qr-toast" id="qr-toast">✓ คัดลอกแล้ว</div>
+
+  <script>
+    const APP_URL = 'https://448app.github.io/448app/';
+
+    /* Generate QR — wait for library if CDN is slow */
+    function renderQR() {
+      if (typeof QRCode === 'undefined') {
+        setTimeout(renderQR, 100);
+        return;
+      }
+      new QRCode(document.getElementById('qr-canvas'), {
+        text: APP_URL,
+        width: 280,
+        height: 280,
+        colorDark: '#1F2D4F',
+        colorLight: '#FFFFFF',
+        correctLevel: QRCode.CorrectLevel.H,   /* High — ~30% error correction */
+      });
+    }
+    renderQR();
+
+    function showToast(msg) {
+      const t = document.getElementById('qr-toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      clearTimeout(t._timer);
+      t._timer = setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    function downloadQR() {
+      /* qrcode.js renders either <canvas> or <img>. Prefer canvas. */
+      const canvas = document.querySelector('#qr-canvas canvas');
+      const img    = document.querySelector('#qr-canvas img');
+      let dataUrl = null;
+      if (canvas) {
+        dataUrl = canvas.toDataURL('image/png');
+      } else if (img) {
+        dataUrl = img.src;   /* qrcode.js falls back to img.src */
+      }
+      if (!dataUrl) { showToast('⚠ ยังโหลด QR ไม่เสร็จ'); return; }
+      const link = document.createElement('a');
+      link.download = '448-wealth-qr.png';
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast('✓ บันทึกแล้ว');
+    }
+
+    async function copyURL() {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(APP_URL);
+        } else {
+          /* Fallback for older browsers */
+          const ta = document.createElement('textarea');
+          ta.value = APP_URL;
+          ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        showToast('✓ คัดลอก URL แล้ว');
+      } catch (e) {
+        showToast('⚠ คัดลอกไม่สำเร็จ');
+      }
+    }
+
+    function goBack() {
+      if (history.length > 1) history.back();
+      else location.href = 'dashboard.html';
+    }
+  </script>
+</body>
+</html>

@@ -345,9 +345,10 @@ if ('serviceWorker' in navigator
         pointer-events: auto;
       }
       /* Stagger animation — bottom item first */
-      .fmenu-items.open .fmenu-item:nth-child(3) { transition-delay: 0s; }
-      .fmenu-items.open .fmenu-item:nth-child(2) { transition-delay: .05s; }
-      .fmenu-items.open .fmenu-item:nth-child(1) { transition-delay: .1s; }
+      .fmenu-items.open .fmenu-item:nth-child(4) { transition-delay: 0s; }
+      .fmenu-items.open .fmenu-item:nth-child(3) { transition-delay: .05s; }
+      .fmenu-items.open .fmenu-item:nth-child(2) { transition-delay: .1s; }
+      .fmenu-items.open .fmenu-item:nth-child(1) { transition-delay: .15s; }
 
       .fmenu-item-label {
         background: rgba(31,45,79,.92);
@@ -539,6 +540,11 @@ if ('serviceWorker' in navigator
                 data-action="pyramid" title="Pyramid">${ico('pyramid', '🔺')}</button>
       </div>
       <div class="fmenu-item">
+        <span class="fmenu-item-label">QR · แชร์แอป</span>
+        <button class="fmenu-item-btn"
+                data-action="qr" title="QR Code">${ico('qr', '📱')}</button>
+      </div>
+      <div class="fmenu-item">
         <span class="fmenu-item-label">กลับหน้าแรก</span>
         <button class="fmenu-item-btn fm-exit"
                 data-action="exit" title="Exit">${ico('exit', '🚪')}</button>
@@ -554,6 +560,9 @@ if ('serviceWorker' in navigator
         location.href = 'timeline.html';
       } else if (action === 'pyramid') {
         openPyramidPopup();
+      } else if (action === 'qr') {
+        closeFmenu();
+        location.href = 'qr.html';
       } else if (action === 'exit') {
         closeFmenu();
         location.href = 'dashboard.html';
