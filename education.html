@@ -11,6 +11,7 @@
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -82,9 +83,12 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; border-radius: 50%;
       background: var(--edu-indigo); color: white;
-      font-size: .76rem; font-weight: 700; cursor: help;
+      font-size: .76rem; font-weight: 700; cursor: pointer;
       font-style: italic; font-family: serif;
+      border: none; padding: 0; line-height: 1;
+      transition: transform .15s;
     }
+    .e2-info:hover, .e2-info:focus { transform: scale(1.1); outline: none; }
 
     /* Top-right: number of children stepper */
     .e2-count-row {
@@ -1082,7 +1086,8 @@ function render() {
           <div class="e2-head-title">การศึกษาบุตร</div>
           <div class="e2-head-sub">
             ความคุ้มครอง
-            <span class="e2-info" title="มูลค่าค่าใช้จ่ายรวม — ใช้เป็นทุนประกันชีวิตขั้นต่ำเพื่อคุ้มครองบุตรกรณีผู้ปกครองจากไปก่อน">i</span>
+            <button class="e2-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('ความคุ้มครอง','มูลค่าค่าใช้จ่ายรวม — ใช้เป็นทุนประกันชีวิตขั้นต่ำเพื่อคุ้มครองบุตรกรณีผู้ปกครองจากไปก่อน','🎓')">i</button>
           </div>
         </div>
         <div class="e2-count-spacer"></div>
@@ -1153,7 +1158,8 @@ function render() {
         <div class="e2-inflation-block">
           <div class="e2-inflation-lbl">
             อัตราเงินเฟ้อ
-            <span class="e2-info" title="ปรับมูลค่าค่าใช้จ่ายในอนาคต ค่าเฉลี่ยการศึกษา 5%/ปี">i</span>
+            <button class="e2-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('อัตราเงินเฟ้อการศึกษา','ปรับมูลค่าค่าใช้จ่ายในอนาคต ค่าเฉลี่ยการศึกษาอยู่ที่ ~5%/ปี ใช้คำนวณมูลค่าเงินที่ต้องเตรียมเมื่อบุตรเรียนถึงระดับนั้น','🎓')">i</button>
           </div>
           <div class="e2-inflation-pill">
             <input type="number" min="0" max="20" step="0.1" value="${planInfl}"

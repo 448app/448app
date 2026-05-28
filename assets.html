@@ -10,6 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -152,15 +153,18 @@
       display: block; width: 100%; height: 26px;
     }
 
-    /* PVD badge (📊) next to name */
+    /* PVD badge (📊) next to name — clickable for info popup */
     .ast-row-badge {
       display: inline-flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; border-radius: 4px;
       background: var(--ast-blue-soft); color: var(--ast-blue);
       font-size: .82rem; margin-left: 4px;
-      cursor: help; transition: all .15s;
+      cursor: pointer; transition: all .15s;
+      border: none; padding: 0; line-height: 1;
     }
-    .ast-row-badge:hover { background: var(--ast-blue); color: white; }
+    .ast-row-badge:hover, .ast-row-badge:focus {
+      background: var(--ast-blue); color: white; outline: none;
+    }
 
     /* Custom row — name input + delete */
     .ast-cust-row td.col-name { padding-left: 0; }
@@ -305,48 +309,8 @@
       padding: 0 4px 2px;
     }
 
-    /* ════ Info popup modal ════ */
-    .ast-info-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5);
-      z-index: 250; align-items: center; justify-content: center; padding: 20px;
-    }
-    .ast-info-overlay.open { display: flex; }
-    .ast-info-card {
-      background: white; border-radius: 16px; padding: 22px 26px;
-      width: 100%; max-width: 420px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.28);
-      animation: ast-pop-in .18s ease-out;
-    }
-    @keyframes ast-pop-in {
-      from { transform: translateY(8px) scale(.96); opacity: 0; }
-      to   { transform: translateY(0) scale(1); opacity: 1; }
-    }
-    .ast-info-head {
-      display: flex; align-items: center; gap: 12px;
-      padding-bottom: 12px; border-bottom: 1.5px solid var(--ast-divider);
-      margin-bottom: 14px;
-    }
-    .ast-info-icon-big {
-      width: 40px; height: 40px; border-radius: 10px;
-      background: var(--ast-blue-soft); color: var(--ast-blue);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.3rem; flex-shrink: 0;
-    }
-    .ast-info-head h3 {
-      flex: 1; font-size: 1.1rem; font-weight: 800;
-      color: var(--ast-blue); margin: 0;
-    }
-    .ast-info-close {
-      width: 30px; height: 30px; border-radius: 50%;
-      background: var(--gray-100); border: none; cursor: pointer;
-      font-size: .95rem; color: var(--gray-600); flex-shrink: 0;
-      transition: all .15s;
-    }
-    .ast-info-close:hover { background: var(--gray-200); color: #222; }
-    .ast-info-body {
-      font-size: .92rem; line-height: 1.55; color: #333;
-      white-space: pre-wrap;
-    }
+    /* Info popup uses shared info-popup.js — modal CSS lives in that script.
+       Keep .ast-info-wrap as a no-op wrapper so existing HTML still parses. */
     .ast-info-wrap { display: inline-block; }
 
     /* Mini formula chip next to PVD */
@@ -472,17 +436,7 @@
   </div>
 </div>
 
-<!-- Info popup modal — opens when ⓘ icon is clicked -->
-<div class="ast-info-overlay" id="ast-info-modal" onclick="if(event.target===this)closeInfoModal()">
-  <div class="ast-info-card">
-    <div class="ast-info-head">
-      <div class="ast-info-icon-big" id="ast-info-icon">💎</div>
-      <h3 id="ast-info-title">รายละเอียด</h3>
-      <button class="ast-info-close" onclick="closeInfoModal()" title="ปิด">✕</button>
-    </div>
-    <div class="ast-info-body" id="ast-info-body"></div>
-  </div>
-</div>
+<!-- Info popup modal is provided by shared info-popup.js (auto-injected) -->
 
 <script>
 /* ════════════════════════════════════════════
@@ -790,24 +744,10 @@ function closeApplyModal() {
   _astApplyType = null;
 }
 
-/* ════════════════════════════════════════════
-   INFO POPUP — opens when ⓘ icon is clicked
-   Replaces the old CSS hover-tooltip (broken UX on touch devices).
-═══════════════════════════════════════════ */
-function openInfoPopup(title, body, icon) {
-  document.getElementById('ast-info-title').textContent = title || 'รายละเอียด';
-  document.getElementById('ast-info-body').textContent  = body  || '';
-  document.getElementById('ast-info-icon').textContent  = icon  || '💎';
-  document.getElementById('ast-info-modal').classList.add('open');
-}
-function closeInfoModal() {
-  document.getElementById('ast-info-modal').classList.remove('open');
-}
-/* Close modals on Esc */
+/* Info popup (window.openInfoPopup) is provided by info-popup.js — shared module.
+   Close apply-to modal on Esc — info modal Esc is handled by the shared script. */
 document.addEventListener('keydown', (e) => {
-  if (e.key !== 'Escape') return;
-  closeInfoModal();
-  closeApplyModal();
+  if (e.key === 'Escape') closeApplyModal();
 });
 
 function setApplyTo(value) {
@@ -1189,7 +1129,8 @@ function renderRow(row) {
                     onclick="openInfoPopup(this.dataset.title, this.dataset.info, this.dataset.icon)"
                     aria-label="ดูรายละเอียด">i</button>
           </span>
-          ${f.badge ? `<span class="ast-row-badge" title="กองทุนสำรองเลี้ยงชีพ — นายจ้างจ่ายสมทบ">${f.badge}</span>` : ''}
+          ${f.badge ? `<button class="ast-row-badge" type="button" aria-label="ดูรายละเอียด"
+                              onclick="openInfoPopup('กองทุนสำรองเลี้ยงชีพ (PVD)','นายจ้างจ่ายสมทบให้ส่วนหนึ่งของเงินเดือน — ลดหย่อนภาษีได้ ≤15% ของรายได้ (ไม่เกิน 500,000 บาท/ปี รวมกับ RMF/SSF/ประกันบำนาญ) เมื่อเกษียณจะได้เงินก้อนพร้อมผลตอบแทน','🏢')">${f.badge}</button>` : ''}
         </span>
       </td>
       <td class="ast-cell">

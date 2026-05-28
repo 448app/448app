@@ -11,6 +11,7 @@
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -97,9 +98,13 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 22px; height: 22px; margin-left: 4px;
       background: var(--hi2-indigo-soft); color: var(--hi2-indigo);
-      border-radius: 4px; font-size: .82rem; cursor: help;
+      border-radius: 4px; font-size: .82rem; cursor: pointer;
       vertical-align: middle;
+      border: none; padding: 0; line-height: 1;
+      transition: transform .15s;
     }
+    .hi2-table thead th .hi2-th-icon:hover,
+    .hi2-table thead th .hi2-th-icon:focus { transform: scale(1.1); outline: none; }
     .hi2-table tbody tr td {
       padding: 14px 8px; border-bottom: 1.5px solid #DDD;
       vertical-align: middle;
@@ -879,8 +884,10 @@ function render() {
       <table class="hi2-table">
         <thead>
           <tr>
-            <th>วงเงินค่ารักษา <span class="hi2-th-icon" title="แต่ละรายการคำนวณตามโรงพยาบาลที่เลือก + อายุ + รายได้">i</span></th>
-            <th>เตรียมไว้แล้ว <span class="hi2-th-icon" onclick="alert('ดึงค่าจากกรมธรรม์ (medical riders) อัตโนมัติ — ดูที่หน้าสรุปประกัน')" style="cursor:pointer;" title="ดึงจากกรมธรรม์">📊</span></th>
+            <th>วงเงินค่ารักษา <button class="hi2-th-icon" type="button" aria-label="ดูรายละเอียด"
+              onclick="openInfoPopup('วงเงินค่ารักษาที่แนะนำ','แต่ละรายการคำนวณตามโรงพยาบาลที่เลือก + อายุ + รายได้ของลูกค้า — เพื่อให้ครอบคลุมค่ารักษากรณีเจ็บป่วยหนักหรือต้องนอนโรงพยาบาล','⚕️')">i</button></th>
+            <th>เตรียมไว้แล้ว <button class="hi2-th-icon" type="button" aria-label="ดูรายละเอียด"
+              onclick="openInfoPopup('ความคุ้มครองที่มี','ดึงค่าจากกรมธรรม์ที่มีอยู่ (medical riders) อัตโนมัติ — ดูรายละเอียดเพิ่มเติมที่หน้าสรุปกรมธรรม์','⚕️')">📊</button></th>
             <th>แนะนำ</th>
           </tr>
         </thead>

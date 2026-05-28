@@ -11,6 +11,7 @@
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -90,10 +91,13 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 16px; height: 16px; border-radius: 50%;
       background: var(--t3-indigo); color: white;
-      font-size: .66rem; font-weight: 700; cursor: help;
+      font-size: .66rem; font-weight: 700; cursor: pointer;
       font-style: italic; font-family: serif;
       vertical-align: middle; margin-left: 4px;
+      border: none; padding: 0; line-height: 1;
+      transition: transform .15s;
     }
+    .t3-info:hover, .t3-info:focus { transform: scale(1.1); outline: none; }
 
     .t3-cell { text-align: center; padding: 4px 6px; }
     .t3-pill {
@@ -642,7 +646,8 @@ function render() {
         <div class="t3-cell"><div class="t3-sum-pill ${imp.afterDeduct < 0 ? 'red':''}">${fmt(imp.afterDeduct)}</div></div>
       </div>
       <div class="t3-sum">
-        <div class="t3-sum-lbl">เงินบริจาคเพื่อการศึกษา การกีฬา การพัฒนาสังคม และโรงพยาบาลรัฐ <span class="t3-info" title="หักได้ 2 เท่า ไม่เกิน 10% ของรายได้หลังหักค่าใช้จ่ายและค่าลดหย่อน">i</span></div>
+        <div class="t3-sum-lbl">เงินบริจาคเพื่อการศึกษา การกีฬา การพัฒนาสังคม และโรงพยาบาลรัฐ <button class="t3-info" type="button" aria-label="ดูรายละเอียด"
+          onclick="openInfoPopup('เงินบริจาค (หัก 2 เท่า)','เงินบริจาคเพื่อการศึกษา การกีฬา การพัฒนาสังคม และโรงพยาบาลของรัฐ — หักลดหย่อนได้ 2 เท่าของจำนวนที่บริจาคจริง แต่ไม่เกิน 10% ของรายได้หลังหักค่าใช้จ่ายและค่าลดหย่อนทั่วไป','🧾')">i</button></div>
         <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${cur.eduDonate||''}" min="0" placeholder="0" oninput="saveExtraDonate('cur', this.value)" style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
         <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${imp.eduDonate||''}" min="0" placeholder="0" oninput="saveExtraDonate('imp', this.value)" style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
       </div>
@@ -771,10 +776,15 @@ function renderRow(row, ti, cur, imp, num) {
       <span>${cap.text || '—'}</span>
     </div>`;
   };
+  /* HTML-escape attribute values to safely pass into onclick */
+  const escAttr = (s) => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;')
+    .replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return `<tr>
     <td class="col-name">
       <span class="t3-row-num">${num}</span> ${row.name}
-      <span class="t3-info" title="${row.info||''}">i</span>
+      <button class="t3-info" type="button" aria-label="ดูรายละเอียด"
+              onclick="openInfoPopup('${escAttr(row.name)}','${escAttr(row.info||'')}','🧾')">i</button>
     </td>
     <td class="t3-cell">${renderCell('cur', valCur)}</td>
     <td class="t3-cell">${renderCell('imp', valImp)}</td>

@@ -11,6 +11,7 @@
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -87,9 +88,12 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 18px; height: 18px; border-radius: 50%;
       background: var(--ret-indigo); color: white;
-      font-size: .72rem; font-weight: 700; cursor: help;
+      font-size: .72rem; font-weight: 700; cursor: pointer;
       font-style: italic; font-family: serif;
+      border: none; padding: 0; line-height: 1;
+      transition: transform .15s;
     }
+    .r2-label .ret-info:hover, .r2-label .ret-info:focus { transform: scale(1.1); outline: none; }
     .r2-control { display: flex; align-items: center; gap: 8px; }
 
     /* ════ Pill input + stepper ════ */
@@ -826,7 +830,8 @@ function render() {
         <div class="r2-row">
           <div class="r2-label">
             อัตราเงินเฟ้อคาดการณ์
-            <span class="ret-info" title="อัตราเงินเฟ้อเฉลี่ยของไทยอยู่ที่ ~2-3% ต่อปี ใช้เพื่อปรับมูลค่าเงินในอนาคต">i</span>
+            <button class="ret-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('อัตราเงินเฟ้อคาดการณ์','อัตราเงินเฟ้อเฉลี่ยของไทยอยู่ที่ ~2-3% ต่อปี ใช้เพื่อปรับมูลค่าเงินในอนาคต — ค่าใช้จ่ายที่ต้องการใช้หลังเกษียณจะปรับขึ้นตามอัตราเงินเฟ้อนี้','🛋️')">i</button>
           </div>
           <div class="r2-control">
             <div class="r2-pill">
@@ -844,7 +849,8 @@ function render() {
         <div class="r2-row">
           <div class="r2-label">
             อายุขัยคาดการณ์
-            <span class="ret-info" title="ค่าเฉลี่ยคนไทยอยู่ที่ ~80 ปี เลือกอายุขัยเป้าหมายเพื่อคำนวณเงินที่ต้องเก็บ">i</span>
+            <button class="ret-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('อายุขัยคาดการณ์','ค่าเฉลี่ยอายุขัยคนไทยอยู่ที่ ~80 ปี เลือกอายุขัยเป้าหมายเพื่อคำนวณเงินที่ต้องเก็บให้พอใช้จนถึงอายุนั้น — เลือกอายุที่สูงขึ้นถ้าต้องการความมั่นใจมากขึ้น','🛋️')">i</button>
           </div>
           <div class="r2-control">
             <div class="r2-segment">
@@ -893,7 +899,8 @@ function render() {
                  onclick="savePlanField('preserveCapital', !${plan.preserveCapital})"
                  title="${plan.preserveCapital ? 'ปิดโหมดคงเงินต้น' : 'เปิดโหมดคงเงินต้น'}"></div>
             <span style="margin-left:4px;">คำนวณแบบคงเงินต้น ที่อัตราการถอน</span>
-            <span class="ret-info" title="เปิด: เก็บเงินต้นไว้ ใช้แค่ดอกผล (เช่นกฎ 4%) — ปิด: ถอนใช้เงินต้นจนหมดที่อายุขัย">i</span>
+            <button class="ret-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('โหมดคงเงินต้น','• เปิด: เก็บเงินต้นไว้ ใช้แค่ดอกผล (เช่น กฎ 4% — ถอน 4% ของเงินต้นต่อปี) — ส่งต่อมรดกได้\n• ปิด: ถอนใช้เงินต้นจนหมดที่อายุขัยที่กำหนด — ต้องการเงินสะสมน้อยกว่า','🛋️')">i</button>
           </div>
           <div class="r2-control">
             <div class="r2-pill" style="${plan.preserveCapital ? '' : 'opacity:.45;'}">

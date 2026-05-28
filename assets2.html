@@ -9,6 +9,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -186,9 +187,14 @@
       background: #E5E7EB; color: #6B7280;
       font-size: .68rem; font-weight: 800;
       display: inline-flex; align-items: center; justify-content: center;
-      cursor: help; flex-shrink: 0;
+      cursor: pointer; flex-shrink: 0;
+      border: none; padding: 0; line-height: 1;
+      transition: all .15s;
     }
-    .a2-row-info-btn:hover { background: #1F2D4F; color: white; }
+    .a2-row-info-btn:hover, .a2-row-info-btn:focus {
+      background: #1F2D4F; color: white;
+      transform: scale(1.1); outline: none;
+    }
     .a2-row-badge {
       font-size: .68rem; padding: 2px 7px; border-radius: 50px;
       background: rgba(39,174,96,.15); color: #27AE60; font-weight: 700;
@@ -362,22 +368,7 @@
     }
     .a2-modal-opt .ico.muted { color: #9CA3AF; }
 
-    /* ── Tooltip ── */
-    .a2-tooltip {
-      position: relative;
-    }
-    .a2-tooltip:hover::before {
-      content: attr(data-tip);
-      position: absolute; bottom: 100%; left: 50%;
-      transform: translateX(-50%) translateY(-4px);
-      background: #1F2D4F; color: white;
-      font-size: .78rem; padding: 6px 10px; border-radius: 6px;
-      white-space: nowrap; z-index: 50;
-      max-width: 280px; white-space: normal;
-      width: max-content; max-width: 240px;
-      text-align: center;
-      pointer-events: none;
-    }
+    /* ── Tooltip removed — use shared info-popup.js modal instead ── */
 
     /* No client state */
     .a2-no-client {
@@ -961,7 +952,11 @@ function renderRow(rowMeta) {
         <div style="min-width:0; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
           <span class="a2-row-name">${t.label}</span>
           ${badge}
-          <span class="a2-row-info-btn a2-tooltip" data-tip="${rowMeta.info||''}">i</span>
+          <button class="a2-row-info-btn" type="button" aria-label="ดูรายละเอียด"
+                  data-title="${_astEscapeAttr(t.label)}"
+                  data-icon="${_astEscapeAttr(t.icon||'💎')}"
+                  data-info="${_astEscapeAttr(rowMeta.info||'')}"
+                  onclick="openInfoPopup(this.dataset.title, this.dataset.info, this.dataset.icon)">i</button>
         </div>
       </div>
       <div>

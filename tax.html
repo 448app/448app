@@ -12,6 +12,7 @@
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -67,10 +68,13 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 18px; height: 18px; border-radius: 50%;
       background: var(--t2-indigo); color: white;
-      font-size: .7rem; font-weight: 700; cursor: help;
+      font-size: .7rem; font-weight: 700; cursor: pointer;
       font-style: italic; font-family: serif;
       vertical-align: middle; margin-left: 2px;
+      border: none; padding: 0; line-height: 1;
+      transition: transform .15s;
     }
+    .t2-info:hover, .t2-info:focus { transform: scale(1.1); outline: none; }
     .t2-add-btn {
       width: 28px; height: 28px; border-radius: 50%;
       background: #BFC3D0; color: white; border: none;
@@ -531,11 +535,13 @@
                 </th>
                 <th class="col-num"><span class="t2-th-label">รายรับ</span></th>
                 <th class="col-num">
-                  <span class="t2-th-label-it">หักค่าใช้จ่าย <span class="t2-info" title="หักตามอัตราเหมา (% ของรายรับ) — สูงสุดตามกฎหมาย">i</span></span>
+                  <span class="t2-th-label-it">หักค่าใช้จ่าย <button class="t2-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('หักค่าใช้จ่ายเหมา','หักตามอัตราเหมา (% ของรายรับตามประเภทเงินได้) — สูงสุดตามกฎหมายกำหนด ไม่ต้องมีหลักฐาน เหมาะกับผู้มีรายจ่ายน้อย','🧾')">i</button></span>
                   <span class="t2-th-label">เหมา</span>
                 </th>
                 <th class="col-num">
-                  <span class="t2-th-label-it">หักค่าใช้จ่าย <span class="t2-info" title="หักตามจริง (ต้องมีหลักฐาน) — ใส่ค่าจริง ระบบจะเลือกค่าที่สูงกว่าระหว่างเหมา/จริงให้อัตโนมัติ">i</span></span>
+                  <span class="t2-th-label-it">หักค่าใช้จ่าย <button class="t2-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('หักค่าใช้จ่ายตามจริง','หักตามจริง (ต้องมีหลักฐาน เช่น ใบเสร็จ บิล) — ใส่ค่าจริงที่จ่ายไป ระบบจะเลือกค่าที่สูงกว่าระหว่างเหมา/ตามจริงให้อัตโนมัติ เพื่อประหยัดภาษีสูงสุด','🧾')">i</button></span>
                   <span class="t2-th-label">ตามจริง</span>
                 </th>
               </tr>

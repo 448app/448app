@@ -11,6 +11,7 @@
   <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
+  <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -80,9 +81,12 @@
       display: inline-flex; align-items: center; justify-content: center;
       width: 20px; height: 20px; border-radius: 50%;
       background: var(--e3-indigo); color: white;
-      font-size: .72rem; font-weight: 700; cursor: help;
+      font-size: .72rem; font-weight: 700; cursor: pointer;
       font-style: italic; font-family: serif;
+      border: none; padding: 0; line-height: 1;
+      transition: transform .15s;
     }
+    .e3-info:hover, .e3-info:focus { transform: scale(1.1); outline: none; }
     /* Right side inflation pill */
     .e3-infl-wrap {
       display: flex; align-items: center; gap: 10px; padding-top: 4px;
@@ -745,13 +749,15 @@ function render() {
           <div class="e3-head-title">การศึกษาบุตร</div>
           <div class="e3-head-sub">
             ค่าเล่าเรียนระดับมหาวิทยาลัย
-            <span class="e3-info" title="ค่าเทอม 4 ปี ปริญญาตรี ปรับด้วยอัตราเงินเฟ้อ ใช้คำนวณเงินที่ต้องเก็บเพิ่มต่อปี">i</span>
+            <button class="e3-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('ค่าเล่าเรียนระดับมหาวิทยาลัย','ค่าเทอม 4 ปี ปริญญาตรี ปรับด้วยอัตราเงินเฟ้อ ใช้คำนวณเงินที่ต้องเก็บเพิ่มต่อปี','🎓')">i</button>
           </div>
         </div>
         <div class="e3-infl-wrap">
           <div class="e3-infl-lbl">
             อัตราเงินเฟ้อ<br>ค่าเล่าเรียน
-            <span class="e3-info" title="อัตราเงินเฟ้อเฉพาะค่าเทอม (default 3%/ปี)">i</span>
+            <button class="e3-info" type="button" aria-label="ดูรายละเอียด"
+                    onclick="openInfoPopup('อัตราเงินเฟ้อค่าเล่าเรียน','อัตราเงินเฟ้อเฉพาะค่าเทอม (default 3%/ปี) ใช้ปรับค่าเล่าเรียนในอนาคต — แยกจากอัตราเงินเฟ้อทั่วไปเพราะค่าเรียนปรับขึ้นช้ากว่าค่าครองชีพ','🎓')">i</button>
           </div>
           <div class="e3-infl-pill">
             <input type="number" min="0" max="20" step="0.1" value="${planInfl}"
