@@ -9,26 +9,14 @@
    - ข้าม SW เมื่อโหลดผ่าน file:// (double-click เปิดไฟล์) — browser ห้าม */
 if ('serviceWorker' in navigator
     && (location.protocol === 'https:' || location.protocol === 'http:')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
-      /* Force check update ทุกครั้งที่หน้าเปิด */
-      reg.update();
-      /* ถ้ามี update ใหม่ — บังคับ activate + reload ครั้งเดียว */
-      reg.addEventListener('updatefound', () => {
-        const nw = reg.installing;
-        if (!nw) return;
-        nw.addEventListener('statechange', () => {
-          if (nw.state === 'activated' && navigator.serviceWorker.controller) {
-            /* SW ใหม่ activate แล้ว — reload เพื่อให้ controller คุมหน้า */
-            window.location.reload();
-          }
-        });
-      });
-    }).catch(() => { /* SW register ล้มเหลว — ignore */ });
 
-    /* AGGRESSIVE VERSION CHECK สำหรับ iPad PWA — SW activation ไม่เสถียร
-       บน iOS PWA standalone บางครั้ง — ใช้ fetch sw.js เพื่ออ่าน version ตรง ๆ
-       เปรียบเทียบกับ localStorage — ถ้าต่างก็บังคับ hard reload ทันที */
+  /* AGGRESSIVE VERSION CHECK — แยกเป็นฟังก์ชันเพื่อเรียกซ้ำได้
+     เรียกตอน: (1) page load  (2) PWA กลับมา visible (iOS resume จาก background
+     ไม่ fire 'load' → ต้องเช็คตอน visibilitychange ด้วย) */
+  let _swCheckBusy = false;
+  function checkSwVersion() {
+    if (_swCheckBusy) return;
+    _swCheckBusy = true;
     fetch('/sw.js?_check=' + Date.now(), { cache: 'no-store' })
       .then(r => r.text())
       .then(text => {
@@ -60,19 +48,55 @@ if ('serviceWorker' in navigator
             border-radius: 50px; font-family: 'Sarabun', sans-serif;
             font-weight: 700; font-size: .88rem;
             box-shadow: 0 8px 22px rgba(0,0,0,.3);
-            animation: fadeIn .25s ease-out;
           `;
           banner.textContent = '⚡ อัปเดตเวอร์ชั่นใหม่ ' + serverVersion + ' — กำลังโหลด...';
-          document.body.appendChild(banner);
-          /* Hard reload with cache-bust */
-          setTimeout(() => {
+          if (document.body) document.body.appendChild(banner);
+          /* NUKE caches ก่อน reload — กัน SW เก่า (cache-first) ที่ค้างบน iPad
+             serve ของเก่า. ล้าง cache ทุกตัว → SW ที่เหลือไม่มีของ cache →
+             หลุดไป network = ของสด. บอก SW ใหม่ skipWaiting ด้วย (ถ้ามี). */
+          const nukeAndReload = async () => {
+            try {
+              if ('caches' in window) {
+                const keys = await caches.keys();
+                await Promise.all(keys.map(k => caches.delete(k)));
+              }
+              const reg2 = await navigator.serviceWorker.getRegistration();
+              if (reg2 && reg2.waiting) reg2.waiting.postMessage({ type: 'SKIP_WAITING' });
+            } catch (e) { /* ignore */ }
             const u = new URL(location.href);
             u.searchParams.set('_v', serverVersion);
             location.replace(u.toString());
-          }, 700);
+          };
+          setTimeout(nukeAndReload, 700);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => { _swCheckBusy = false; });
+  }
+
+  window.addEventListener('load', () => {
+    /* updateViaCache:'none' → browser ดึง sw.js สดทุกครั้งที่ check update
+       (สำคัญมากบน iOS — default 'imports' อาจ cache sw.js เอง ทำให้ไม่เห็น version ใหม่) */
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update();
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'activated' && navigator.serviceWorker.controller) {
+            window.location.reload();
+          }
+        });
+      });
+    }).catch(() => { /* SW register ล้มเหลว — ignore */ });
+
+    checkSwVersion();
+  });
+
+  /* iOS PWA standalone — กลับมาจาก background มักไม่ reload + ไม่ fire 'load'
+     → เช็คเวอร์ชันใหม่ทุกครั้งที่หน้าเปิดขึ้นมาเห็นอีกครั้ง */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') checkSwVersion();
   });
 }
 

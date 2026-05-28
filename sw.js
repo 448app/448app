@@ -4,12 +4,18 @@
    - ใช้ cache เฉพาะตอน offline (fallback)
    ผลคือ: page reload ปกติ = ได้ของใหม่จาก server ทุกครั้ง
    ไม่ต้องกด Ctrl+Shift+R เอง */
-const SW_VERSION = 'v160-2026-05-28-timeline-milestone-presets';
+const SW_VERSION = 'v161-2026-05-28-ipad-cache-nuke';
 const CACHE_NAME = 'aia-runtime-' + SW_VERSION;
 
 self.addEventListener('install', (event) => {
   /* Activate ทันทีเมื่อมี SW ใหม่ — ไม่ต้องรอแท็บปิดเปิดใหม่ */
   self.skipWaiting();
+});
+
+/* รับข้อความ SKIP_WAITING จาก client (sidebar-scroll.js) — บังคับ activate
+   ทันทีเมื่อ client ตรวจเจอเวอร์ชันใหม่ (สำหรับ iOS ที่ skipWaiting ไม่เด้งเอง) */
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
