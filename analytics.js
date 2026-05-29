@@ -14,7 +14,7 @@
    — นับผู้เข้าชม / page views / sessions / ประเทศ / อุปกรณ์ / real-time
 */
 (function () {
-  var MEASUREMENT_ID = 'G-XXXXXXXXXX';   /* ← แก้ตรงนี้ที่เดียว */
+  var MEASUREMENT_ID = 'G-9V3XGW4BZN';   /* ← measurementId ของ project app-d83ab */
 
   /* กันโหลดซ้ำ (บางหน้าอาจได้ทั้ง <script> ตรงๆ และ inject จาก sidebar-scroll.js) */
   if (window.__aiaAnalyticsLoaded) return;
