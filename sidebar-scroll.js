@@ -2,7 +2,17 @@
    Shared UX utilities — โหลดในทุกหน้าที่มี sidebar
    1. จำตำแหน่ง scroll ของ .app-sidebar ระหว่างหน้า
    2. ป้องกัน mouse wheel เปลี่ยนค่าใน <input type="number"> โดยไม่ตั้งใจ
-   3. Register Service Worker — auto cache busting (ไม่ต้องกด Ctrl+Shift+R) */
+   3. Register Service Worker — auto cache busting (ไม่ต้องกด Ctrl+Shift+R)
+   4. โหลด analytics.js (GA4) ให้ทุกหน้าที่มี sidebar — single source of truth */
+
+/* Load analytics once (analytics.js มี guard กันโหลดซ้ำอยู่แล้ว) */
+(function () {
+  if (document.querySelector('script[src*="analytics.js"]')) return;
+  var a = document.createElement('script');
+  a.src = 'analytics.js';
+  a.async = true;
+  document.head.appendChild(a);
+})();
 
 /* Register Service Worker — network-first strategy with AGGRESSIVE cache-bust
    - iPad PWA caches dื้อ → ใช้ version-check + force-reload เพิ่ม

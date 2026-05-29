@@ -4,7 +4,7 @@
    - ใช้ cache เฉพาะตอน offline (fallback)
    ผลคือ: page reload ปกติ = ได้ของใหม่จาก server ทุกครั้ง
    ไม่ต้องกด Ctrl+Shift+R เอง */
-const SW_VERSION = 'v161-2026-05-28-ipad-cache-nuke';
+const SW_VERSION = 'v162-2026-05-29-ga4-analytics';
 const CACHE_NAME = 'aia-runtime-' + SW_VERSION;
 
 self.addEventListener('install', (event) => {
