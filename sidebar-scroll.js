@@ -5,13 +5,20 @@
    3. Register Service Worker — auto cache busting (ไม่ต้องกด Ctrl+Shift+R)
    4. โหลด analytics.js (GA4) ให้ทุกหน้าที่มี sidebar — single source of truth */
 
-/* Load analytics once (analytics.js มี guard กันโหลดซ้ำอยู่แล้ว) */
+/* Load shared utilities — analytics.js (GA4) + storage-safe.js (quota guard).
+   Both have internal load-guards so multiple injections are safe. */
 (function () {
-  if (document.querySelector('script[src*="analytics.js"]')) return;
-  var a = document.createElement('script');
-  a.src = 'analytics.js';
-  a.async = true;
-  document.head.appendChild(a);
+  function loadOnce(src) {
+    if (document.querySelector('script[src*="' + src + '"]')) return;
+    var s = document.createElement('script');
+    s.src = src;
+    /* storage-safe must run BEFORE any setItem (other pages call it during
+       inline init scripts), so prefer sync; analytics can stay async. */
+    if (src === 'analytics.js') s.async = true;
+    document.head.appendChild(s);
+  }
+  loadOnce('storage-safe.js');
+  loadOnce('analytics.js');
 })();
 
 /* Register Service Worker — network-first strategy with AGGRESSIVE cache-bust

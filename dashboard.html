@@ -738,6 +738,16 @@
         <div class="backup-bar-info">
           <div class="backup-bar-title">สำรองและกู้คืนข้อมูล</div>
           <div class="backup-bar-sub" id="backup-last-label">Export เพื่อบันทึกข้อมูลลูกค้าทั้งหมด · Import เพื่อโหลดข้อมูลบนเครื่องใหม่</div>
+          <!-- พื้นที่เก็บข้อมูล — แสดงขนาด localStorage ที่ใช้ + progress bar -->
+          <div class="storage-usage" id="storage-usage" style="margin-top:10px;display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:.78rem;color:var(--gray-500);margin-bottom:4px;">
+              <span>📦 พื้นที่เก็บข้อมูล</span>
+              <span id="storage-usage-text">— / 5 MB</span>
+            </div>
+            <div style="height:6px;background:var(--gray-200);border-radius:50px;overflow:hidden;">
+              <div id="storage-usage-bar" style="height:100%;width:0%;background:#16A34A;border-radius:50px;transition:width .4s,background .3s;"></div>
+            </div>
+          </div>
         </div>
         <div class="backup-bar-btns">
           <button class="btn-export" onclick="exportData()">📥 Export ข้อมูล</button>
@@ -1273,6 +1283,7 @@ function confirmImport() {
   selectedClientId = clients.length > 0 ? clients[0].id : null;
   renderClientStrip();
   updateDashboard();
+  updateStorageUsage();   /* refresh usage bar after data load */
 }
 
 function closeImportModal(e) {
@@ -1736,6 +1747,7 @@ function checkUpcomingNotifications() {
   renderTasks();
   renderRenewal();
   scheduleNotificationCheck();
+  updateStorageUsage();   /* show localStorage usage in the backup bar */
 
   /* แจ้งเตือนเครื่องใหม่ → ให้ Import ข้อมูล */
   if (localStorage.getItem('aia_newDevice') === '1') {
@@ -1743,6 +1755,40 @@ function checkUpcomingNotifications() {
     setTimeout(() => showToast('📱 เครื่องใหม่ — หากมีข้อมูลเดิม กด Import ข้อมูลด้านล่างได้เลย', ''), 1000);
   }
 })();
+
+/* ════════════════════════════════════════════
+   Storage usage indicator — กราฟแสดงขนาด localStorage
+   เพื่อให้ผู้ใช้เห็นก่อนถึง quota ของ iOS Safari (~5 MB)
+═══════════════════════════════════════════ */
+function updateStorageUsage() {
+  /* storage-safe.js ต้องโหลดก่อน — exposes window.getStorageUsage() */
+  if (typeof window.getStorageUsage !== 'function') {
+    /* ลองอีกครั้งหลังโหลด storage-safe.js เสร็จ */
+    setTimeout(updateStorageUsage, 500);
+    return;
+  }
+  const u = window.getStorageUsage();
+  const wrap = document.getElementById('storage-usage');
+  const text = document.getElementById('storage-usage-text');
+  const bar  = document.getElementById('storage-usage-bar');
+  if (!wrap || !text || !bar) return;
+  wrap.style.display = 'block';
+  text.textContent = u.mb + ' MB / ' + u.limitMb + ' MB (' + u.percent + '%)';
+  bar.style.width = u.percent + '%';
+  /* Color thresholds: <60% green, 60-85% amber, >85% red */
+  const p = parseFloat(u.percent);
+  if (p > 85) {
+    bar.style.background = '#DC3545';
+    text.style.color = '#DC3545';
+    text.style.fontWeight = '700';
+  } else if (p > 60) {
+    bar.style.background = '#F5C242';
+    text.style.color = '#A16207';
+  } else {
+    bar.style.background = '#16A34A';
+    text.style.color = '';
+  }
+}
 </script>
 </body>
 </html>

@@ -687,7 +687,8 @@ function handlePhotoUpload(input) {
       canvas.width = w; canvas.height = h;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(img, 0, 0, w, h);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+      /* WebP if supported (≈25% smaller), JPEG fallback */
+      const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas);
 
       /* Save — try/catch กัน QuotaExceededError */
       try {
@@ -901,7 +902,8 @@ function captureProfilePhoto() {
     ctx.scale(-1, 1);
   }
   ctx.drawImage(video, 0, 0, w, h);
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  /* WebP if supported (≈25% smaller), JPEG fallback */
+  const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas);
   try {
     updateUser(u => { if (!u.profile) u.profile = {}; u.profile.photo = dataUrl; });
     applyPhoto(dataUrl);

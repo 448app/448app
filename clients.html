@@ -1448,7 +1448,8 @@
       ctx.scale(-1, 1);
     }
     ctx.drawImage(video, 0, 0, w, h);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    /* WebP if supported (≈25% smaller), JPEG fallback */
+    const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas);
 
     try {
       updateCurrentUser(u => {
@@ -1514,7 +1515,8 @@
         resizedCanvas.getContext('2d').drawImage(canvas, 0, 0, resizedCanvas.width, resizedCanvas.height);
       }
       for (const q of qualities) {
-        const dataUrl = resizedCanvas.toDataURL('image/jpeg', q);
+        /* WebP if supported (≈25% smaller), JPEG fallback */
+        const dataUrl = (window.compressPhotoCanvas || ((c, qq) => c.toDataURL('image/jpeg', qq)))(resizedCanvas, q);
         try {
           updateCurrentUser(u => {
             const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
