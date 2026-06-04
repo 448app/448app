@@ -601,19 +601,32 @@ function compute(client) {
   const annualIncomeAfter = incomeAssets.reduce((s,a) => s + Number(a.cashFlow||0), 0) * 12;
   const cashFlowGap = Math.max(annualSpendAtRetire - annualIncomeAfter, 0);
 
-  /* เงินที่เหลือตอนสิ้นสุดอายุขัย (simulate draw-down)
-     - เริ่มจาก fvTotal
-     - ทุกปี: หัก (yearSpend - yearIncome) ออก แล้วลงทุนต่อ
-     - ไม่ clamp ที่ 0 → ติดลบได้ (= กองทุนหมดก่อน lifeExpectancy) */
+  /* เงินที่เหลือตอนสิ้นสุดอายุขัย
+     ─────────────────────────────────────────────────────
+     แยก 2 mode ตาม preserveCapital (กฎ 4%):
+     • preserveCapital ON  → ใช้แค่ดอกผล เงินต้นคงเดิม → remaining = targetCorpus
+       (สมมุติว่า user ทำตามแผน คือเก็บเงินให้ถึง targetCorpus ก่อนเกษียณ)
+     • preserveCapital OFF → simulate การถอนใช้จริงปีต่อปี — ติดลบได้
+       (= กองทุนหมดก่อน lifeExpectancy)
+     เดิม simulation ทำงานเหมือนกัน 2 mode → ทำให้ remaining เป็นค่าลบหนัก
+     แม้ user เปิด preserveCapital (BUG — แก้ใน v165) */
   const rA = plan.returnAfter / 100;
-  let balance = fvTotal;
-  for (let y = 0; y < yearsAfter; y++) {
-    const yearSpend  = annualSpendAtRetire * Math.pow(1 + plan.inflationRate/100, y);
-    const yearIncome = annualIncomeAfter;   /* คงที่ — pension/rental ไม่ปรับ inflation */
-    const draw = yearSpend - yearIncome;
-    balance = (balance - draw) * (1 + rA);  /* ไม่ clamp — ติดลบได้ */
+  let remaining;
+  if (plan.preserveCapital && plan.withdrawalRate > 0) {
+    /* โหมดคงเงินต้น: targetCorpus = annualSpend / withdrawalRate (กฎ 4%)
+       ถ้าทำตามแผน → เงินต้นคงเดิม → remaining = targetCorpus */
+    remaining = targetCorpus;
+  } else {
+    /* โหมดถอนใช้เงินต้น: simulate การถอนใช้จริง */
+    let balance = fvTotal;
+    for (let y = 0; y < yearsAfter; y++) {
+      const yearSpend  = annualSpendAtRetire * Math.pow(1 + plan.inflationRate/100, y);
+      const yearIncome = annualIncomeAfter;   /* คงที่ — pension/rental ไม่ปรับ inflation */
+      const draw = yearSpend - yearIncome;
+      balance = (balance - draw) * (1 + rA);  /* ไม่ clamp — ติดลบได้ */
+    }
+    remaining = balance;
   }
-  const remaining = balance;
 
   const completionPct = targetCorpus > 0
     ? Math.max(0, Math.min(100, (fvTotal / targetCorpus) * 100))
@@ -746,16 +759,23 @@ function computeSim(s) {
   /* Cash flow gap after retirement = annualSpendAtRetire − extraIncomeAfter */
   const cashFlowGap = Math.max(annualSpendAtRetire - s.extraIncomeAfter, 0);
 
-  /* Remaining at lifeExpectancy — simulate drawdown (same logic as main compute) */
+  /* Remaining at lifeExpectancy — honor preserveCapital (same logic as main compute).
+     • preserveCapital ON  → remaining = targetCorpus (capital preserved by 4% rule)
+     • preserveCapital OFF → simulate the actual yearly drawdown — allows negative */
   const rA = s.returnAfter / 100;
-  let balance = s.fvAtRetire;
-  for (let y = 0; y < yearsAfter; y++) {
-    const yearSpend  = annualSpendAtRetire * Math.pow(1 + s.inflationRate/100, y);
-    const yearIncome = s.extraIncomeAfter;
-    const draw = yearSpend - yearIncome;
-    balance = (balance - draw) * (1 + rA);   /* allow negative */
+  let remaining;
+  if (s.preserveCapital && s.withdrawalRate > 0) {
+    remaining = targetCorpus;
+  } else {
+    let balance = s.fvAtRetire;
+    for (let y = 0; y < yearsAfter; y++) {
+      const yearSpend  = annualSpendAtRetire * Math.pow(1 + s.inflationRate/100, y);
+      const yearIncome = s.extraIncomeAfter;
+      const draw = yearSpend - yearIncome;
+      balance = (balance - draw) * (1 + rA);   /* allow negative */
+    }
+    remaining = balance;
   }
-  const remaining = balance;
 
   return { yearsBefore, yearsAfter, annualSpendAtRetire, targetCorpus, gap, reqAnnual, cashFlowGap, remaining };
 }
