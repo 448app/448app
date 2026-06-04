@@ -514,8 +514,29 @@ function getDerivedData(client) {
   const retireAssets = (client.assets || []).filter(a =>
     ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
   const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
+  /* Per-asset FV of current values — each asset compounds at ITS own
+     expectedReturn for ITS own term. Mirrors the FV column on the
+     assets.html page, so the two screens agree.
+
+     Previously fvCurrent = currentSavings × (1+planReturnBefore)^yearsBefore
+     — bulk-compounded at the plan rate, ignoring per-asset assumptions.
+     For e.g. an Investment Portfolio set to 10 % / 17 y, that knocked
+     ~47 M off the corpus because the 10 % was downgraded to the plan's
+     6 %. The new formula keeps the user's per-asset assumptions intact.
+
+     Contribution PMTs are NOT included here — they're handled separately
+     in compute() via plan.monthlyContribution × yearsBefore, so user-
+     adjusted savings still flow into fvTotal without double-counting. */
+  const fvCurrentSavings = retireAssets.reduce((s, a) => {
+    const pv = Number(a.currentValue || 0);
+    const r  = (Number(a.expectedReturn) || 0) / 100;
+    const n  = Number(a.term) || 0;
+    if (pv <= 0) return s;
+    if (n <= 0 || r === 0) return s + pv;     /* no growth → just PV */
+    return s + pv * Math.pow(1 + r, n);
+  }, 0);
   const currentMonthlyContrib = retireAssets.reduce((s,a) => s + annualContribOf(a), 0) / 12;
-  return { annualIncome, currentSavings, currentMonthlyContrib };
+  return { annualIncome, currentSavings, fvCurrentSavings, currentMonthlyContrib };
 }
 
 /* ════════════════════════════════════════════
@@ -564,9 +585,11 @@ function compute(client) {
       : annualSpendAtRetire * (1 - Math.pow(1 + realRate, -yearsAfter)) / realRate;
   }
 
-  /* FV ของเงินที่มี + ออม/เดือน ตอนเกษียณ */
+  /* FV ของเงินที่มี + ออม/เดือน ตอนเกษียณ
+     fvCurrent ใช้สูตร per-asset (เคารพ return + term ของแต่ละ asset)
+     — ดู getDerivedData() สำหรับเหตุผลและการเปลี่ยนแปลง */
   const rB = plan.returnBefore / 100;
-  const fvCurrent = derived.currentSavings * Math.pow(1 + rB, yearsBefore);
+  const fvCurrent = derived.fvCurrentSavings;
   const monthly = plan.monthlyContribution || 0;
   const annualContrib = monthly * 12;
   let fvContrib = 0;
