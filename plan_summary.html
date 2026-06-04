@@ -957,6 +957,14 @@
     }
     .pf-doc-table tbody tr:last-child td { border-bottom: none; }
     .pf-doc-table tbody tr:hover { background: #FAFBFD; }
+    /* University tier breakdown — ใน _pfRenderEducation */
+    .pf-uni-tier {
+      display: inline-block; padding: 1px 8px; border-radius: 50px;
+      background: rgba(245,194,66,.18); color: #92500F;
+      font-size: .75rem; font-weight: 700; letter-spacing: .01em;
+    }
+    .pf-uni-cost { font-size: .82rem; color: #1F2D4F; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .pf-skip { font-size: .78rem; color: #9CA3AF; font-style: italic; }
     .pf-doc-table td.num {
       text-align: right;
       font-variant-numeric: tabular-nums;
@@ -1697,44 +1705,85 @@ function _psAnnualContrib(a) {
 const _PS_RET_DEFAULT = { retireAge: 60, lifeExpectancy: 85, incomePctAfterRetire: 70, inflationRate: 3, expectedReturn: 5, monthlyContribution: 0 };
 function _psRetirePlan(client) {
   const saved = (client && client.retirementPlan) || {};
+  const er = Number(saved.expectedReturn ?? _PS_RET_DEFAULT.expectedReturn);
   return {
     retireAge:            Number(saved.retireAge ?? client.retirementAge ?? _PS_RET_DEFAULT.retireAge),
     lifeExpectancy:       Number(saved.lifeExpectancy ?? _PS_RET_DEFAULT.lifeExpectancy),
     incomePctAfterRetire: Number(saved.incomePctAfterRetire ?? _PS_RET_DEFAULT.incomePctAfterRetire),
+    annualSpend:          Number(saved.annualSpend ?? 0),
     inflationRate:        Number(saved.inflationRate ?? _PS_RET_DEFAULT.inflationRate),
-    expectedReturn:       Number(saved.expectedReturn ?? _PS_RET_DEFAULT.expectedReturn),
+    expectedReturn:       er,
+    returnBefore:         Number(saved.returnBefore ?? er),
+    returnAfter:          Number(saved.returnAfter ?? Math.max(er - 1, 1)),
+    preserveCapital:      !!saved.preserveCapital,
+    withdrawalRate:       Number(saved.withdrawalRate ?? 4),
     monthlyContribution:  Number(saved.monthlyContribution ?? _PS_RET_DEFAULT.monthlyContribution),
   };
 }
 function _psRetireCalc(client) {
+  /* Sync กับ retirement2.html (v166): per-asset FV + preserveCapital
+     — แทนสูตรเก่าที่ใช้ bulk × expectedReturn ทำให้ค่าใน PDF ขัดแย้งกับหน้าจริง */
   const plan = _psRetirePlan(client);
   const annualIncome = Number(client.income) ||
     (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
-  const retireAssets = (client.assets || []).filter(a => ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
+  const retireAssets = (client.assets || []).filter(a =>
+    ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
   const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
   const currentMonthlyContrib = retireAssets.reduce((s,a) => s + _psAnnualContrib(a), 0) / 12;
-  const totalMonthly = (plan.monthlyContribution || 0) + currentMonthlyContrib;
+  /* Auto-pull: ถ้า user ยังไม่ตั้ง monthlyContribution → ใช้ค่าจาก assets อัตโนมัติ
+     (issue D ใน roadmap — แก้ที่นี่ให้ค่า PDF ตรงกับ retirement2.html) */
+  const totalMonthly = plan.monthlyContribution > 0
+    ? plan.monthlyContribution
+    : currentMonthlyContrib;
 
   const currentAge = _psAgeNow(client.dob) || 30;
   const yearsToRetire = Math.max(plan.retireAge - currentAge, 0);
   const yearsAfterRetire = Math.max(plan.lifeExpectancy - plan.retireAge, 1);
 
-  const annualNeedNow = annualIncome * (plan.incomePctAfterRetire / 100);
+  /* annualSpend → ใช้ค่าที่ user ตั้ง ถ้าไม่ตั้ง → derive จากรายได้ × % */
+  const annualNeedNow = plan.annualSpend > 0
+    ? plan.annualSpend
+    : annualIncome * (plan.incomePctAfterRetire / 100);
   const annualNeedAtRetire = annualNeedNow * Math.pow(1 + plan.inflationRate/100, yearsToRetire);
-  const realRate = (1 + plan.expectedReturn/100) / (1 + plan.inflationRate/100) - 1;
-  const targetCorpus = Math.abs(realRate) < 0.0001
-    ? annualNeedAtRetire * yearsAfterRetire
-    : annualNeedAtRetire * (1 - Math.pow(1 + realRate, -yearsAfterRetire)) / realRate;
 
-  const r = plan.expectedReturn / 100;
-  const fvCurrent = currentSavings * Math.pow(1 + r, yearsToRetire);
+  /* targetCorpus: preserveCapital ON → ใช้กฎ 4% (annualSpend / withdrawalRate)
+                  preserveCapital OFF → PV of annuity (drawdown to zero) */
+  let targetCorpus;
+  if (plan.preserveCapital && plan.withdrawalRate > 0) {
+    targetCorpus = annualNeedAtRetire / (plan.withdrawalRate / 100);
+  } else {
+    const realRate = (1 + plan.returnAfter/100) / (1 + plan.inflationRate/100) - 1;
+    targetCorpus = Math.abs(realRate) < 0.0001
+      ? annualNeedAtRetire * yearsAfterRetire
+      : annualNeedAtRetire * (1 - Math.pow(1 + realRate, -yearsAfterRetire)) / realRate;
+  }
+
+  /* Per-asset FV (sync กับ v166 retirement2.html — เคารพ return + term ของแต่ละ asset) */
+  const fvCurrent = retireAssets.reduce((s, a) => {
+    const pv = Number(a.currentValue || 0);
+    const r = (Number(a.expectedReturn) || 0) / 100;
+    const n = Number(a.term) || 0;
+    if (pv <= 0) return s;
+    if (n <= 0 || r === 0) return s + pv;
+    return s + pv * Math.pow(1 + r, n);
+  }, 0);
+
+  /* FV of future contributions ที่ plan-level returnBefore */
+  const rB = plan.returnBefore / 100;
   const annualContrib = totalMonthly * 12;
-  const fvContrib = yearsToRetire <= 0 ? 0
-    : Math.abs(r) < 0.0001
+  const fvContrib = yearsToRetire <= 0 || annualContrib <= 0 ? 0
+    : Math.abs(rB) < 0.0001
       ? annualContrib * yearsToRetire
-      : annualContrib * (Math.pow(1 + r, yearsToRetire) - 1) / r;
+      : annualContrib * (Math.pow(1 + rB, yearsToRetire) - 1) / rB;
   const fvTotal = fvCurrent + fvContrib;
-  return { target: targetCorpus, have: fvTotal, gap: Math.max(targetCorpus - fvTotal, 0) };
+  return {
+    target: targetCorpus, have: fvTotal,
+    gap: Math.max(targetCorpus - fvTotal, 0),
+    fvCurrent, fvContrib,
+    yearsToRetire, yearsAfterRetire,
+    annualNeedAtRetire,
+    preserveCapital: plan.preserveCapital,
+  };
 }
 
 /* === EDUCATION — replicate computeChildPlan totalFuture + fvOfCurrentSavings === */
@@ -1765,29 +1814,85 @@ function _psEduAssetPerChild(client) {
   return { lump: lump / children.length, monthly: monthly / children.length };
 }
 
+/* อ่าน level ของแต่ละ degree พร้อม backward-compat กับ field เก่า:
+   - ป.ตรี: ใช้ bachelorLevel → fallback child.level → 'medium'
+   - ป.โท: ใช้ masterLevel → fallback (child.includeMaster ? child.level : null)
+   - ป.เอก: ใช้ doctoralLevel → fallback (child.includePhd ? child.level : null)
+   - ระดับชั้น K-12 (kinder–high): ใช้ child.level || 'medium' (เหมือนเดิม) */
+function _psGetUniLevel(child, stageKey) {
+  if (stageKey === 'bachelor') {
+    if (child.bachelorLevel !== undefined) return child.bachelorLevel;
+    return child.level || 'medium';
+  }
+  if (stageKey === 'master') {
+    if (child.masterLevel !== undefined) return child.masterLevel;
+    return child.includeMaster ? (child.level || 'medium') : null;
+  }
+  if (stageKey === 'phd') {
+    if (child.doctoralLevel !== undefined) return child.doctoralLevel;
+    return child.includePhd ? (child.level || 'medium') : null;
+  }
+  return child.level || 'medium';   /* K-12 default */
+}
+
+/* คืน table ค่าเทอมมหาวิทยาลัย — รวม override จาก client.eduCostTable
+   (sync กับ DEFAULT_HIGHER_ED ใน education2.html) */
+const _PS_UNI_DEFAULT = {
+  bachelor: [35000, 300000, 3000000],
+  master:   [50000, 500000, 4750000],
+  phd:      [71000, 600000, 5000000],
+};
+function _psUniCost(client, stageKey, lvIdx) {
+  const t = client && client.eduCostTable;
+  const map = { bachelor:'tuition_bachelor', master:'tuition_master', phd:'tuition_doctoral' };
+  const tKey = map[stageKey];
+  if (t && tKey && Array.isArray(t[tKey]) && t[tKey][lvIdx] != null) {
+    return Number(t[tKey][lvIdx]) || 0;
+  }
+  return (_PS_UNI_DEFAULT[stageKey] || [])[lvIdx] || 0;
+}
+
 function _psChildEdu(child, client) {
   const age = _psAgeNow(child.dob || child.birthdate);
   const level = child.level || 'medium';
   const lvIdx = _PS_LVL_IDX[level] != null ? _PS_LVL_IDX[level] : 1;
-  if (age == null) return { totalFuture: [800000,1500000,3000000][lvIdx]||1500000, fvSavings: Number(child.eduSavings||0) };
-  const includeMaster = !!child.includeMaster, includePhd = !!child.includePhd;
+  if (age == null) return { totalFuture: [800000,1500000,3000000][lvIdx]||1500000, fvSavings: Number(child.eduSavings||0), uniBreakdown: {} };
   const customCosts = child.customCosts || {};
   const inflPct = child.inflationRate != null ? Number(child.inflationRate) : 5;
   const INFL = inflPct / 100;
   let totalFuture = 0;
+  let k12Total = 0, uniTotal = 0;
+  const uniBreakdown = {};   /* { bachelor: cost, master: cost, phd: cost } */
   _PS_EDU_STAGES.forEach(s => {
-    if (s.optional === 'master' && !includeMaster) return;
-    if (s.optional === 'phd' && !includePhd) return;
-    const custKey = `${s.key}_${level}`;
-    const baseAnnual = customCosts[custKey] != null ? Number(customCosts[custKey]) : _PS_EDU_COST[s.key][lvIdx];
+    /* University stages: เคารพ bachelor/master/doctoral level ใหม่
+       — ถ้า level = null → ข้าม stage นั้น */
+    const isUni = (s.key === 'bachelor' || s.key === 'master' || s.key === 'phd');
+    let stageLevel, stageLvIdx, baseAnnual;
+    if (isUni) {
+      stageLevel = _psGetUniLevel(child, s.key);
+      if (!stageLevel) return;   /* ข้าม */
+      stageLvIdx = _PS_LVL_IDX[stageLevel] != null ? _PS_LVL_IDX[stageLevel] : 1;
+      const custKey = `${s.key}_${stageLevel}`;
+      baseAnnual = customCosts[custKey] != null
+        ? Number(customCosts[custKey])
+        : _psUniCost(client, s.key, stageLvIdx);
+    } else {
+      /* K-12 stages — ใช้ level เดียวกัน */
+      const custKey = `${s.key}_${level}`;
+      baseAnnual = customCosts[custKey] != null ? Number(customCosts[custKey]) : _PS_EDU_COST[s.key][lvIdx];
+    }
     const startAge = s.startAge, endAge = startAge + s.years;
     let yearsLeft = age >= endAge ? 0 : (age < startAge ? s.years : endAge - age);
     yearsLeft = Math.max(yearsLeft, 0);
     if (yearsLeft > 0) {
       const yearOfStart = Math.max(startAge - age, 0);
+      let stageCost = 0;
       for (let i = 0; i < Math.ceil(yearsLeft); i++) {
-        totalFuture += baseAnnual * Math.pow(1 + INFL, yearOfStart + i) * Math.min(1, yearsLeft - i);
+        stageCost += baseAnnual * Math.pow(1 + INFL, yearOfStart + i) * Math.min(1, yearsLeft - i);
       }
+      totalFuture += stageCost;
+      if (isUni) { uniTotal += stageCost; uniBreakdown[s.key] = { level: stageLevel, cost: stageCost }; }
+      else       { k12Total += stageCost; }
     }
   });
   /* FV ของ savings (4%/yr — ตรงกับ education.html SAVINGS_RETURN) */
@@ -1799,7 +1904,7 @@ function _psChildEdu(child, client) {
   const SR = 0.04, r_m = SR/12, n_m = yearsToFinish * 12;
   const fvLump = eduSavings * Math.pow(1 + SR, yearsToFinish);
   const fvAnnuity = (eduMonthly > 0 && n_m > 0) ? eduMonthly * (Math.pow(1+r_m, n_m) - 1) / r_m * (1+r_m) : 0;
-  return { totalFuture, fvSavings: fvLump + fvAnnuity };
+  return { totalFuture, fvSavings: fvLump + fvAnnuity, k12Total, uniTotal, uniBreakdown };
 }
 
 /* === HEALTH — match policies.html renderHealthGap (HOSPITAL_TIERS by trustedTier) === */
@@ -3022,11 +3127,17 @@ function _pfRenderRetire(c) {
         <div class="pf-row"><span>อายุปัจจุบัน</span><span>${age?Math.floor(age):'—'} ปี</span></div>
         <div class="pf-row"><span>อายุที่ต้องการเกษียณ</span><span>${plan.retireAge} ปี</span></div>
         <div class="pf-row"><span>อายุขัยที่คาดการณ์</span><span>${plan.lifeExpectancy} ปี</span></div>
+        <div class="pf-row"><span>จำนวนเงินที่ต้องการใช้/ปี</span><span>${fmt(plan.annualSpend > 0 ? plan.annualSpend : (Number(c.income)||0) * plan.incomePctAfterRetire/100)}</span></div>
         <div class="pf-row"><span>เงินเฟ้อ (Inflation)</span><span>${plan.inflationRate}%/ปี</span></div>
-        <div class="pf-row"><span>ผลตอบแทนคาดหวัง</span><span>${plan.expectedReturn}%/ปี</span></div>
+        <div class="pf-row"><span>ผลตอบแทนก่อนเกษียณ</span><span>${plan.returnBefore}%/ปี</span></div>
+        <div class="pf-row"><span>ผลตอบแทนหลังเกษียณ</span><span>${plan.returnAfter}%/ปี</span></div>
+        <div class="pf-row"><span>โหมดคำนวณ</span><span>${calc.preserveCapital ? `🛡️ คงเงินต้น (กฎ ${plan.withdrawalRate}%)` : '📉 ถอนใช้เงินต้น'}</span></div>
+        <div class="pf-row"><span>กระแสเงินสดที่ต้องมี (ตอนเกษียณ)</span><span>${fmt(calc.annualNeedAtRetire)}/ปี</span></div>
         <div class="pf-row"><span>Safe Withdrawal (4% Rule)</span><span>${fmt(safeMonthlyIncome)}/เดือน</span></div>
+        <div class="pf-row" style="border-top:1px solid #E5E7EB;padding-top:6px;margin-top:4px;"><span>FV ทุนเดิม (per-asset)</span><span>${fmt(calc.fvCurrent||0)}</span></div>
+        <div class="pf-row"><span>FV เงินออมเพิ่ม</span><span>${fmt(calc.fvContrib||0)}</span></div>
         <div class="pf-row"><span>เป้าหมายเงินก้อน</span><span style="color:#B91C1C;">${fmt(calc.target)}</span></div>
-        <div class="pf-row"><span>คาดว่าจะมี (FV)</span><span style="color:#15803D;">${fmt(calc.have)}</span></div>
+        <div class="pf-row"><span>คาดว่าจะมี (FV รวม)</span><span style="color:#15803D;">${fmt(calc.have)}</span></div>
         <div class="pf-row"><span><b>ยังขาด (Gap)</b></span><span><b style="color:#B91C1C;">${fmt(calc.gap)}</b></span></div>
         <div class="pf-row"><span><b>ต้องออมเพิ่ม/เดือน</b></span><span><b style="color:#A88A4F;">${fmt(monthlySavings)}</b></span></div>
       </div>
@@ -3041,26 +3152,53 @@ function _pfRenderEducation(c) {
   if (children.length === 0) {
     return `<div class="pf-doc-section"><h4>${_pfIcon('education')} แผนการศึกษาบุตร · Education Plan</h4><div class="pf-empty">ยังไม่มีข้อมูลบุตร</div></div>`;
   }
-  let totalFuture = 0, totalSavings = 0;
+  /* Thai label สำหรับ tier — match กับ education2.html */
+  const TIER_TH = { economy: 'เริ่มต้น', medium: 'ทางสายกลาง', premium: 'จัดเต็ม' };
+  const DEGREE_LABEL_TH = { bachelor: 'ป.ตรี', master: 'ป.โท', phd: 'ป.เอก' };
+
+  let totalFuture = 0, totalSavings = 0, totalK12 = 0, totalUni = 0;
   const rows = children.map(ch => {
     const r = _psChildEdu(ch, c);
     const age = _psAgeNow(ch.dob || ch.birthdate);
     const gap = Math.max(r.totalFuture - r.fvSavings, 0);
     totalFuture += Number(r.totalFuture||0);
     totalSavings += Number(r.fvSavings||0);
+    totalK12 += Number(r.k12Total||0);
+    totalUni += Number(r.uniTotal||0);
     const yearsToEdu = age ? Math.max(18 - Math.floor(age), 0) : 0;
     const monthlySavings = yearsToEdu > 0 ? gap / (yearsToEdu * 12) : 0;
     return `<tr>
       <td>${ch.name||'—'}</td>
       <td class="num">${age?Math.floor(age):'—'}</td>
-      <td>${ch.level||'medium'}</td>
       <td class="num">${yearsToEdu} ปี</td>
+      <td class="num">${fmt(r.k12Total||0)}</td>
+      <td class="num">${fmt(r.uniTotal||0)}</td>
       <td class="num">${fmt(r.totalFuture)}</td>
       <td class="num">${fmt(r.fvSavings)}</td>
       <td class="num ${gap>0?'neg':'pos'}">${gap>0?fmt(gap):'✓ ครบ'}</td>
       <td class="num">${gap>0?fmt(monthlySavings):'—'}</td>
     </tr>`;
   }).join('');
+
+  /* Sub-table: รายละเอียดค่าเล่าเรียนมหาวิทยาลัย — ป.ตรี/ป.โท/ป.เอก แยกระดับ + ยอดเงิน */
+  const uniRows = children.map(ch => {
+    const r = _psChildEdu(ch, c);
+    const bd = r.uniBreakdown || {};
+    const fmtCell = (key) => {
+      const b = bd[key];
+      if (!b) return '<span class="pf-skip">— ข้าม —</span>';
+      const tier = TIER_TH[b.level] || b.level || '—';
+      return `<span class="pf-uni-tier">${tier}</span><br><span class="pf-uni-cost">${fmt(b.cost)}</span>`;
+    };
+    return `<tr>
+      <td>${ch.name||'—'}</td>
+      <td>${fmtCell('bachelor')}</td>
+      <td>${fmtCell('master')}</td>
+      <td>${fmtCell('phd')}</td>
+      <td class="num">${fmt(r.uniTotal||0)}</td>
+    </tr>`;
+  }).join('');
+
   const totalGap = Math.max(totalFuture - totalSavings, 0);
   const progressPct = totalFuture > 0 ? (totalSavings / totalFuture) * 100 : 0;
   return `
@@ -3069,8 +3207,8 @@ function _pfRenderEducation(c) {
 
       <div class="pf-kpi-grid">
         ${_pfKpi('ค่าใช้จ่ายรวม', fmt(totalFuture))}
-        ${_pfKpi('เงินออมคาดการณ์', fmt(totalSavings))}
-        ${_pfKpi('ยังขาด', fmt(totalGap), { status: totalGap>0?'bad':'good' })}
+        ${_pfKpi('K-12 (อนุบาล–ม.6)', fmt(totalK12))}
+        ${_pfKpi('มหาวิทยาลัย', fmt(totalUni))}
         ${_pfKpi('Progress', progressPct.toFixed(1) + '%', { status: progressPct>=80?'good':progressPct>=50?'med':'bad' })}
       </div>
 
@@ -3078,9 +3216,10 @@ function _pfRenderEducation(c) {
         <thead><tr>
           <th>ชื่อ</th>
           <th class="num">อายุ</th>
-          <th>ระดับ</th>
           <th class="num">เหลือ</th>
-          <th class="num">ค่าใช้จ่ายรวม</th>
+          <th class="num">K-12</th>
+          <th class="num">มหาวิทยาลัย</th>
+          <th class="num">รวม</th>
           <th class="num">FV เงินออม</th>
           <th class="num">ขาด</th>
           <th class="num">ออม/เดือน</th>
@@ -3088,9 +3227,23 @@ function _pfRenderEducation(c) {
         <tbody>${rows}</tbody>
       </table>
 
+      <h5 style="margin-top:14px;margin-bottom:6px;color:var(--gray-800);font-size:.95rem;font-weight:700;">
+        ค่าเล่าเรียนระดับมหาวิทยาลัย — รายละเอียด
+      </h5>
+      <table class="pf-doc-table">
+        <thead><tr>
+          <th>ชื่อ</th>
+          <th>ป.ตรี (4 ปี)</th>
+          <th>ป.โท (2 ปี)</th>
+          <th>ป.เอก (3 ปี)</th>
+          <th class="num">รวมมหาวิทยาลัย</th>
+        </tr></thead>
+        <tbody>${uniRows}</tbody>
+      </table>
+
       <div class="pf-insight">
         คำแนะนำ: เริ่มออมตั้งแต่บุตรอายุน้อย — ใช้กองทุนรวม/ประกันสะสมทรัพย์ที่กำหนดระยะเวลาตรงกับวัยเข้าเรียน
-        ของบุตรแต่ละคน · เปิดบัญชีแยกต่อบุตรเพื่อบริหารง่าย
+        ของบุตรแต่ละคน · เปิดบัญชีแยกต่อบุตรเพื่อบริหารง่าย · เลือกระดับและสถานศึกษาที่เหมาะกับกำลังเงินจริง
       </div>
     </div>
   `;
