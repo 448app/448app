@@ -184,11 +184,34 @@
       border: 1.5px solid transparent;
       transition: all .12s;
       letter-spacing: -.05em;
+      font-family: inherit;
     }
     .e3-level-btn:hover { color: var(--e3-yellow); }
     .e3-level-btn.active {
       color: var(--e3-yellow); border-color: var(--e3-yellow);
       background: rgba(245,194,66,.1);
+    }
+
+    /* ════ 3-degree picker (ป.ตรี/โท/เอก) ════ */
+    .e3-degree-stack {
+      display: inline-flex; flex-direction: column; gap: 4px;
+      padding: 4px 8px;
+    }
+    .e3-degree-row {
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .e3-degree-lbl {
+      font-size: .82rem; font-weight: 700; color: var(--e3-indigo);
+      min-width: 44px; letter-spacing: -.01em;
+    }
+    .e3-level-btn.skip {
+      font-size: .75rem; font-weight: 700;
+      padding: 3px 8px; letter-spacing: 0;
+      min-width: 36px;
+    }
+    .e3-level-btn.skip.active {
+      color: #6B7280; border-color: #9CA3AF;
+      background: rgba(107,114,128,.08);
     }
 
     /* ════ Bottom totals ════ */
@@ -437,6 +460,31 @@ let selectedClientId = null;
 const BACHELOR_START_AGE = 18;
 const BACHELOR_YEARS = 4;
 const LEVEL_KEYS = ['economy','medium','premium'];
+
+/* ════════════════════════════════════════════
+   DEGREE CONFIG — ใช้เลือกได้ 3 ระดับอิสระ (ตรี/โท/เอก)
+   - ตรี default = 'medium' (backward-compat กับ child.level เดิม)
+   - โท/เอก default = null (ผู้ใช้ opt-in)
+   - แต่ละ degree มี startAge + years + ตาราง tuition ของตัวเอง
+═══════════════════════════════════════════ */
+const DEGREE_CONFIG = [
+  { key: 'bachelor', label: 'ป.ตรี',  labelLong: 'ปริญญาตรี', startAge: 18, years: 4, tuitionKey: 'tuition_bachelor', levelField: 'bachelorLevel' },
+  { key: 'master',   label: 'ป.โท',   labelLong: 'ปริญญาโท',  startAge: 22, years: 2, tuitionKey: 'tuition_master',   levelField: 'masterLevel'   },
+  { key: 'doctoral', label: 'ป.เอก',  labelLong: 'ปริญญาเอก', startAge: 24, years: 3, tuitionKey: 'tuition_doctoral', levelField: 'doctoralLevel' },
+];
+
+/* อ่าน level ของ degree พร้อม backward-compat:
+   - ป.ตรี: ถ้า bachelorLevel undefined → fallback child.level (legacy field) → 'medium'
+   - ป.โท/เอก: undefined → null (= ข้าม) */
+function getChildDegreeLevel(child, degKey) {
+  if (!child) return null;
+  if (degKey === 'bachelor') {
+    if (child.bachelorLevel !== undefined) return child.bachelorLevel;   /* null ถูก preserve */
+    return child.level || 'medium';
+  }
+  const v = child[degKey + 'Level'];
+  return v === undefined ? null : v;
+}
 const LEVEL_INDEX = { economy:0, medium:1, premium:2 };
 const LEVEL_LABEL_TH = { economy: 'เริ่มต้น (รัฐบาล)', medium: 'กลาง (เอกชน)', premium: 'จัดเต็ม (อินเตอร์)' };
 const DEFAULT_BACHELOR_INFL = 3;
@@ -611,20 +659,30 @@ function computeBachelor(child) {
   const yearsToSave = Math.max(yearsToBachelor, 1);   /* กัน div by 0 */
   const startYear = new Date().getFullYear() + Math.round(yearsToBachelor);
 
-  const level = child.level || 'medium';
-  const lvIdx = LEVEL_INDEX[level] != null ? LEVEL_INDEX[level] : 1;
-  const baseAnnualCost = _getBachelorTuition(level);
-
   const inflPct = child.bachelorInfl != null
     ? Number(child.bachelorInfl)
     : (child.inflationRate != null ? Number(child.inflationRate) : DEFAULT_BACHELOR_INFL);
   const INFL = inflPct / 100;
 
-  /* รวมค่าเทอม 4 ปี ปรับ inflation รายปี */
+  /* รวมค่าเทอมของทุก degree ที่ผู้ใช้เลือก (ตรี/โท/เอก) ปรับ inflation รายปี
+     - แต่ละ degree ใช้ startAge + years + tuition ของตัวเอง
+     - degree ที่ level === null → ข้าม ไม่นับ */
+  const tuitionTable = getHigherEdTable();
   let totalTuition = 0;
-  for (let y = 0; y < BACHELOR_YEARS; y++) {
-    totalTuition += baseAnnualCost * Math.pow(1 + INFL, yearsToBachelor + y);
-  }
+  const degreesSelected = [];
+  DEGREE_CONFIG.forEach(deg => {
+    const lvl = getChildDegreeLevel(child, deg.key);
+    if (!lvl) return;   /* null = ข้าม */
+    const lvIdx = LEVEL_INDEX[lvl] != null ? LEVEL_INDEX[lvl] : 1;
+    const baseAnnualCost = Number((tuitionTable[deg.tuitionKey] || [])[lvIdx] || 0);
+    const yearsToStart = Math.max(deg.startAge - age, 0);
+    for (let y = 0; y < deg.years; y++) {
+      totalTuition += baseAnnualCost * Math.pow(1 + INFL, yearsToStart + y);
+    }
+    degreesSelected.push(deg.key);
+  });
+  /* เก็บ "ป.ตรี" เป็น level ตัวแทน (legacy field สำหรับโค้ดเก่าที่อ่าน calc.level) */
+  const level = getChildDegreeLevel(child, 'bachelor') || 'medium';
 
   const _split = _eduAssetPerChild();
   const eduSavings = Number(child.eduSavings || 0) + _split.lump;
@@ -655,6 +713,7 @@ function computeBachelor(child) {
     totalTuition, eduSavings, gap, overage,
     inflPct, returnPct, reqAnnual,
     progressPct,
+    degreesSelected,   /* รายการ degree ที่ผู้ใช้เลือก (สำหรับ footer + tooltip) */
   };
 }
 
@@ -672,7 +731,23 @@ function updateChildField(id, field, value) {
   render();
 }
 function updateChildLevel(id, level) {
-  updateChildField(id, 'level', level);
+  /* Legacy single-level setter — ตอนนี้ map ไปยัง bachelorLevel */
+  updateChildField(id, 'bachelorLevel', level);
+}
+function updateChildDegreeLevel(id, degKey, level) {
+  /* รับ null (ข้าม) ได้ด้วย */
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.children) return;
+    const ch = c.children.find(x => x.id === id);
+    if (!ch) return;
+    const deg = DEGREE_CONFIG.find(d => d.key === degKey);
+    if (!deg) return;
+    ch[deg.levelField] = level;       /* null preserved → ข้าม */
+    /* Backward-compat: ป.ตรี อัพเดท legacy field ด้วย ในกรณีโค้ดเก่ายังอ่าน child.level */
+    if (degKey === 'bachelor') ch.level = level;
+  });
+  render();
 }
 function updateAllInflation(v) {
   const n = Number(v);
@@ -750,7 +825,7 @@ function render() {
           <div class="e3-head-sub">
             ค่าเล่าเรียนระดับมหาวิทยาลัย
             <button class="e3-info" type="button" aria-label="ดูรายละเอียด"
-                    onclick="openInfoPopup('ค่าเล่าเรียนระดับมหาวิทยาลัย','ค่าเทอม 4 ปี ปริญญาตรี ปรับด้วยอัตราเงินเฟ้อ ใช้คำนวณเงินที่ต้องเก็บเพิ่มต่อปี','🎓')">i</button>
+                    onclick="openInfoPopup('ค่าเล่าเรียนระดับมหาวิทยาลัย','ค่าเทอมทุกระดับที่เลือก (ป.ตรี 4 ปี · ป.โท 2 ปี · ป.เอก 3 ปี) ปรับด้วยอัตราเงินเฟ้อ ใช้คำนวณเงินที่ต้องเก็บเพิ่มต่อปี — เลือก ข้าม ในระดับที่ไม่ต้องการ','🎓')">i</button>
           </div>
         </div>
         <div class="e3-infl-wrap">
@@ -783,7 +858,7 @@ function render() {
           <div class="e3-total-pill">${fmtMoney(grandGap)}</div>
           <div class="e3-total-unit">บาท</div>
         </div>
-        <div class="e3-total-foot">*เริ่มเรียนปริญญาตรี ณ อายุ ${BACHELOR_START_AGE} ปี</div>
+        <div class="e3-total-foot">*${DEGREE_CONFIG.map(d => `${d.labelLong} อายุ ${d.startAge} (${d.years} ปี)`).join(' · ')}</div>
       </div>
 
       <!-- Progress -->
@@ -818,15 +893,26 @@ function renderChildBlock(child, calc, idx) {
           <div class="e3-row-lbl">บาท</div>
         </div>
 
-        <!-- Row 2: level | saved | gap -->
+        <!-- Row 2: level (3 degrees) | saved | gap -->
         <div class="e3-row">
           <div class="e3-row-lbl">ประเภทสถานศึกษา</div>
-          <div class="e3-level-row" role="radiogroup" aria-label="ระดับสถานศึกษา">
-            ${LEVEL_KEYS.map((k, i) => `
-              <button class="e3-level-btn ${calc.level === k ? 'active' : ''}"
-                onclick="updateChildLevel('${child.id}','${k}')"
-                title="${LEVEL_LABEL_TH[k]}">${'$'.repeat(i+1)}</button>
-            `).join('')}
+          <div class="e3-degree-stack" role="group" aria-label="ระดับสถานศึกษา">
+            ${DEGREE_CONFIG.map(deg => {
+              const lvl = getChildDegreeLevel(child, deg.key);
+              return `
+                <div class="e3-degree-row" role="radiogroup" aria-label="${deg.labelLong}">
+                  <span class="e3-degree-lbl">${deg.label}</span>
+                  <button class="e3-level-btn skip ${!lvl ? 'active' : ''}"
+                          onclick="updateChildDegreeLevel('${child.id}','${deg.key}', null)"
+                          title="ข้าม${deg.labelLong}">ข้าม</button>
+                  ${LEVEL_KEYS.map((k, i) => `
+                    <button class="e3-level-btn ${lvl === k ? 'active' : ''}"
+                            onclick="updateChildDegreeLevel('${child.id}','${deg.key}','${k}')"
+                            title="${deg.labelLong} · ${LEVEL_LABEL_TH[k]}">${'$'.repeat(i+1)}</button>
+                  `).join('')}
+                </div>
+              `;
+            }).join('')}
           </div>
           <div class="e3-row-lbl">เตรียมไว้แล้ว</div>
           <div class="e3-pill">
