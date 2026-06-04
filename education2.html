@@ -736,6 +736,18 @@ function updateChildLevel(id, level) {
 }
 function updateChildDegreeLevel(id, degKey, level) {
   /* รับ null (ข้าม) ได้ด้วย */
+  /* ── No-op short-circuit ──
+     ถ้า level ที่จะเซ็ตเท่ากับ level ปัจจุบัน (รวมกรณี undefined → fallback ค่าเริ่มต้น) →
+     ไม่ทำอะไรเลย ไม่ updateUser ไม่ render. กันสาเหตุการ "click ซ้ำแล้วตัวเลขเปลี่ยน":
+     - ageNow() ใช้ new Date() ทุกครั้ง → render สอง times = age ต่างกันเล็กน้อย
+     - render() rebuild input → focus loss ของ input ใกล้เคียง → onchange ยิงโดยไม่ตั้งใจ
+     - MutationObserver ของ money-input.js fire ทุก render ทำให้ format ปรับซ้ำ */
+  const c0 = getCurrent();
+  if (!c0) return;
+  const ch0 = (c0.children || []).find(x => x.id === id);
+  if (!ch0) return;
+  if (getChildDegreeLevel(ch0, degKey) === level) return;   /* no-op — ไม่เปลี่ยน */
+
   updateUser(u => {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c || !c.children) return;
