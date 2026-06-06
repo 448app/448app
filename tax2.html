@@ -433,8 +433,29 @@ function getTaxInputs() {
    Calling render() on every oninput destroys the focused <input> (whole
    table is rebuilt via wrap.innerHTML), which is why each keystroke
    "kicks out" the cursor. Callers trigger render() on onblur/onchange. */
+/* taxFmtInput — ใส่ comma ระหว่างพิมพ์ + รักษาตำแหน่ง cursor + คืนค่าตัวเลข (ไม่มี comma)
+   ใช้ใน oninput ของช่องลดหย่อน (type=text) — contained ไม่พึ่ง money-fmt/observer
+   (กัน cursor หลุดแบบที่เคยเจอ) */
+function taxFmtInput(el) {
+  const before = el.value || '';
+  const cursor = el.selectionStart != null ? el.selectionStart : before.length;
+  const digitsBefore = before.slice(0, cursor).replace(/\D/g, '').length;
+  const digits = before.replace(/\D/g, '');
+  const num = digits ? Number(digits) : 0;
+  const formatted = digits ? num.toLocaleString('th-TH') : '';
+  if (el.value !== formatted) {
+    el.value = formatted;
+    let pos = 0, d = 0;
+    while (d < digitsBefore && pos < formatted.length) { if (/\d/.test(formatted[pos])) d++; pos++; }
+    try { el.setSelectionRange(pos, pos); } catch (e) {}
+  }
+  return num;
+}
+/* strip comma ก่อนแปลงเป็นตัวเลข (รับทั้งค่าตัวเลขจาก taxFmtInput และ string มี comma จาก commit) */
+function _taxNum(value) { return Number(String(value).replace(/[^\d.-]/g, '')) || 0; }
+
 function saveField(scope, key, value) {
-  const n = Number(value) || 0;
+  const n = _taxNum(value);
   updateUser(u => {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c) return;
@@ -448,7 +469,7 @@ function saveField(scope, key, value) {
   });
 }
 function saveExtraDonate(scope, value) {
-  const n = Number(value) || 0;
+  const n = _taxNum(value);
   updateUser(u => {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c) return;
@@ -717,13 +738,13 @@ function buildTaxHTML() {
       <div class="t3-sum">
         <div class="t3-sum-lbl">เงินบริจาคเพื่อการศึกษา การกีฬา การพัฒนาสังคม และโรงพยาบาลรัฐ <button class="t3-info" type="button" aria-label="ดูรายละเอียด"
           onclick="openInfoPopup('เงินบริจาค (หัก 2 เท่า)','เงินบริจาคเพื่อการศึกษา การกีฬา การพัฒนาสังคม และโรงพยาบาลของรัฐ — หักลดหย่อนได้ 2 เท่าของจำนวนที่บริจาคจริง แต่ไม่เกิน 10% ของรายได้หลังหักค่าใช้จ่ายและค่าลดหย่อนทั่วไป','🧾')">i</button></div>
-        <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${cur.eduDonate||''}" min="0" placeholder="0"
-          oninput="saveExtraDonate('cur', this.value)"
+        <div class="t3-cell"><div class="t3-sum-pill"><input type="text" inputmode="numeric" value="${cur.eduDonate ? fmt(cur.eduDonate) : ''}" placeholder="0"
+          oninput="saveExtraDonate('cur', taxFmtInput(this))"
           onblur="commitExtraDonate('cur', this.value)"
           onchange="commitExtraDonate('cur', this.value)"
           style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
-        <div class="t3-cell"><div class="t3-sum-pill"><input type="number" value="${imp.eduDonate||''}" min="0" placeholder="0"
-          oninput="saveExtraDonate('imp', this.value)"
+        <div class="t3-cell"><div class="t3-sum-pill"><input type="text" inputmode="numeric" value="${imp.eduDonate ? fmt(imp.eduDonate) : ''}" placeholder="0"
+          oninput="saveExtraDonate('imp', taxFmtInput(this))"
           onblur="commitExtraDonate('imp', this.value)"
           onchange="commitExtraDonate('imp', this.value)"
           style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
@@ -849,12 +870,12 @@ function renderRow(row, ti, cur, imp, num) {
      oninput = save-only (no render → focus preserved); onblur/onchange = commit (save + render). */
   const renderCell = (scope, v) => {
     if (v > 0) {
-      return `<div class="t3-pill"><input type="number" value="${v}" min="0"
-        oninput="saveField('${scope}','${row.key}',this.value)"
+      return `<div class="t3-pill"><input type="text" inputmode="numeric" value="${fmt(v)}"
+        oninput="saveField('${scope}','${row.key}',taxFmtInput(this))"
         onblur="commitField('${scope}','${row.key}',this.value)"
         onchange="commitField('${scope}','${row.key}',this.value)"></div>`;
     }
-    return `<div class="t3-pill readonly" onclick="this.outerHTML='<div class=\\'t3-pill\\'><input type=\\'number\\' value=\\'\\' min=\\'0\\' autofocus oninput=&quot;saveField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot; onblur=&quot;commitField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot; onchange=&quot;commitField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot;></div>'">
+    return `<div class="t3-pill readonly" onclick="this.outerHTML='<div class=\\'t3-pill\\'><input type=\\'text\\' inputmode=\\'numeric\\' value=\\'\\' autofocus oninput=&quot;saveField(\\'${scope}\\',\\'${row.key}\\',taxFmtInput(this))&quot; onblur=&quot;commitField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot; onchange=&quot;commitField(\\'${scope}\\',\\'${row.key}\\',this.value)&quot;></div>'">
       <span>${cap.text || '—'}</span>
     </div>`;
   };
