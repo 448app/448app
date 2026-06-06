@@ -1214,12 +1214,30 @@ function exportData() {
   a.click();
   URL.revokeObjectURL(url);
 
+  // บันทึกเวลา + ลายเซ็นข้อมูล (ไว้เตือน export ครั้งหน้า — storage-safe.js อ่าน)
+  localStorage.setItem('aia_last_export', new Date().toISOString());
+  localStorage.setItem('aia_last_export_sig', String((localStorage.getItem('aia_users') || '').length));
+
   // Update label
   const lbl = document.getElementById('backup-last-label');
   if (lbl) lbl.textContent = '✅ Export ล่าสุด: ' + new Date().toLocaleString('th-TH-u-ca-gregory', { dateStyle:'medium', timeStyle:'short' });
 
   showToast('📥 Export สำเร็จ — ไฟล์ ' + filename + ' ถูกดาวน์โหลดแล้ว', 'success');
   logActivity('💾', 'Export ข้อมูลสำรอง (' + (user.data.clients || []).length + ' ลูกค้า)');
+}
+
+/* แสดงสถานะ backup ล่าสุดใน label ตอนโหลดหน้า (อ่านจาก aia_last_export) */
+function showLastExportStatus() {
+  const lbl = document.getElementById('backup-last-label');
+  if (!lbl) return;
+  const last = localStorage.getItem('aia_last_export');
+  if (!last) return;   /* ยังไม่เคย export — คงข้อความ default */
+  const days = Math.floor((Date.now() - new Date(last).getTime()) / 86400000);
+  const when = new Date(last).toLocaleDateString('th-TH-u-ca-gregory', { dateStyle: 'medium' });
+  const ago  = days <= 0 ? 'วันนี้' : days === 1 ? 'เมื่อวาน' : days + ' วันก่อน';
+  const warn = days >= 7 ? ' ⚠️' : '';
+  lbl.textContent = '💾 Export ล่าสุด: ' + when + ' (' + ago + ')' + warn;
+  if (days >= 7) { lbl.style.color = '#A8741F'; lbl.style.fontWeight = '700'; }
 }
 
 // Step 1: user picks file → show confirm modal
@@ -1748,7 +1766,8 @@ function checkUpcomingNotifications() {
   renderTasks();
   renderRenewal();
   scheduleNotificationCheck();
-  updateStorageUsage();   /* show localStorage usage in the backup bar */
+  updateStorageUsage();      /* show localStorage usage in the backup bar */
+  showLastExportStatus();    /* show last-export date + age in backup label */
 
   /* แจ้งเตือนเครื่องใหม่ → ให้ Import ข้อมูล */
   if (localStorage.getItem('aia_newDevice') === '1') {
