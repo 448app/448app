@@ -1,0 +1,1511 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>448 Wealth Management Plan — จัดทำแผน</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="flow-nav.js"></script>
+  <script src="money-input.js"></script>
+  <script src="info-popup.js"></script>
+  <script>
+    firebase.initializeApp({
+      apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
+      authDomain: "app-d83ab.firebaseapp.com",
+      projectId: "app-d83ab",
+      storageBucket: "app-d83ab.firebasestorage.app",
+      messagingSenderId: "2200674251",
+      appId: "1:2200674251:web:0b240a123df2e5b86ea04e"
+    });
+    const fbAuth = firebase.auth();
+  </script>
+  <style>
+    :root {
+      --pl-indigo:      #1F2D4F;
+      --pl-indigo-soft: #F0F2F7;
+      --pl-yellow:      #F5C242;
+      --pl-red:         #DC3545;
+      --pl-gray:        #E5E7EB;
+    }
+
+    .feature-hero {
+      background: linear-gradient(135deg, var(--red-primary), var(--red-dark));
+      color: white; padding: 22px 30px 28px; margin-bottom: -8px;
+    }
+    .feature-hero h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+    .feature-hero p  { opacity: .85; font-size: .88rem; }
+
+    .pl-wrap {
+      background: white; border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); padding: 26px 32px;
+      margin-bottom: 18px;
+    }
+    .pl-head {
+      display: flex; align-items: center; gap: 14px;
+      padding-bottom: 14px; border-bottom: 2px solid var(--pl-indigo);
+      margin-bottom: 22px;
+    }
+    .pl-head-icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      border: 3px solid var(--pl-indigo); color: var(--pl-indigo);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; flex-shrink: 0; background: white;
+    }
+    .pl-head-title {
+      font-size: 1.4rem; font-weight: 800; color: var(--pl-indigo);
+      letter-spacing: -0.01em;
+    }
+    .pl-head-sub { font-size: .88rem; color: var(--gray-500); margin-top: 2px; }
+    .pl-head-spacer { flex: 1; }
+
+    /* ════ STATE A — empty (just OPS card) ════ */
+    .pl-state-empty {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 30px 20px 50px;
+    }
+    .pl-template-card {
+      width: 220px; height: 220px;
+      background: var(--pl-indigo); color: white;
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 800;
+      text-align: center; line-height: 1.4;
+      cursor: pointer; transition: all .15s;
+      box-shadow: 0 6px 18px rgba(31,45,79,.25);
+      border: none; font-family: inherit;
+    }
+    .pl-template-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 24px rgba(31,45,79,.4);
+    }
+
+    /* ════ STATE B — name input ════ */
+    .pl-name-input-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 0;
+    }
+    .pl-name-input-row label {
+      font-size: .92rem; font-weight: 700;
+      color: var(--gray-500);
+    }
+    .pl-name-input {
+      border: none; outline: none; background: transparent;
+      border-bottom: 2px solid var(--pl-indigo);
+      font-family: var(--font); font-weight: 800; font-size: 1.15rem;
+      color: var(--pl-indigo); padding: 6px 8px;
+      min-width: 200px;
+    }
+    .pl-confirm-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--pl-indigo); color: white;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .pl-confirm-btn:hover { background: #2A3B66; }
+
+    /* ════ STATE C — plans list ════ */
+    .pl-list { display: flex; flex-wrap: wrap; gap: 18px; padding: 8px 0 20px; }
+    .pl-plan-card {
+      position: relative;
+      width: 170px; height: 220px;
+      background: var(--gray-200); color: var(--gray-700);
+      border-radius: 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.1rem;
+      cursor: pointer; transition: all .15s;
+      border: 2px solid transparent;
+    }
+    .pl-plan-card:hover {
+      background: #D6DAE2; transform: translateY(-2px);
+      border-color: var(--pl-indigo);
+    }
+    .pl-plan-del {
+      position: absolute; top: 8px; right: 8px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(0,0,0,.25); color: white;
+      border: none; cursor: pointer; font-size: 1rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pl-plan-del:hover { background: var(--pl-red); }
+    .pl-add-btn {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--pl-indigo); color: white;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem; font-weight: 700;
+      align-self: center;
+      box-shadow: 0 4px 12px rgba(31,45,79,.3);
+      transition: all .15s;
+    }
+    .pl-add-btn:hover { transform: scale(1.05); box-shadow: 0 6px 16px rgba(31,45,79,.4); }
+
+    /* ════ STATE D — editor ════ */
+    .pl-editor { display: flex; flex-direction: column; gap: 18px; }
+    .pl-back-row {
+      display: flex; align-items: center; gap: 12px;
+      padding-bottom: 10px;
+    }
+    .pl-back-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--gray-100); color: var(--pl-indigo);
+      border: 1.5px solid var(--gray-300); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 700;
+    }
+    .pl-back-btn:hover { background: var(--pl-indigo); color: white; }
+    .pl-editing-name {
+      font-size: 1.05rem; font-weight: 800; color: var(--pl-indigo);
+    }
+
+    /* Timeline diagram */
+    .pl-timeline {
+      background: var(--pl-indigo-soft); border-radius: 14px;
+      padding: 22px 18px 28px; margin: 6px 0;
+      overflow-x: auto; position: relative;
+    }
+    .pl-timeline-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      min-width: 720px;
+      position: relative;
+    }
+    /* Horizontal connecting line behind the node row — sits at center of
+       the nodes (top 22 + half-node 28 = 50 from top of grid) */
+    .pl-timeline-grid::before {
+      content: '';
+      position: absolute;
+      left: 5%; right: 5%;
+      top: 50px; height: 2px;
+      background: var(--pl-indigo);
+      z-index: 0;
+    }
+    .pl-tl-col {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      position: relative; z-index: 1;
+    }
+    .pl-tl-lbl {
+      font-size: .78rem; color: var(--gray-500); font-weight: 700;
+      letter-spacing: .02em;
+    }
+    .pl-tl-node {
+      width: 56px; height: 56px;
+      border: 2px solid var(--pl-indigo); border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1.1rem; color: var(--pl-indigo);
+      background: white;
+    }
+    .pl-tl-node.years {
+      border-radius: 8px; background: var(--gray-200);
+    }
+    .pl-tl-node input {
+      border: none; outline: none; background: transparent;
+      width: 100%; height: 100%; text-align: center;
+      font-weight: 800; font-size: 1.05rem; color: var(--pl-indigo);
+      font-family: inherit;
+    }
+    .pl-tl-box {
+      width: 100%; padding: 8px 10px;
+      border: 1.5px solid var(--pl-indigo); border-radius: 10px;
+      background: white;
+      display: flex; flex-direction: column; gap: 2px;
+      text-align: center;
+    }
+    .pl-tl-box-lbl {
+      font-size: .72rem; color: var(--pl-indigo); font-weight: 700;
+      line-height: 1.2;
+    }
+    .pl-tl-box input {
+      border: none; outline: none; background: transparent;
+      width: 100%; text-align: center;
+      font-weight: 800; font-size: .98rem; color: var(--pl-indigo);
+      font-family: inherit;
+    }
+    .pl-tl-box.red {
+      border-color: var(--pl-red);
+    }
+    .pl-tl-box.red .pl-tl-box-lbl { color: var(--pl-red); }
+    .pl-tl-pct {
+      width: 100%; padding: 6px 8px;
+      border: 1.5px solid var(--pl-yellow); border-radius: 8px;
+      background: rgba(245,194,66,.08);
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .pl-tl-pct-lbl {
+      font-size: .68rem; color: #A88A4F; font-weight: 700;
+    }
+    .pl-tl-pct input {
+      border: none; outline: none; background: transparent;
+      width: 38px; text-align: right;
+      font-weight: 800; font-size: .92rem; color: var(--pl-indigo);
+      font-family: inherit;
+    }
+    .pl-tl-pct-suffix { font-size: .82rem; color: #A88A4F; font-weight: 700; }
+
+    /* Insurance section */
+    .pl-section-title {
+      font-size: 1.08rem; font-weight: 800; color: var(--pl-indigo);
+      margin: 14px 0 10px; padding-bottom: 6px;
+      border-bottom: 1.5px solid var(--gray-300);
+    }
+    .pl-ins-grid {
+      display: grid;
+      grid-template-columns: 130px repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .pl-ins-head {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      font-weight: 700; color: var(--gray-600); font-size: .85rem;
+    }
+    .pl-ins-head input {
+      border: none; outline: none;
+      border: 1.5px solid var(--pl-indigo); border-radius: 50px;
+      padding: 4px 10px; width: 64px; text-align: center;
+      font-family: inherit; font-weight: 700; color: var(--pl-indigo);
+    }
+    .pl-ins-row {
+      display: contents;
+    }
+    .pl-ins-row > .pl-ins-lbl {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 700; color: var(--pl-indigo); font-size: .9rem;
+      padding: 4px 0;
+    }
+    .pl-ins-cell input {
+      border: 1.5px solid var(--pl-indigo); border-radius: 50px;
+      padding: 8px 14px; width: 100%; box-sizing: border-box;
+      font-family: inherit; font-weight: 700; color: var(--pl-indigo);
+      font-size: .92rem; text-align: right;
+      outline: none;
+    }
+    .pl-ins-cell input:focus { box-shadow: 0 0 0 2px rgba(31,45,79,.15); }
+
+    /* Health section */
+    .pl-health-row {
+      display: grid;
+      grid-template-columns: 150px 1fr;
+      gap: 12px; align-items: center;
+      margin-bottom: 10px;
+    }
+    .pl-health-lbl {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 700; color: var(--pl-indigo); font-size: .9rem;
+    }
+    .pl-health-input input {
+      border: 1.5px solid var(--pl-indigo); border-radius: 50px;
+      padding: 8px 18px; width: 100%; box-sizing: border-box;
+      font-family: inherit; font-weight: 700; color: var(--pl-indigo);
+      font-size: .92rem; outline: none;
+    }
+    .pl-health-input input:focus { box-shadow: 0 0 0 2px rgba(31,45,79,.15); }
+    .pl-nurse-row {
+      display: flex; gap: 18px; align-items: center; padding-left: 12px;
+      font-size: .9rem;
+    }
+    .pl-nurse-opt {
+      display: flex; align-items: center; gap: 6px;
+      cursor: pointer; font-weight: 600; color: var(--gray-700);
+    }
+    .pl-nurse-opt input { margin: 0; cursor: pointer; }
+
+    /* Image upload section */
+    .pl-img-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 14px; margin: 12px 0;
+    }
+    @media (max-width: 720px) { .pl-img-grid { grid-template-columns: 1fr; } }
+    .pl-img-slot {
+      position: relative;
+      border: 2px dashed var(--pl-indigo); border-radius: 14px;
+      background: white;
+      min-height: 110px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; overflow: hidden;
+      transition: all .15s;
+    }
+    .pl-img-slot:hover {
+      background: var(--pl-indigo-soft);
+      border-style: solid;
+    }
+    .pl-img-slot.uploaded {
+      border-style: solid; border-color: var(--pl-indigo);
+      padding: 0;
+    }
+    .pl-img-slot.uploaded img {
+      width: 100%; height: 110px; object-fit: contain;
+      background: #FAFAFA;
+    }
+    .pl-img-slot-label {
+      text-align: center;
+      font-weight: 800; font-size: .95rem;
+      color: var(--pl-indigo);
+      padding: 14px 10px;
+    }
+    .pl-img-slot-label .plus { font-size: 1.6rem; line-height: 1; }
+    .pl-img-slot-label .lbl  { font-size: .82rem; margin-top: 4px; display:block; }
+    .pl-img-slot-del {
+      position: absolute; top: 6px; right: 6px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--pl-red); color: white; border: none;
+      cursor: pointer; font-size: .85rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,.25);
+    }
+    .pl-img-slot-del:hover { transform: scale(1.05); }
+
+    /* Actions */
+    .pl-actions {
+      display: flex; gap: 12px; padding-top: 14px;
+      border-top: 1px dashed var(--gray-300);
+      flex-wrap: wrap; align-items: center;
+    }
+    .pl-action-spacer { flex: 1; }
+    .pl-btn-save {
+      padding: 12px 28px; border-radius: 12px;
+      background: var(--pl-indigo); color: white;
+      border: none; cursor: pointer;
+      font-family: inherit; font-weight: 800; font-size: .95rem;
+      box-shadow: 0 3px 10px rgba(31,45,79,.25);
+    }
+    .pl-btn-save:hover { background: #2A3B66; transform: translateY(-1px); }
+    .pl-btn-cancel {
+      padding: 12px 24px; border-radius: 12px;
+      background: white; color: var(--gray-700);
+      border: 1.5px solid var(--gray-400); cursor: pointer;
+      font-family: inherit; font-weight: 700; font-size: .95rem;
+    }
+
+    .no-client {
+      background: white; border-radius: var(--radius); padding: 60px 30px;
+      text-align: center; color: var(--gray-500); box-shadow: var(--shadow-sm);
+    }
+    .no-client .nc-icon { font-size: 3rem; margin-bottom: 12px; }
+  </style>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#1F2D4F">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="448 Wealth">
+  <script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
+</head>
+<body>
+<div class="app-layout">
+  <!-- Sidebar — minimal (will be populated by full sidebar later if approved) -->
+  <aside class="app-sidebar">
+    <div class="sb-top-accent"></div>
+    <div class="sb-logo-area">
+      <div class="sb-brand">448</div>
+      <div class="sb-tagline">Wealth Management</div>
+    </div>
+    <div class="sb-divider"></div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เมนูหลัก</div>
+      <div class="app-sb-item" onclick="location.href='dashboard.html'"><span class="sb-ico">🏠</span> หน้าแรก</div>
+      <div class="app-sb-item" onclick="location.href='clients.html'"><span class="sb-ico">👥</span> รายชื่อลูกค้า</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='financial.html'"><span class="sb-ico">💰</span> กระแสเงินสด</div>
+      <div class="app-sb-item" onclick="location.href='assets.html'"><span class="sb-ico">💎</span> สินทรัพย์</div>
+      <div class="app-sb-item" onclick="location.href='networth.html'"><span class="sb-ico">⚖️</span> งบการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='ratios.html'"><span class="sb-ico">📐</span> อัตราส่วนการเงิน</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วางแผนชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='education.html'"><span class="sb-ico">🎓</span> การศึกษาบุตร</div>
+      <div class="app-sb-item" onclick="location.href='retirement.html'"><span class="sb-ico">🛋️</span> วางแผนเกษียณ</div>
+      <div class="app-sb-item" onclick="location.href='goals.html'"><span class="sb-ico">🎯</span> เป้าหมายชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='life-insurance.html'"><span class="sb-ico">☂️</span> ประกันชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='health-insurance.html'"><span class="sb-ico">⚕️</span> ประกันสุขภาพ</div>
+      <div class="app-sb-item" onclick="location.href='policies.html'"><span class="sb-ico">📊</span> สรุปกรมธรรม์</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">วิเคราะห์และแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='priority.html'"><span class="sb-ico">🎯</span> ลำดับความสำคัญ</div>
+      <div class="app-sb-item" onclick="location.href='portfolio.html'"><span class="sb-ico">📈</span> พอร์ตแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='plan_summary.html'"><span class="sb-ico">📋</span> สรุปแผน</div>
+      <div class="app-sb-item active" onclick="location.href='planner.html'"><span class="sb-ico">📊</span> จัดทำแผน</div>
+      <div class="app-sb-item" onclick="location.href='timeline.html'"><span class="sb-ico">⏳</span> Life Timeline</div>
+    </div>
+    <div class="app-sb-section">
+      <div class="app-sb-lbl">เครื่องมือ</div>
+      <div class="app-sb-item" onclick="location.href='tax.html'"><span class="sb-ico">🧾</span> คำนวณภาษี</div>
+      <div class="app-sb-item" onclick="location.href='appointments.html'"><span class="sb-ico">📅</span> นัดหมาย</div>
+      <div class="app-sb-item" onclick="location.href='guide.html'"><span class="sb-ico">📖</span> คู่มือการใช้งาน</div>
+    </div>
+    <div class="sb-bottom-area">
+      <div class="sb-profile-row" onclick="location.href='profile.html'">
+        <div class="sb-avatar-box" id="sb-avatar">P</div>
+        <div>
+          <div class="sb-profile-name" id="sb-name">Agent</div>
+          <div class="sb-profile-role">AIA · ดูโปรไฟล์</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="app-main" style="overflow-y:auto;">
+    <div class="feature-hero">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h2>📊 จัดทำแผน</h2>
+          <p>สร้างแผนการเงินรายลูกค้าด้วย One-Page Summary template</p>
+        </div>
+        <div class="client-pick" style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.4);border-radius:10px;padding:6px 8px 6px 14px;">
+          <span style="font-size:.82rem;opacity:.85;">ลูกค้า</span>
+          <select id="client-select" onchange="onClientChange(this.value)" style="background:rgba(255,255,255,.95);color:var(--gray-800);border:none;border-radius:8px;padding:7px 14px;font-family:var(--font);font-weight:700;font-size:.9rem;min-width:180px;cursor:pointer;"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="app-content">
+      <div id="content-wrap"><!-- render here --></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const _uid = localStorage.getItem('aia_currentUser');
+if (!_uid) location.href = 'login.html';
+
+function getUser() {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const u = users.find(x => x.id === _uid);
+  if (!u) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; return {}; }
+  return u;
+}
+function updateUser(fn) {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const idx = users.findIndex(x => x.id === _uid);
+  if (idx === -1) return;
+  if (!users[idx].data) users[idx].data = {};
+  fn(users[idx]);
+  localStorage.setItem('aia_users', JSON.stringify(users));
+}
+function getClients() { const u = getUser(); return (u.data && u.data.clients) || []; }
+function getCurrentClient() { return getClients().find(c => c.id === selectedClientId) || null; }
+function getPlans() {
+  const c = getCurrentClient();
+  return (c && Array.isArray(c.planTemplates)) ? c.planTemplates : [];
+}
+
+/* ════ State ════ */
+let selectedClientId = null;
+let viewState = 'list';      /* 'empty' | 'naming' | 'list' | 'edit' */
+let editingPlanId = null;
+let pendingPlanName = 'แผน1';
+
+/* ════ Client selector ════ */
+function initClientSelect() {
+  const sel = document.getElementById('client-select');
+  const clients = getClients();
+  if (clients.length === 0) {
+    sel.innerHTML = '<option value="">— ไม่มีลูกค้า —</option>';
+    return;
+  }
+  const stored = localStorage.getItem('aia_selectedClient');
+  selectedClientId = (stored && clients.find(c => c.id === stored)) ? stored : clients[0].id;
+  sel.innerHTML = clients.map(c =>
+    `<option value="${c.id}" ${c.id === selectedClientId ? 'selected':''}>${c.firstName || ''} ${c.lastName || ''}</option>`
+  ).join('');
+}
+function onClientChange(cid) {
+  selectedClientId = cid;
+  localStorage.setItem('aia_selectedClient', cid);
+  viewState = getPlans().length === 0 ? 'empty' : 'list';
+  render();
+}
+
+/* ════ Plan CRUD ════ */
+function createPlanFromTemplate() {
+  /* Step 1: ask for name first */
+  viewState = 'naming';
+  pendingPlanName = 'แผน' + (getPlans().length + 1);
+  render();
+  setTimeout(() => { const i = document.getElementById('pl-name-inp'); if (i) { i.focus(); i.select(); } }, 50);
+}
+function confirmNewPlan() {
+  const inp = document.getElementById('pl-name-inp');
+  const name = (inp && inp.value.trim()) || pendingPlanName;
+  if (!name) return;
+  const id = 'pln_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!Array.isArray(c.planTemplates)) c.planTemplates = [];
+    c.planTemplates.push({
+      id, name,
+      type: 'one-page-summary',
+      createdAt: new Date().toISOString(),
+      timeline: {
+        startAge: 46, accumYears: 20, retireAge: 65, payoutYears: 25, endAge: 90,
+        lumpSum: 1000000, annualDca: 100000, totalFund: 10000000, cashFlow: 30000,
+        returnAccum: 8, returnDca: 4, returnAfter: 4, payoutRate: 4,
+        cashReserve: 0, cashReservePeriod: 0,
+      },
+      coverage: {
+        ages: [50, 60, 70],
+        sumInsured: [0, 0, 0],
+        disability: [0, 0, 0],
+      },
+      health: {
+        roomCharge: 0, nursingMode: 'with_room',
+        dailyComp: 0, criticalIllness: 0, cancer: 0, accident: 0,
+      },
+    });
+  });
+  viewState = 'list';
+  render();
+}
+function deletePlan(id, name) {
+  if (!confirm(`ลบแผน "${name}"?`)) return;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.planTemplates) return;
+    c.planTemplates = c.planTemplates.filter(p => p.id !== id);
+  });
+  viewState = getPlans().length === 0 ? 'empty' : 'list';
+  render();
+}
+function openPlanEditor(id) {
+  editingPlanId = id;
+  viewState = 'edit';
+  render();
+}
+function closePlanEditor() {
+  editingPlanId = null;
+  viewState = 'list';
+  render();
+}
+function savePlanField(planId, path, value) {
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.planTemplates) return;
+    const p = c.planTemplates.find(x => x.id === planId);
+    if (!p) return;
+    /* path like "timeline.startAge" or "coverage.ages.0" */
+    const parts = path.split('.');
+    let ref = p;
+    for (let i = 0; i < parts.length - 1; i++) {
+      const k = parts[i];
+      if (Array.isArray(ref) && /^\d+$/.test(k)) ref = ref[Number(k)];
+      else ref = ref[k];
+    }
+    const last = parts[parts.length - 1];
+    if (Array.isArray(ref) && /^\d+$/.test(last)) ref[Number(last)] = value;
+    else ref[last] = value;
+
+    /* ════ Derive linked ages/periods (Planista-style two-way binding) ════
+       startAge ──┬── accumYears ──┬── retireAge ──┬── payoutYears ──┬── endAge
+                  (= retireAge−startAge)            (= endAge−retireAge) */
+    if (parts[0] === 'timeline' &&
+        ['startAge','accumYears','retireAge','payoutYears','endAge'].includes(last)) {
+      const t = p.timeline;
+      const sa = Number(t.startAge)   || 0;
+      const ay = Number(t.accumYears) || 0;
+      const ra = Number(t.retireAge)  || 0;
+      const py = Number(t.payoutYears)|| 0;
+      const ea = Number(t.endAge)     || 0;
+      switch (last) {
+        case 'startAge':    t.accumYears  = Math.max(0, ra - sa); break;
+        case 'accumYears':  t.retireAge   = sa + ay;
+                            t.payoutYears = Math.max(0, ea - t.retireAge); break;
+        case 'retireAge':   t.accumYears  = Math.max(0, ra - sa);
+                            t.payoutYears = Math.max(0, ea - ra); break;
+        case 'payoutYears': t.endAge      = ra + py; break;
+        case 'endAge':      t.payoutYears = Math.max(0, ea - ra); break;
+      }
+    }
+  });
+
+  /* ── Surgical DOM update — refresh derived inputs + computed totals ── */
+  if (path.startsWith('timeline.')) {
+    const plan = getPlans().find(p => p.id === planId);
+    if (!plan) return;
+    const t = plan.timeline || {};
+    /* อัปเดต age/year inputs ที่ derive — แต่ข้ามช่องที่ user กำลังพิมพ์อยู่ (active element)
+       เพื่อกัน cursor jump / undo ค่าที่กำลังพิมพ์ */
+    const setIf = (id, val) => {
+      const e = document.getElementById(id);
+      if (e && e !== document.activeElement) e.value = String(val);
+    };
+    setIf(`pl-tl-startAge-${planId}`,    Number(t.startAge)    || 0);
+    setIf(`pl-tl-accumYears-${planId}`,  Number(t.accumYears)  || 0);
+    setIf(`pl-tl-retireAge-${planId}`,   Number(t.retireAge)   || 0);
+    setIf(`pl-tl-payoutYears-${planId}`, Number(t.payoutYears) || 0);
+    setIf(`pl-tl-endAge-${planId}`,      Number(t.endAge)      || 0);
+    /* คำนวณ totals */
+    const lump = (Number(t.lumpSum)||0) + (Number(t.annualDca)||0) * (Number(t.accumYears)||0);
+    const cash = (Number(t.cashFlow)||0) * 12 * (Number(t.payoutYears)||0);
+    const fund = Number(t.totalFund)||0;
+    const all  = cash + fund;  // รวมรับทั้งหมด = รวมกระแสเงินสดรับ + มูลค่ากองทุนคงเหลือ
+    const e1 = document.getElementById(`pl-total-lump-${planId}`);
+    const e2 = document.getElementById(`pl-total-cash-${planId}`);
+    const e3 = document.getElementById(`pl-end-fund-${planId}`);
+    const e4 = document.getElementById(`pl-total-all-${planId}`);
+    if (e1) e1.textContent = fmtMoney(lump);
+    if (e2) e2.textContent = fmtMoney(cash);
+    if (e3) e3.textContent = fmtMoney(fund);
+    if (e4) e4.textContent = fmtMoney(all);
+  }
+}
+function parseMoneyVal(s) {
+  if (s == null) return 0;
+  return Number(String(s).replace(/[^\d.-]/g,'')) || 0;
+}
+
+/* ════════════════════════════════════════
+   Live money input handler
+   - กรอก: comma ใส่ทันที ระหว่างพิมพ์
+   - cursor ค้างถูกตำแหน่ง (นับ digits ก่อน cursor)
+   - save + recompute totals แบบ surgical (savePlanField)
+═══════════════════════════════════════ */
+function planLiveMoney(input, planId, path) {
+  const oldVal = input.value;
+  let oldCursor = input.selectionStart;
+  if (oldCursor == null) oldCursor = oldVal.length;
+  /* นับ digits ก่อน cursor → ใช้คืน cursor หลัง reformat */
+  const digitsBeforeCursor = oldVal.slice(0, oldCursor).replace(/\D/g, '').length;
+  /* Strip non-digit (พ่ายแพ้ทศนิยมเพื่อความง่าย เพราะ THB เป็นเลขเต็ม) */
+  const cleanNum = oldVal.replace(/\D/g, '');
+  const num = Number(cleanNum) || 0;
+  const formatted = num.toLocaleString('th-TH');
+  /* อัปเดต value เฉพาะเมื่อ string ต่างจริง — กัน setSelectionRange เด้ง */
+  if (input.value !== formatted) {
+    input.value = formatted;
+    /* คืน cursor ตามจำนวน digits เดิม */
+    let newCursor = 0, digitsCounted = 0;
+    while (digitsCounted < digitsBeforeCursor && newCursor < formatted.length) {
+      if (/\d/.test(formatted[newCursor])) digitsCounted++;
+      newCursor++;
+    }
+    try { input.setSelectionRange(newCursor, newCursor); } catch (e) { /* IE/old Safari */ }
+  }
+  /* Save + trigger surgical DOM update of totals */
+  savePlanField(planId, path, num);
+}
+
+/* ════ Render ════ */
+function render() {
+  const wrap = document.getElementById('content-wrap');
+  if (!selectedClientId) {
+    wrap.innerHTML = `<div class="no-client">
+      <div class="nc-icon">👤</div>
+      <p>ยังไม่มีลูกค้า — <a href="clients.html" style="color:var(--red-primary);font-weight:700;">เพิ่มลูกค้า</a> ก่อนเริ่มจัดทำแผน</p>
+    </div>`;
+    return;
+  }
+  if (viewState === 'empty')   return renderEmpty();
+  if (viewState === 'naming')  return renderNaming();
+  if (viewState === 'edit')    return renderEditor();
+  return renderList();
+}
+
+function renderEmpty() {
+  document.getElementById('content-wrap').innerHTML = `
+    <div class="pl-wrap">
+      <div class="pl-head">
+        <div class="pl-head-icon">📊</div>
+        <div>
+          <div class="pl-head-title">เลือก Template</div>
+          <div class="pl-head-sub">เริ่มจาก template ที่ต้องการสร้างแผน</div>
+        </div>
+      </div>
+      <div class="pl-state-empty">
+        <button class="pl-template-card" onclick="createPlanFromTemplate()">
+          One-Page<br>Summary
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderNaming() {
+  document.getElementById('content-wrap').innerHTML = `
+    <div class="pl-wrap">
+      <div class="pl-head">
+        <div class="pl-head-icon">✏️</div>
+        <div>
+          <div class="pl-head-title">จัดทำแผน</div>
+          <div class="pl-head-sub">One-Page Summary</div>
+        </div>
+      </div>
+      <div class="pl-name-input-row">
+        <label>เพิ่มแผน</label>
+        <input id="pl-name-inp" class="pl-name-input" type="text" value="${pendingPlanName}"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();confirmNewPlan();}">
+        <button class="pl-confirm-btn" onclick="confirmNewPlan()" title="ยืนยัน">✓</button>
+      </div>
+      <div style="display:flex;justify-content:center;padding-top:20px;">
+        <button class="pl-add-btn" onclick="confirmNewPlan()" title="สร้างแผน + เปิดตัวแก้ไข">+</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderList() {
+  const plans = getPlans();
+  if (plans.length === 0) { viewState = 'empty'; return renderEmpty(); }
+  const cards = plans.map(p => `
+    <div class="pl-plan-card" onclick="openPlanEditor('${p.id}')">
+      <button class="pl-plan-del" onclick="event.stopPropagation();deletePlan('${p.id}','${(p.name||'').replace(/'/g,'\\\'')}');" title="ลบแผน">×</button>
+      <span>${escapeHtml(p.name||'แผน')}</span>
+    </div>
+  `).join('');
+  document.getElementById('content-wrap').innerHTML = `
+    <div class="pl-wrap">
+      <div class="pl-head">
+        <div class="pl-head-icon">✏️</div>
+        <div>
+          <div class="pl-head-title">จัดทำแผน</div>
+          <div class="pl-head-sub">One-Page Summary</div>
+        </div>
+      </div>
+      <div class="pl-list">
+        ${cards}
+        <button class="pl-add-btn" onclick="createPlanFromTemplate()" title="เพิ่มแผนใหม่">+</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderEditor() {
+  const p = getPlans().find(x => x.id === editingPlanId);
+  if (!p) { viewState = 'list'; return renderList(); }
+  const t = p.timeline || {};
+  const cov = p.coverage || { ages:[50,60,70], sumInsured:[0,0,0], disability:[0,0,0] };
+  const h = p.health || {};
+
+  /* Money input — live formatting (commas) + live save + cursor preservation */
+  const numInput = (val, path, w='100%', extra='') => `<input type="text" inputmode="numeric" value="${(Number(val)||0).toLocaleString('th-TH')}" style="${w?`width:${w};`:''}" ${extra}
+    oninput="planLiveMoney(this,'${p.id}','${path}')">`;
+
+  /* Percent input — live save (no comma needed) */
+  const pctInput = (val, path) => `<input type="number" min="0" max="50" step="0.1" value="${Number(val)||0}"
+    oninput="savePlanField('${p.id}','${path}', Number(this.value)||0);">`;
+
+  /* Integer input (ages/years) — live save (no comma needed)
+     idAttr (optional) — for timeline ages/periods that derive each other */
+  const intInput = (val, path, idAttr='') => `<input ${idAttr?`id="${idAttr}"`:''} type="number" min="0" max="120" step="1" value="${Number(val)||0}"
+    oninput="savePlanField('${p.id}','${path}', Number(this.value)||0);">`;
+
+  document.getElementById('content-wrap').innerHTML = `
+    <div class="pl-wrap">
+      <div class="pl-back-row">
+        <button class="pl-back-btn" onclick="closePlanEditor()">←</button>
+        <div class="pl-editing-name">📝 ${escapeHtml(p.name)}</div>
+        <div class="pl-head-spacer" style="flex:1;"></div>
+        <div style="font-size:.82rem;color:var(--gray-500);">One-Page Summary</div>
+      </div>
+
+      <!-- TIMELINE -->
+      <div class="pl-section-title">⏱ เส้นเวลาแผน</div>
+      <div class="pl-timeline">
+        <div class="pl-timeline-grid">
+          <!-- col 1: start age -->
+          <div class="pl-tl-col">
+            <div class="pl-tl-lbl">อายุ</div>
+            <div class="pl-tl-node">${intInput(t.startAge, 'timeline.startAge', `pl-tl-startAge-${p.id}`)}</div>
+            <div class="pl-tl-box">
+              <div class="pl-tl-box-lbl">เงินต้น (Lump Sum)</div>
+              ${numInput(t.lumpSum, 'timeline.lumpSum')}
+            </div>
+            <div class="pl-tl-pct">
+              <span class="pl-tl-pct-lbl">ผลตอบแทน</span>
+              ${pctInput(t.returnAccum, 'timeline.returnAccum')}
+              <span class="pl-tl-pct-suffix">%</span>
+            </div>
+          </div>
+          <!-- col 2: accum years -->
+          <div class="pl-tl-col">
+            <div class="pl-tl-lbl">ระยะเวลา</div>
+            <div class="pl-tl-node years">${intInput(t.accumYears, 'timeline.accumYears', `pl-tl-accumYears-${p.id}`)}</div>
+            <div class="pl-tl-box">
+              <div class="pl-tl-box-lbl">เก็บเงินต่อปี (DCA)</div>
+              ${numInput(t.annualDca, 'timeline.annualDca')}
+            </div>
+            <div class="pl-tl-pct">
+              <span class="pl-tl-pct-lbl">ผลตอบแทน</span>
+              ${pctInput(t.returnDca, 'timeline.returnDca')}
+              <span class="pl-tl-pct-suffix">%</span>
+            </div>
+            <div class="pl-tl-box red">
+              <div class="pl-tl-box-lbl">รวมเงินต้นตลอดแผน</div>
+              <span id="pl-total-lump-${p.id}" style="color:var(--pl-red);font-weight:800;">${fmtMoney((Number(t.lumpSum)||0) + (Number(t.annualDca)||0) * (Number(t.accumYears)||0))}</span>
+            </div>
+          </div>
+          <!-- col 3: retire age -->
+          <div class="pl-tl-col">
+            <div class="pl-tl-lbl">อายุ</div>
+            <div class="pl-tl-node">${intInput(t.retireAge, 'timeline.retireAge', `pl-tl-retireAge-${p.id}`)}</div>
+            <div class="pl-tl-box red">
+              <div class="pl-tl-box-lbl">รวมมูลค่ากองทุน</div>
+              ${numInput(t.totalFund, 'timeline.totalFund')}
+            </div>
+          </div>
+          <!-- col 4: payout years -->
+          <div class="pl-tl-col">
+            <div class="pl-tl-lbl">ระยะเวลา</div>
+            <div class="pl-tl-node years">${intInput(t.payoutYears, 'timeline.payoutYears', `pl-tl-payoutYears-${p.id}`)}</div>
+            <div class="pl-tl-box">
+              <div class="pl-tl-box-lbl">กระแสเงินสดรับ</div>
+              ${numInput(t.cashFlow, 'timeline.cashFlow')}
+            </div>
+            <div class="pl-tl-pct">
+              <span class="pl-tl-pct-lbl">ผลตอบแทน</span>
+              ${pctInput(t.returnAfter, 'timeline.returnAfter')}
+              <span class="pl-tl-pct-suffix">%</span>
+            </div>
+            <div class="pl-tl-box">
+              <div class="pl-tl-box-lbl">กระแสเงินสดที่เตรียมไว้</div>
+              ${numInput(t.cashReserve, 'timeline.cashReserve')}
+              <div class="pl-tl-box-lbl" style="margin-top:8px;">ระยะเวลาที่ได้รับ (ปี)</div>
+              ${intInput(t.cashReservePeriod, 'timeline.cashReservePeriod')}
+            </div>
+            <div class="pl-tl-box red">
+              <div class="pl-tl-box-lbl">รวมกระแสเงินสดรับ</div>
+              <span id="pl-total-cash-${p.id}" style="color:var(--pl-red);font-weight:800;">${fmtMoney((Number(t.cashFlow)||0) * 12 * (Number(t.payoutYears)||0))}</span>
+            </div>
+          </div>
+          <!-- col 5: end age -->
+          <div class="pl-tl-col">
+            <div class="pl-tl-lbl">อายุ</div>
+            <div class="pl-tl-node">${intInput(t.endAge, 'timeline.endAge', `pl-tl-endAge-${p.id}`)}</div>
+            <div class="pl-tl-box">
+              <div class="pl-tl-box-lbl">มูลค่ากองทุน</div>
+              <span id="pl-end-fund-${p.id}" style="font-weight:800;color:var(--pl-indigo);">${fmtMoney(Number(t.totalFund)||0)}</span>
+            </div>
+            <div class="pl-tl-box red">
+              <div class="pl-tl-box-lbl">รวมรับทั้งหมด</div>
+              <span id="pl-total-all-${p.id}" style="color:var(--pl-red);font-weight:800;">${fmtMoney((Number(t.cashFlow)||0) * 12 * (Number(t.payoutYears)||0) + (Number(t.totalFund)||0))}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INSURANCE -->
+      <div class="pl-section-title">🛡 ความคุ้มครองชีวิต, ทุพพลภาพ</div>
+      <div class="pl-ins-grid">
+        <div></div>
+        ${[0,1,2].map(i => `
+          <div class="pl-ins-head">อายุ ${intInput(cov.ages[i], 'coverage.ages.'+i)} ปี</div>
+        `).join('')}
+        <div class="pl-ins-row">
+          <div class="pl-ins-lbl">📑 ทุนประกัน</div>
+          ${[0,1,2].map(i => `<div class="pl-ins-cell">${numInput(cov.sumInsured[i], 'coverage.sumInsured.'+i)}</div>`).join('')}
+        </div>
+        <div class="pl-ins-row">
+          <div class="pl-ins-lbl">♿ ทุพพลภาพ</div>
+          ${[0,1,2].map(i => `<div class="pl-ins-cell">${numInput(cov.disability[i], 'coverage.disability.'+i)}</div>`).join('')}
+        </div>
+      </div>
+
+      <!-- HEALTH -->
+      <div class="pl-section-title">🏥 สุขภาพและโรคร้ายแรง</div>
+      <div class="pl-health-row">
+        <div class="pl-health-lbl">🛏 ค่าห้อง, ค่ารักษา</div>
+        <div class="pl-health-input">${numInput(h.roomCharge, 'health.roomCharge')}</div>
+      </div>
+      <div class="pl-health-row">
+        <div class="pl-health-lbl">ค่าบริการพยาบาล</div>
+        <div class="pl-nurse-row">
+          <label class="pl-nurse-opt"><input type="radio" name="pl-nurse-${p.id}" ${h.nursingMode==='with_room'?'checked':''} onchange="savePlanField('${p.id}','health.nursingMode','with_room')"> รวมกับค่าห้อง</label>
+          <label class="pl-nurse-opt"><input type="radio" name="pl-nurse-${p.id}" ${h.nursingMode==='fixed'?'checked':''} onchange="savePlanField('${p.id}','health.nursingMode','fixed')"> เหมาจ่าย</label>
+        </div>
+      </div>
+      <div class="pl-health-row">
+        <div class="pl-health-lbl">🩺 ค่าชดเชยรายวัน</div>
+        <div class="pl-health-input">${numInput(h.dailyComp, 'health.dailyComp')}</div>
+      </div>
+      <div class="pl-health-row">
+        <div class="pl-health-lbl">📈 ชดเชยโรคร้าย</div>
+        <div class="pl-health-input">${numInput(h.criticalIllness, 'health.criticalIllness')}</div>
+      </div>
+      <div class="pl-health-row">
+        <div class="pl-health-lbl">📈 ชดเชยมะเร็ง</div>
+        <div class="pl-health-input">${numInput(h.cancer, 'health.cancer')}</div>
+      </div>
+      <div class="pl-health-row">
+        <div class="pl-health-lbl">🚑 อุบัติเหตุ</div>
+        <div class="pl-health-input">${numInput(h.accident, 'health.accident')}</div>
+      </div>
+
+      <!-- IMAGE UPLOAD -->
+      <div class="pl-section-title">🖼 รูปประกอบแผน (Optional · สูงสุด 12 รูป)</div>
+      <div class="pl-img-grid">
+        ${getPlanImages(p).map((dataUrl, idx) => `
+          <div class="pl-img-slot uploaded">
+            <img src="${dataUrl}" alt="รูป ${idx+1}" onclick="window.open(this.src,'_blank')">
+            <button class="pl-img-slot-del" onclick="event.stopPropagation();removePlanImage('${p.id}',${idx})">×</button>
+          </div>
+        `).join('')}
+        ${getPlanImages(p).length < 12 ? `
+          <div class="pl-img-slot" onclick="document.getElementById('pl-img-add-${p.id}').click()">
+            <div class="pl-img-slot-label">
+              <div class="plus">+</div>
+              <span class="lbl">เพิ่มรูป</span>
+            </div>
+            <input type="file" id="pl-img-add-${p.id}" accept="image/*" style="display:none" onchange="handlePlanImageUpload('${p.id}',this)">
+          </div>` : ''}
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="pl-actions">
+        <div class="pl-action-spacer"></div>
+        <button class="pl-btn-cancel" onclick="closePlanEditor()">กลับ</button>
+        <button class="pl-btn-save" onclick="savePlanAndClose('${p.id}')">💾 บันทึกและสร้างแผน</button>
+      </div>
+    </div>
+  `;
+}
+
+function savePlanAndClose(id) {
+  /* "บันทึกและสร้างแผน" — เปิดหน้ารายงาน One-Page Summary
+     แล้วเรียก window.print() ให้ user "Save as PDF" ผ่านระบบเบราว์เซอร์
+     เหมือน plan_summary.html — ไม่ใช้ html2pdf เพราะคุณภาพดีกว่า */
+  const plan = getPlans().find(p => p.id === id);
+  if (!plan) { showToast('❌ ไม่พบแผน'); return; }
+  const client = getCurrentClient();
+  const agent  = getUser();
+  openPlanReportWindow(plan, client, agent);
+}
+
+/* ════════════════════════════════════════════
+   PLAN REPORT — เปิด tab ใหม่ + auto print
+   layout เหมือน One-Page Summary ใน Planista
+═══════════════════════════════════════════ */
+function openPlanReportWindow(plan, client, agent) {
+  const win = window.open('', '_blank', 'width=920,height=1240,scrollbars=1,resizable=1');
+  if (!win) {
+    alert('❌ Browser block popup — กรุณาอนุญาต popup สำหรับเว็บนี้แล้วลองใหม่');
+    return;
+  }
+  const html = buildPlanReportHTML(plan, client, agent);
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  /* ไม่ auto-print แล้ว — user กดปุ่ม "💾 บันทึก / พิมพ์" ในรายงานเอง
+     เพื่อให้มีโอกาส scroll ตรวจสอบก่อน */
+}
+
+function buildPlanReportHTML(plan, client, agent) {
+  const t = plan.timeline || {};
+  const cov = plan.coverage || { ages:[50,60,70], sumInsured:[0,0,0], disability:[0,0,0] };
+  const h = plan.health || {};
+  /* Image list — normalize legacy object form to array (inline copy of getPlanImages
+     because this function can be evaluated in a sandbox without other helpers) */
+  const imgArr = (function(){
+    if (!plan.images) return [];
+    if (Array.isArray(plan.images)) return plan.images.filter(Boolean);
+    if (typeof plan.images === 'object') {
+      return ['landscape','portrait','logo']
+        .map(k => plan.images[k])
+        .filter(Boolean);
+    }
+    return [];
+  })();
+  const esc = (s) => String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const f = (n) => {
+    if (!isFinite(n) || n == null) return '0';
+    return Math.round(Number(n)||0).toLocaleString('th-TH');
+  };
+  const lumpSum   = Number(t.lumpSum)   || 0;
+  const annualDca = Number(t.annualDca) || 0;
+  const accumY    = Number(t.accumYears)|| 0;
+  const totalLump = lumpSum + annualDca * accumY;
+  const cashFlow  = Number(t.cashFlow)  || 0;
+  const payoutY   = Number(t.payoutYears)|| 0;
+  const totalCash = cashFlow * 12 * payoutY;
+  const totalFund = Number(t.totalFund) || 0;
+  const cashReserve       = Number(t.cashReserve)       || 0;
+  const cashReservePeriod = Number(t.cashReservePeriod) || 0;
+  const totalAll  = totalCash + totalFund;  // รวมรับทั้งหมด
+  const dateStr   = new Date().toLocaleDateString('th-TH-u-ca-gregory',
+    { year:'numeric', month:'long', day:'numeric' });
+  const clientName = `${client.firstName||''} ${client.lastName||''}`.trim() || '—';
+  const agentName  = `${agent.firstName||''} ${agent.lastName||''}`.trim() || '—';
+  const nursingTH  = h.nursingMode === 'fixed' ? 'เหมาจ่าย' : 'รวมกับค่าห้อง';
+
+  return `<!DOCTYPE html>
+<html lang="th"><head>
+<meta charset="UTF-8">
+<title>${esc(plan.name)} — One-Page Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  @page { size: A4; margin: 14mm 12mm; }
+  *,*::before,*::after { box-sizing: border-box; }
+  body {
+    font-family: 'Sarabun', sans-serif;
+    color: #222; font-size: 10.5pt; line-height: 1.45;
+    margin: 0; padding: 0; background: white;
+  }
+  .pr-page { padding: 0 4px; }
+
+  /* ── Header ── */
+  .pr-head {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 2px solid #1F2D4F; padding-bottom: 10px; margin-bottom: 14px;
+  }
+  .pr-title-area { display: flex; align-items: center; gap: 12px; }
+  .pr-title-icon {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: #1F2D4F; color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem;
+  }
+  .pr-title-text { line-height: 1.2; }
+  .pr-title-text .lbl {
+    font-size: 10pt; color: #6B7280; font-weight: 600; letter-spacing: .04em;
+  }
+  .pr-title-text h1 {
+    font-size: 16pt; font-weight: 800; color: #1F2D4F;
+    margin: 2px 0 0; letter-spacing: -.01em;
+  }
+  .pr-meta-area { text-align: right; font-size: 9pt; line-height: 1.4; color: #444; }
+  .pr-meta-area .name { font-weight: 800; color: #1F2D4F; font-size: 10.5pt; }
+
+  /* ── Timeline ── */
+  .pr-section { margin: 16px 0 8px; }
+  .pr-section-title {
+    font-size: 11pt; font-weight: 800; color: #1F2D4F;
+    padding-bottom: 4px; border-bottom: 1px solid #C0C8D6;
+    margin-bottom: 10px;
+  }
+  .pr-timeline {
+    background: #F0F2F7; border-radius: 10px;
+    padding: 14px 8px 16px;
+    position: relative;
+  }
+  .pr-tl-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    gap: 8px; position: relative;
+  }
+  .pr-tl-grid::before {
+    content: ''; position: absolute;
+    left: 6%; right: 6%; top: 32px; height: 2px;
+    background: #1F2D4F; z-index: 0;
+  }
+  .pr-tl-col { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; z-index: 1; }
+  .pr-tl-lbl { font-size: 7.5pt; color: #6B7280; font-weight: 700; }
+  .pr-tl-node {
+    width: 40px; height: 40px; border-radius: 10px;
+    border: 2px solid #1F2D4F; background: white; color: #1F2D4F;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 11pt;
+  }
+  .pr-tl-node.years { background: #E5E7EB; border-radius: 6px; }
+  .pr-tl-box {
+    width: 100%; padding: 6px 8px;
+    border: 1.2px solid #1F2D4F; border-radius: 6px;
+    background: white; text-align: center;
+  }
+  .pr-tl-box-lbl { font-size: 7pt; color: #1F2D4F; font-weight: 700; line-height: 1.15; }
+  .pr-tl-box-val { font-size: 9.5pt; font-weight: 800; color: #1F2D4F; }
+  .pr-tl-box.red  { border-color: #DC3545; }
+  .pr-tl-box.red .pr-tl-box-lbl,
+  .pr-tl-box.red .pr-tl-box-val { color: #DC3545; }
+  .pr-tl-pct {
+    width: 100%; padding: 4px 6px;
+    border: 1.2px solid #F5C242; border-radius: 6px;
+    background: rgba(245,194,66,.1);
+    text-align: center;
+  }
+  .pr-tl-pct-lbl { font-size: 6.5pt; color: #A88A4F; font-weight: 700; }
+  .pr-tl-pct-val { font-size: 9pt; color: #1F2D4F; font-weight: 800; }
+
+  /* ── Insurance grid ── */
+  .pr-ins-table {
+    width: 100%; border-collapse: collapse; margin-top: 4px;
+    font-size: 10pt;
+  }
+  .pr-ins-table th, .pr-ins-table td {
+    padding: 6px 10px; border: 1px solid #C0C8D6;
+    text-align: center; vertical-align: middle;
+  }
+  .pr-ins-table th {
+    background: #1F2D4F; color: white;
+    font-weight: 700; font-size: 9.5pt;
+  }
+  .pr-ins-table td.lbl {
+    text-align: left; font-weight: 700; color: #1F2D4F;
+    background: #F0F2F7; width: 22%;
+  }
+  .pr-ins-table td.num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: #1F2D4F; }
+
+  /* ── Health rows ── */
+  .pr-health-row {
+    display: grid; grid-template-columns: 38% 1fr;
+    gap: 8px; padding: 5px 0;
+    border-bottom: 1px dashed #E5E7EB;
+    font-size: 10pt;
+  }
+  .pr-health-row:last-child { border-bottom: none; }
+  .pr-health-lbl { font-weight: 700; color: #1F2D4F; }
+  .pr-health-val { font-weight: 700; color: #1F2D4F; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ── Images — 1 รูปต่อบรรทัด full-width ── */
+  .pr-img-list { margin-top: 10px; }
+  .pr-img-row {
+    border: 1px solid #C0C8D6; border-radius: 10px;
+    overflow: hidden; background: #FAFAFA;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+    /* แต่ละรูปขึ้นหน้าใหม่เวลา print ถ้าไม่พอ */
+    page-break-inside: avoid; break-inside: avoid;
+    min-height: 400px;
+  }
+  .pr-img-row:last-child { margin-bottom: 0; }
+  .pr-img-row img {
+    width: 100%; max-height: 560px;
+    object-fit: contain; display: block;
+    background: #FAFAFA;
+  }
+
+  /* ── Footer ── */
+  .pr-footer {
+    margin-top: 22px; padding-top: 14px;
+    border-top: 1px solid #C0C8D6;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 9pt; color: #6B7280;
+  }
+  .pr-sig-block { text-align: center; width: 200px; }
+  .pr-sig-line { border-top: 1px solid #444; padding-top: 4px; margin-top: 30px; font-weight: 700; color: #444; }
+
+  /* ── Toolbar (hidden on print) ── */
+  .pr-toolbar {
+    position: fixed; top: 10px; right: 14px; z-index: 100;
+    display: flex; gap: 8px;
+  }
+  .pr-toolbar button {
+    padding: 8px 16px; border-radius: 8px;
+    border: none; cursor: pointer;
+    font-family: inherit; font-weight: 700; font-size: 9.5pt;
+    box-shadow: 0 2px 6px rgba(0,0,0,.2);
+  }
+  .pr-toolbar .print { background: #1F2D4F; color: white; }
+  .pr-toolbar .close { background: white; color: #1F2D4F; border: 1.5px solid #1F2D4F; }
+  @media print {
+    .pr-toolbar { display: none !important; }
+    .pr-page { padding: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="pr-toolbar">
+  <button class="print" onclick="window.print()">💾 บันทึก / พิมพ์</button>
+  <button class="close" onclick="window.close()">ปิด</button>
+</div>
+
+<div class="pr-page">
+  <!-- Header -->
+  <div class="pr-head">
+    <div class="pr-title-area">
+      <div class="pr-title-icon">📊</div>
+      <div class="pr-title-text">
+        <div class="lbl">ONE-PAGE</div>
+        <h1>SUMMARY · ${esc(plan.name)}</h1>
+      </div>
+    </div>
+    <div class="pr-meta-area">
+      <div class="name">${esc(clientName)}</div>
+      <div>ที่ปรึกษา: ${esc(agentName)}</div>
+      <div>วันที่: ${dateStr}</div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="pr-section">
+    <div class="pr-timeline">
+      <div class="pr-tl-grid">
+        <!-- Col 1: start age + lump sum + return accum -->
+        <div class="pr-tl-col">
+          <div class="pr-tl-lbl">อายุ</div>
+          <div class="pr-tl-node">${t.startAge||0}</div>
+          <div class="pr-tl-box">
+            <div class="pr-tl-box-lbl">เงินต้น (Lump Sum)</div>
+            <div class="pr-tl-box-val">${f(lumpSum)}</div>
+          </div>
+          <div class="pr-tl-pct">
+            <div class="pr-tl-pct-lbl">ผลตอบแทน</div>
+            <div class="pr-tl-pct-val">${t.returnAccum||0} %</div>
+          </div>
+        </div>
+        <!-- Col 2: accum years + DCA + return + total lump -->
+        <div class="pr-tl-col">
+          <div class="pr-tl-lbl">ระยะเวลา</div>
+          <div class="pr-tl-node years">${t.accumYears||0}</div>
+          <div class="pr-tl-box">
+            <div class="pr-tl-box-lbl">เก็บเงินต่อปี (DCA)</div>
+            <div class="pr-tl-box-val">${f(annualDca)}</div>
+          </div>
+          <div class="pr-tl-pct">
+            <div class="pr-tl-pct-lbl">ผลตอบแทน</div>
+            <div class="pr-tl-pct-val">${t.returnDca||0} %</div>
+          </div>
+          <div class="pr-tl-box red">
+            <div class="pr-tl-box-lbl">รวมเงินต้นตลอดแผน</div>
+            <div class="pr-tl-box-val">${f(totalLump)}</div>
+          </div>
+        </div>
+        <!-- Col 3: retire age + fund total -->
+        <div class="pr-tl-col">
+          <div class="pr-tl-lbl">อายุ</div>
+          <div class="pr-tl-node">${t.retireAge||0}</div>
+          <div class="pr-tl-box red">
+            <div class="pr-tl-box-lbl">รวมมูลค่ากองทุน</div>
+            <div class="pr-tl-box-val">${f(totalFund)}</div>
+          </div>
+        </div>
+        <!-- Col 4: payout years + cashflow + return after + total cash -->
+        <div class="pr-tl-col">
+          <div class="pr-tl-lbl">ระยะเวลา</div>
+          <div class="pr-tl-node years">${t.payoutYears||0}</div>
+          <div class="pr-tl-box">
+            <div class="pr-tl-box-lbl">กระแสเงินสดรับ</div>
+            <div class="pr-tl-box-val">${f(cashFlow)}</div>
+          </div>
+          <div class="pr-tl-pct">
+            <div class="pr-tl-pct-lbl">ผลตอบแทน</div>
+            <div class="pr-tl-pct-val">${t.returnAfter||0} %</div>
+          </div>
+          <div class="pr-tl-box">
+            <div class="pr-tl-box-lbl">กระแสเงินสดที่เตรียมไว้</div>
+            <div class="pr-tl-box-val">${f(cashReserve)}</div>
+            <div class="pr-tl-box-lbl" style="margin-top:4px;">ระยะเวลาที่ได้รับ</div>
+            <div class="pr-tl-box-val">${cashReservePeriod||0} ปี</div>
+          </div>
+          <div class="pr-tl-box red">
+            <div class="pr-tl-box-lbl">รวมกระแสเงินสดรับ</div>
+            <div class="pr-tl-box-val">${f(totalCash)}</div>
+          </div>
+        </div>
+        <!-- Col 5: end age + fund value + grand total -->
+        <div class="pr-tl-col">
+          <div class="pr-tl-lbl">อายุ</div>
+          <div class="pr-tl-node">${t.endAge||0}</div>
+          <div class="pr-tl-box">
+            <div class="pr-tl-box-lbl">มูลค่ากองทุน</div>
+            <div class="pr-tl-box-val">${f(totalFund)}</div>
+          </div>
+          <div class="pr-tl-box red">
+            <div class="pr-tl-box-lbl">รวมรับทั้งหมด</div>
+            <div class="pr-tl-box-val">${f(totalAll)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Life + Disability insurance -->
+  <div class="pr-section">
+    <div class="pr-section-title">🛡 ความคุ้มครองชีวิต, ทุพพลภาพ</div>
+    <table class="pr-ins-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>อายุ ${cov.ages[0]||0} ปี</th>
+          <th>อายุ ${cov.ages[1]||0} ปี</th>
+          <th>อายุ ${cov.ages[2]||0} ปี</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="lbl">📑 ทุนประกัน</td>
+          <td class="num">${f(cov.sumInsured[0])}</td>
+          <td class="num">${f(cov.sumInsured[1])}</td>
+          <td class="num">${f(cov.sumInsured[2])}</td>
+        </tr>
+        <tr>
+          <td class="lbl">♿ ทุพพลภาพ</td>
+          <td class="num">${f(cov.disability[0])}</td>
+          <td class="num">${f(cov.disability[1])}</td>
+          <td class="num">${f(cov.disability[2])}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Health -->
+  <div class="pr-section">
+    <div class="pr-section-title">🏥 สุขภาพและโรคร้ายแรง</div>
+    <div class="pr-health-row"><div class="pr-health-lbl">🛏 ค่าห้อง, ค่ารักษา</div><div class="pr-health-val">${f(h.roomCharge)}</div></div>
+    <div class="pr-health-row"><div class="pr-health-lbl">ค่าบริการพยาบาล</div><div class="pr-health-val">${nursingTH}</div></div>
+    <div class="pr-health-row"><div class="pr-health-lbl">🩺 ค่าชดเชยรายวัน</div><div class="pr-health-val">${f(h.dailyComp)}</div></div>
+    <div class="pr-health-row"><div class="pr-health-lbl">📈 ชดเชยโรคร้าย</div><div class="pr-health-val">${f(h.criticalIllness)}</div></div>
+    <div class="pr-health-row"><div class="pr-health-lbl">📈 ชดเชยมะเร็ง</div><div class="pr-health-val">${f(h.cancer)}</div></div>
+    <div class="pr-health-row"><div class="pr-health-lbl">🚑 อุบัติเหตุ</div><div class="pr-health-val">${f(h.accident)}</div></div>
+  </div>
+
+  <!-- Images (if any) — 1 รูปต่อบรรทัด full-width -->
+  ${imgArr.length > 0 ? `
+  <div class="pr-section">
+    <div class="pr-section-title">🖼 รูปประกอบแผน</div>
+    <div class="pr-img-list">
+      ${imgArr.map((src, i) => `<div class="pr-img-row"><img src="${esc(src)}" alt="image ${i+1}"></div>`).join('')}
+    </div>
+  </div>` : ''}
+
+  <!-- Footer -->
+  <div class="pr-footer">
+    <div>448 Wealth Management Plan · ${dateStr}</div>
+    <div class="pr-sig-block">
+      <div class="pr-sig-line">${esc(agentName)}<br><span style="font-weight:500;font-size:8pt;">ที่ปรึกษาการเงิน</span></div>
+    </div>
+  </div>
+</div>
+</body></html>`;
+}
+
+/* ════════════════════════════════════════════
+   IMAGE UPLOAD — multi-image array (max 12)
+   - resize to max 800px (long side)
+   - WebP if supported (via storage-safe.js compressPhotoCanvas)
+   - stored as data URL inside plan.images[] (array)
+   - backward compat: old {landscape, portrait, logo} object → array
+═══════════════════════════════════════════ */
+function getPlanImages(plan) {
+  if (!plan || !plan.images) return [];
+  /* Array form (new) */
+  if (Array.isArray(plan.images)) return plan.images.filter(Boolean);
+  /* Object form (legacy: {landscape, portrait, logo}) — migrate at read time */
+  if (typeof plan.images === 'object') {
+    return ['landscape','portrait','logo']
+      .map(k => plan.images[k])
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function handlePlanImageUpload(planId, input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    alert('❌ กรุณาเลือกไฟล์รูปภาพ (JPG/PNG/WEBP)');
+    return;
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    alert('❌ ไฟล์ใหญ่เกิน 8MB กรุณาย่อรูปก่อน');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onerror = () => alert('❌ อ่านไฟล์ไม่ได้');
+  reader.onload = e => {
+    const img = new Image();
+    img.onerror = () => alert('❌ ไฟล์รูปเสีย');
+    img.onload = () => {
+      /* Resize — long side max 800px (works for landscape / portrait / logo) */
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+      else       { w = Math.round(w * MAX / h); h = MAX; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas, 0.82);
+      try {
+        updateUser(u => {
+          const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+          if (!c || !c.planTemplates) return;
+          const pl = c.planTemplates.find(p => p.id === planId);
+          if (!pl) return;
+          /* Migrate legacy object → array if needed, then append */
+          const arr = getPlanImages(pl);
+          if (arr.length >= 12) {
+            alert('❌ ใส่รูปได้สูงสุด 12 รูป — ลบรูปเก่าก่อน');
+            return;
+          }
+          arr.push(dataUrl);
+          pl.images = arr;
+        });
+        render();
+        showToast('✅ อัปโหลดรูปสำเร็จ');
+      } catch (err) {
+        alert('❌ บันทึกรูปไม่สำเร็จ — พื้นที่ localStorage เต็ม\nลอง Export ข้อมูลสำรองก่อน');
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePlanImage(planId, idx) {
+  if (!confirm('ลบรูปนี้?')) return;
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c || !c.planTemplates) return;
+    const pl = c.planTemplates.find(p => p.id === planId);
+    if (!pl) return;
+    const arr = getPlanImages(pl);
+    arr.splice(idx, 1);
+    pl.images = arr;
+  });
+  render();
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function fmtMoney(n) {
+  if (!isFinite(n) || n == null) return '0';
+  return Math.round(Number(n)).toLocaleString('th-TH');
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = `
+    position: fixed; bottom: 28px; left: 50%;
+    transform: translateX(-50%); z-index: 9999;
+    background: var(--pl-indigo); color: white;
+    padding: 12px 22px; border-radius: 50px;
+    font-weight: 700; font-size: .9rem;
+    box-shadow: 0 8px 22px rgba(0,0,0,.3);
+  `;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 1800);
+}
+
+function initSidebar() {
+  const u = getUser();
+  const p = u.profile || {};
+  const name = ((u.firstName || '') + (u.lastName ? ' ' + u.lastName : '')).trim() || 'Agent';
+  const initial = (u.firstName || 'A').charAt(0).toUpperCase();
+  const sbAv = document.getElementById('sb-avatar');
+  const sbNm = document.getElementById('sb-name');
+  if (sbNm) sbNm.textContent = name;
+  if (sbAv) {
+    if (p.photo) {
+      sbAv.style.backgroundImage = `url('${p.photo}')`;
+      sbAv.style.backgroundSize = 'cover'; sbAv.style.backgroundPosition = 'center';
+      sbAv.classList.add('has-photo'); sbAv.textContent = '';
+    } else {
+      sbAv.textContent = initial;
+    }
+  }
+}
+
+fbAuth.onAuthStateChanged(user => {
+  if (!user) { localStorage.removeItem('aia_currentUser'); location.href = 'login.html'; }
+});
+
+(function init() {
+  initSidebar();
+  initClientSelect();
+  viewState = getPlans().length === 0 ? 'empty' : 'list';
+  render();
+})();
+</script>
+</body>
+</html>
