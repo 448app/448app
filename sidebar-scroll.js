@@ -18,6 +18,7 @@
     document.head.appendChild(s);
   }
   loadOnce('storage-safe.js');
+  loadOnce('idb-images.js');
   loadOnce('analytics.js');
 })();
 

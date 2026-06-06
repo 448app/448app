@@ -1183,12 +1183,28 @@ function showToast(msg, type = '') {
 /* ════════════════════════════════════════════════════
    Export / Import
 ════════════════════════════════════════════════════ */
-function exportData() {
+async function exportData() {
   const user = getUser();
+
+  // ─── รวมรูป planner ที่ย้ายไป IndexedDB (id → dataURL) ให้ไฟล์ backup self-contained ───
+  // ถ้าไม่รวม รูปจะหายตอน restore บนเครื่องใหม่ (plan.images มีแค่ id ที่ชี้ไป IDB ว่าง)
+  let imageMap = {};
+  try {
+    if (window.IMG) {
+      const ids = [];
+      (user.data.clients || []).forEach(c => (c.planTemplates || []).forEach(p => {
+        (Array.isArray(p.images) ? p.images : []).forEach(ref => {
+          if (window.IMG.isRef(ref)) ids.push(ref);
+        });
+      }));
+      if (ids.length) imageMap = await window.IMG.exportMap(ids);
+    }
+  } catch (e) { /* รูปรวมไม่ได้ → export ต่อ (รูปเก่า inline ยังอยู่ใน data) */ }
+
   const payload = {
     exportedAt : new Date().toISOString(),
     exportedBy : user.firstName + ' ' + user.lastName,
-    appVersion : '2.2',  /* 2.2 — เพิ่ม Phase 3.6 (retirement) + Phase 4 (priority/portfolio/timeline/plan_summary) */
+    appVersion : '2.3',  /* 2.3 — planner images ใน IndexedDB (bundle ใน .images) */
     // ─── ข้อมูลตัวแทนระดับบนสุด (firstName/lastName/email) ───
     // email ใช้สำหรับเทียบ identity ตอน import (ไม่ใช่ overwrite firebase auth)
     user       : {
@@ -1200,7 +1216,9 @@ function exportData() {
     // ─── ข้อมูลตัวแทน (profile) ───
     profile    : user.profile || null,   // photo, license, AIA code, LINE ID, etc.
     // ─── ข้อมูลลูกค้าและงานทั้งหมด ───
-    data       : user.data    // clients, activities, appointments, tasks, families, etc.
+    data       : user.data,   // clients, activities, appointments, tasks, families, etc.
+    // ─── รูป planner จาก IndexedDB { id: dataURL } ───
+    images     : imageMap
   };
   const json     = JSON.stringify(payload, null, 2);
   const blob     = new Blob([json], { type: 'application/json' });
@@ -1274,11 +1292,18 @@ function handleImportFile(input) {
 }
 
 // Step 2: user confirms → replace data
-function confirmImport() {
+async function confirmImport() {
   if (!_pendingImportData) return;
   const allUsers = JSON.parse(localStorage.getItem('aia_users') || '[]');
   const idx = allUsers.findIndex(u => u.id === uid);
   if (idx === -1) { showToast('❌ ไม่พบบัญชีผู้ใช้', 'error'); return; }
+
+  // กู้รูป planner กลับเข้า IndexedDB ก่อน (id → blob) — ถ้า backup มี .images
+  try {
+    if (_pendingImportData.images && window.IMG) {
+      await window.IMG.importMap(_pendingImportData.images);
+    }
+  } catch (e) { /* กู้รูปไม่ได้ → import ข้อมูลต่อ */ }
 
   allUsers[idx].data = _pendingImportData.data;
   // Restore profile if present in payload (Phase 2.0+ backups)

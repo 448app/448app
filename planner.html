@@ -574,9 +574,64 @@ function deletePlan(id, name) {
   viewState = getPlans().length === 0 ? 'empty' : 'list';
   render();
 }
-function openPlanEditor(id) {
+/* ════════════════════════════════════════════
+   PLAN IMAGES — เก็บใน IndexedDB (idb-images.js)
+   plan.images[] เก็บ "id" (img_xxx) แทน base64
+   _planImgURL: cache id→objectURL ใช้ตอน render (sync)
+   รองรับ backward-compat: ค่า "data:..." (รูปเก่า inline) ยังใช้ได้
+═══════════════════════════════════════════ */
+let _planImgURL = {};   /* ref(id|data:) → displayable URL */
+
+function planImgSrc(ref) {
+  if (!ref) return '';
+  if (ref.indexOf('data:') === 0) return ref;     /* legacy inline */
+  return _planImgURL[ref] || '';                  /* warmed object URL ของ id */
+}
+
+async function warmPlanImages(plan) {
+  if (!window.IMG || !plan) return;
+  for (const ref of getPlanImages(plan)) {
+    if (window.IMG.isRef(ref) && !_planImgURL[ref]) {
+      try { _planImgURL[ref] = (await window.IMG.getURL(ref)) || ''; } catch (e) {}
+    }
+  }
+}
+
+/* ย้ายรูป inline (data:) เก่าของแผนนี้ → IndexedDB ครั้งเดียว (lazy ตอนเปิดแผน) */
+async function migratePlanImages(planId) {
+  if (!window.IMG) return;
+  const plan = getPlans().find(p => p.id === planId);
+  if (!plan) return;
+  const refs = getPlanImages(plan);
+  const newRefs = [];
+  let changed = false;
+  for (const ref of refs) {
+    if (typeof ref === 'string' && ref.indexOf('data:') === 0) {
+      try {
+        const id = await window.IMG.putDataURL(ref);
+        _planImgURL[id] = (await window.IMG.getURL(id)) || '';
+        newRefs.push(id);
+        changed = true;
+      } catch (e) { newRefs.push(ref); }   /* ย้ายไม่ได้ → คงไว้ inline */
+    } else {
+      newRefs.push(ref);
+    }
+  }
+  if (changed) {
+    updateUser(u => {
+      const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+      const pl = c && c.planTemplates && c.planTemplates.find(p => p.id === planId);
+      if (pl) pl.images = newRefs;
+    });
+  }
+}
+
+async function openPlanEditor(id) {
   editingPlanId = id;
   viewState = 'edit';
+  await migratePlanImages(id);      /* รูปเก่า inline → IndexedDB (ยุบ localStorage) */
+  const plan = getPlans().find(p => p.id === id);
+  if (plan) await warmPlanImages(plan);
   render();
 }
 function closePlanEditor() {
@@ -940,9 +995,9 @@ function renderEditor() {
       <!-- IMAGE UPLOAD -->
       <div class="pl-section-title">🖼 รูปประกอบแผน (Optional · สูงสุด 12 รูป)</div>
       <div class="pl-img-grid">
-        ${getPlanImages(p).map((dataUrl, idx) => `
+        ${getPlanImages(p).map((ref, idx) => `
           <div class="pl-img-slot uploaded">
-            <img src="${dataUrl}" alt="รูป ${idx+1}" onclick="window.open(this.src,'_blank')">
+            <img src="${planImgSrc(ref)}" alt="รูป ${idx+1}" onclick="window.open(this.src,'_blank')">
             <button class="pl-img-slot-del" onclick="event.stopPropagation();removePlanImage('${p.id}',${idx})">×</button>
           </div>
         `).join('')}
@@ -981,36 +1036,52 @@ function savePlanAndClose(id) {
    PLAN REPORT — เปิด tab ใหม่ + auto print
    layout เหมือน One-Page Summary ใน Planista
 ═══════════════════════════════════════════ */
-function openPlanReportWindow(plan, client, agent) {
+async function openPlanReportWindow(plan, client, agent) {
+  /* เปิด popup ทันที (sync) เพื่อไม่โดน popup blocker — แล้วค่อยเติมเนื้อหา async */
   const win = window.open('', '_blank', 'width=920,height=1240,scrollbars=1,resizable=1');
   if (!win) {
     alert('❌ Browser block popup — กรุณาอนุญาต popup สำหรับเว็บนี้แล้วลองใหม่');
     return;
   }
-  const html = buildPlanReportHTML(plan, client, agent);
+  win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>กำลังเตรียม…</title></head>' +
+    '<body style="font-family:sans-serif;color:#667085;padding:48px;text-align:center;">⏳ กำลังเตรียมรายงาน…</body></html>');
+
+  /* แปลง id รูป → dataURL (เพื่อ embed ในรายงาน/PDF ให้ self-contained)
+     legacy "data:" ผ่านตรง ๆ */
+  const refs = getPlanImages(plan);
+  const imgDataUrls = [];
+  for (const ref of refs) {
+    if (window.IMG && window.IMG.isRef(ref)) {
+      try { const d = await window.IMG.getDataURL(ref); if (d) imgDataUrls.push(d); } catch (e) {}
+    } else if (ref) {
+      imgDataUrls.push(ref);   /* legacy inline */
+    }
+  }
+
+  if (win.closed) return;   /* user ปิด popup ระหว่าง resolve async */
+  const html = buildPlanReportHTML(plan, client, agent, imgDataUrls);
   win.document.open();
   win.document.write(html);
   win.document.close();
-  /* ไม่ auto-print แล้ว — user กดปุ่ม "💾 บันทึก / พิมพ์" ในรายงานเอง
-     เพื่อให้มีโอกาส scroll ตรวจสอบก่อน */
+  /* ไม่ auto-print แล้ว — user กดปุ่ม "💾 บันทึก / พิมพ์" ในรายงานเอง */
 }
 
-function buildPlanReportHTML(plan, client, agent) {
+function buildPlanReportHTML(plan, client, agent, resolvedImages) {
   const t = plan.timeline || {};
   const cov = plan.coverage || { ages:[50,60,70], sumInsured:[0,0,0], disability:[0,0,0] };
   const h = plan.health || {};
-  /* Image list — normalize legacy object form to array (inline copy of getPlanImages
-     because this function can be evaluated in a sandbox without other helpers) */
-  const imgArr = (function(){
-    if (!plan.images) return [];
-    if (Array.isArray(plan.images)) return plan.images.filter(Boolean);
-    if (typeof plan.images === 'object') {
-      return ['landscape','portrait','logo']
-        .map(k => plan.images[k])
-        .filter(Boolean);
-    }
-    return [];
-  })();
+  /* Image list — ปกติ openPlanReportWindow ส่ง resolvedImages (dataURL ที่ resolve จาก IDB แล้ว)
+     มาให้ ถ้าไม่ส่ง (เช่น sandbox test) → fallback normalize จาก plan.images โดยตรง */
+  const imgArr = (resolvedImages != null)
+    ? resolvedImages.filter(Boolean)
+    : (function(){
+        if (!plan.images) return [];
+        if (Array.isArray(plan.images)) return plan.images.filter(Boolean);
+        if (typeof plan.images === 'object') {
+          return ['landscape','portrait','logo'].map(k => plan.images[k]).filter(Boolean);
+        }
+        return [];
+      })();
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -1402,7 +1473,13 @@ function handlePlanImageUpload(planId, input) {
   reader.onload = e => {
     const img = new Image();
     img.onerror = () => alert('❌ ไฟล์รูปเสีย');
-    img.onload = () => {
+    img.onload = async () => {
+      /* เช็คจำนวนรูปก่อน (กัน put IDB แล้วเกิน 12 → orphan) */
+      const planNow = getPlans().find(p => p.id === planId);
+      if (planNow && getPlanImages(planNow).length >= 12) {
+        alert('❌ ใส่รูปได้สูงสุด 12 รูป — ลบรูปเก่าก่อน');
+        return;
+      }
       /* Resize — long side max 800px (works for landscape / portrait / logo) */
       const MAX = 800;
       let w = img.width, h = img.height;
@@ -1412,25 +1489,31 @@ function handlePlanImageUpload(planId, input) {
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
       const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas, 0.82);
+
+      /* เก็บ bytes รูปลง IndexedDB → ได้ id (เก็บแค่ id ใน localStorage)
+         ถ้า IDB ใช้ไม่ได้ → fallback เก็บ inline แบบเดิม */
+      let ref = dataUrl;
+      if (window.IMG) {
+        try {
+          ref = await window.IMG.putDataURL(dataUrl);
+          _planImgURL[ref] = (await window.IMG.getURL(ref)) || dataUrl;
+        } catch (e) { ref = dataUrl; }
+      }
       try {
         updateUser(u => {
           const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
           if (!c || !c.planTemplates) return;
           const pl = c.planTemplates.find(p => p.id === planId);
           if (!pl) return;
-          /* Migrate legacy object → array if needed, then append */
           const arr = getPlanImages(pl);
-          if (arr.length >= 12) {
-            alert('❌ ใส่รูปได้สูงสุด 12 รูป — ลบรูปเก่าก่อน');
-            return;
-          }
-          arr.push(dataUrl);
+          if (arr.length >= 12) return;
+          arr.push(ref);
           pl.images = arr;
         });
         render();
         showToast('✅ อัปโหลดรูปสำเร็จ');
       } catch (err) {
-        alert('❌ บันทึกรูปไม่สำเร็จ — พื้นที่ localStorage เต็ม\nลอง Export ข้อมูลสำรองก่อน');
+        alert('❌ บันทึกรูปไม่สำเร็จ\nลอง Export ข้อมูลสำรองก่อน');
       }
     };
     img.src = e.target.result;
@@ -1440,6 +1523,9 @@ function handlePlanImageUpload(planId, input) {
 
 function removePlanImage(planId, idx) {
   if (!confirm('ลบรูปนี้?')) return;
+  /* หา ref ที่จะลบไว้ก่อน เพื่อลบ blob ใน IndexedDB ด้วย */
+  const plan = getPlans().find(p => p.id === planId);
+  const ref  = plan ? getPlanImages(plan)[idx] : null;
   updateUser(u => {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c || !c.planTemplates) return;
@@ -1449,6 +1535,11 @@ function removePlanImage(planId, idx) {
     arr.splice(idx, 1);
     pl.images = arr;
   });
+  /* ลบ blob ใน IndexedDB + cache (ถ้าเป็น id) */
+  if (ref && window.IMG && window.IMG.isRef(ref)) {
+    window.IMG.remove(ref).catch(() => {});
+    delete _planImgURL[ref];
+  }
   render();
 }
 
