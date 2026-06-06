@@ -727,7 +727,7 @@ function render() {
         <div></div>
         ${PRIORITIES.map(p => `
           <div style="text-align:center;">
-            <div class="p2-rank ${(ranks[p.key]||0)>0?'active':''}" onclick="cycleRank('${p.key}')" title="คลิกเพื่อตั้งลำดับ (0-7)">${ranks[p.key] || 0}</div>
+            <div class="p2-rank ${(ranks[p.key]||0)>0?'active':''}" onclick="cycleRank('${p.key}')" title="คลิกเพื่อจัดลำดับ — เรียง 1-7 อัตโนมัติ · คลิกซ้ำเพื่อยกเลิก">${ranks[p.key] > 0 ? ranks[p.key] : ''}</div>
           </div>
         `).join('')}
         <div></div>
@@ -776,9 +776,22 @@ function cycleRank(key) {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c) return;
     if (!c.priorityRank) c.priorityRank = {};
-    const cur = Number(c.priorityRank[key] || 0);
-    /* cycle 0 → 1 → 2 → ... → 7 → 0 */
-    c.priorityRank[key] = (cur + 1) % (PRIORITIES.length + 1);
+    const r = c.priorityRank;
+    const MAX = PRIORITIES.length;            /* 7 */
+    const cur = Number(r[key] || 0);
+    if (cur > 0) {
+      /* คลิกตัวที่ติดลำดับแล้ว → ยกเลิก + เลื่อนลำดับที่สูงกว่าลงมา 1 (เรียง 1..N ไม่มีช่องว่าง) */
+      r[key] = 0;
+      PRIORITIES.forEach(p => {
+        const v = Number(r[p.key] || 0);
+        if (v > cur) r[p.key] = v - 1;
+      });
+    } else {
+      /* คลิกตัวที่ยังไม่ติดลำดับ → ให้เลขถัดไปตามลำดับคลิก (จำนวนที่ติดแล้ว + 1) สูงสุด 7 */
+      const rankedCount = PRIORITIES.filter(p => Number(r[p.key] || 0) > 0).length;
+      if (rankedCount < MAX) r[key] = rankedCount + 1;
+      /* ถ้าครบ 7 แล้ว → ไม่ทำอะไร */
+    }
   });
   render();
 }
