@@ -1507,7 +1507,13 @@
     const taxInputs = buildTaxInputsObject();
     updateCurrentUser(u => {
       const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
-      if (c) c.taxInputs = taxInputs;
+      if (!c) return;
+      /* MERGE — preserve keys owned by tax2.html (ลดหย่อนภาษี) such as
+         improve, parent, disabled, lifeInsSpouse, mortgage, thaiesg, thaiesgx,
+         gpf, nsf, maternity, politicalDonate, debitFee, eduDonate — these are
+         NOT in buildTaxInputsObject and would be wiped by direct assignment. */
+      if (!c.taxInputs) c.taxInputs = {};
+      Object.assign(c.taxInputs, taxInputs);
     });
   }
   function debouncedAutoSave() {
@@ -1537,8 +1543,9 @@
     updateCurrentUser(u => {
       const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
       if (!c) return;
-      // Save inputs for restore
-      c.taxInputs = taxInputs;
+      // Save inputs for restore — MERGE to preserve tax2.html (ลดหย่อนภาษี) keys
+      if (!c.taxInputs) c.taxInputs = {};
+      Object.assign(c.taxInputs, taxInputs);
       // Save history per client
       if (!c.taxHistory) c.taxHistory = [];
       c.taxHistory.unshift({
