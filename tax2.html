@@ -465,11 +465,39 @@ function saveExtraDonate(scope, value) {
    Also updates totals in-place by triggering full render. */
 function commitField(scope, key, value) {
   saveField(scope, key, value);
-  render();
+  updateAfter();
 }
 function commitExtraDonate(scope, value) {
   saveExtraDonate(scope, value);
-  render();
+  updateAfter();
+}
+
+/* swapAfter — regenerate HTML ใน element ลอย แล้วดึงเฉพาะ #t3-after มาแทนที่
+   ของจริงในหน้า → ตาราง (และช่อง input ที่กำลังพิมพ์) ไม่ถูกแตะเลย */
+function swapAfter() {
+  const after = document.getElementById('t3-after');
+  if (!after || !selectedClientId) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = buildTaxHTML();
+  const fresh = tmp.querySelector('#t3-after');
+  if (fresh) after.replaceWith(fresh);
+}
+/* updateAfter — อัปเดตส่วนสรุปหลังแก้ค่า
+   - ถ้า focus อยู่ในตาราง (ช่องลดหย่อน) → swap ได้เลย (ตารางไม่ถูกแตะ)
+   - ถ้า focus อยู่ "ใน" ส่วนสรุป (เช่นช่องเงินบริจาค) → เลื่อนจนกว่าจะ blur
+     (กัน rebuild ส่วนที่มี input ที่กำลังพิมพ์อยู่) */
+function updateAfter() {
+  const after = document.getElementById('t3-after');
+  if (!after || !selectedClientId) { _doRender(); return; }
+  const ae = document.activeElement;
+  if (ae && ae.tagName === 'INPUT' && after.contains(ae)) {
+    if (!ae._deferAfter) {
+      ae._deferAfter = true;
+      ae.addEventListener('blur', function () { ae._deferAfter = false; swapAfter(); }, { once: true });
+    }
+    return;
+  }
+  swapAfter();
 }
 
 /* ════════════════════════════════════════════
@@ -618,6 +646,25 @@ function onClientChange(cid) {
 }
 
 function render() {
+  /* ── guard กันค่าหายระหว่างพิมพ์ (iPad/iOS) ──
+     ถ้า user กำลัง focus อยู่ในช่อง input ใน content-wrap → เลื่อน rebuild ออกไป
+     จนกว่าจะ blur. เหตุ: iOS type=number บางครั้งยิง onchange ระหว่างพิมพ์ →
+     commitField → render() → rebuild ทั้งตาราง → input ที่กำลังพิมพ์ถูกทำลาย
+     → focus หลุด → พิมพ์ตัวต่อไม่ได้/ค่ายังไม่ครบหาย
+     blur handler เรียก _doRender() ตรง ๆ (ไม่ผ่าน guard) — เลี่ยงปัญหา
+     document.activeElement ยังเป็น input เดิมตอน blur event */
+  const wrap = document.getElementById('content-wrap');
+  const ae = document.activeElement;
+  if (wrap && ae && ae.tagName === 'INPUT' && wrap.contains(ae)) {
+    if (!ae._deferReRender) {
+      ae._deferReRender = true;
+      ae.addEventListener('blur', function () { ae._deferReRender = false; _doRender(); }, { once: true });
+    }
+    return;
+  }
+  _doRender();
+}
+function _doRender() {
   const wrap = document.getElementById('content-wrap');
   if (!selectedClientId) {
     wrap.innerHTML = `<div class="no-client">
@@ -626,12 +673,19 @@ function render() {
     </div>`;
     return;
   }
+  wrap.innerHTML = buildTaxHTML();
+}
+/* สร้าง HTML ทั้งหมด (ตาราง + ส่วนสรุป/คำนวณ) เป็น string — แยกออกมาเพื่อให้
+   updateAfter() regenerate แล้วดึงเฉพาะ #t3-after มา swap ได้
+   (ตาราง input ที่กำลังพิมพ์จะไม่ถูก rebuild → cursor/focus ไม่หลุด) */
+function buildTaxHTML() {
   const client = getCurrent();
+  if (!client) return '';
   const ti = client.taxInputs || {};
   const cur = computeScope(client, 'cur');
   const imp = computeScope(client, 'imp');
 
-  wrap.innerHTML = `
+  return `
     <div class="t3-wrap">
       <!-- Table 22 rows -->
       <table class="t3-table">
@@ -647,6 +701,8 @@ function render() {
         </tbody>
       </table>
 
+      <!-- ส่วนสรุป/คำนวณ — rebuild เฉพาะส่วนนี้ตอน commit (ไม่แตะตาราง input) -->
+      <div id="t3-after">
       <!-- Summary rows -->
       <div class="t3-sum">
         <div class="t3-sum-lbl">รวมค่าลดหย่อน</div>
@@ -779,6 +835,7 @@ function render() {
           </div>
         `;
       })()}
+      </div><!-- /#t3-after -->
     </div>
   `;
 }
