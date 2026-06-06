@@ -2462,8 +2462,19 @@ function deselectAllPlanSections() {
   _pfSelected = new Set();
   renderPlanFileStep();
 }
-function goToPlanPreview() {
+let _pfAgentPhoto = '';   /* รูป agent ที่ resolve เป็น data URL แล้ว (ให้ PDF self-contained) */
+async function goToPlanPreview() {
   if (_pfSelected.size === 0) return;
+  /* resolve รูป agent (id → data URL) ก่อน render — preview ถูก clone ไปทำ PDF
+     ใช้ object URL ไม่ได้ใน print window → ต้อง embed เป็น data: */
+  _pfAgentPhoto = '';
+  try {
+    const ph = ((getUser().profile) || {}).photo;
+    if (ph) {
+      if (window.IMG && window.IMG.isRef(ph)) _pfAgentPhoto = (await window.IMG.getDataURL(ph)) || '';
+      else _pfAgentPhoto = ph;   /* legacy data: */
+    }
+  } catch (e) {}
   _pfStep = 2;
   renderPlanFileStep();
 }
@@ -2584,7 +2595,9 @@ function _pfRenderCover(c, agent, dateStr) {
   const occ = c.occupation || c.job || '';
   const ap = (agent && agent.profile) || {};
   const agentName = ((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent';
-  const agentPhoto = ap.photo;
+  /* ใช้รูปที่ resolve แล้ว (_pfAgentPhoto = data URL) ; ถ้าเป็น id ที่ยัง resolve ไม่ได้ → ซ่อน (กันรูปพังใน PDF) */
+  let agentPhoto = _pfAgentPhoto || ap.photo || '';
+  if (window.IMG && window.IMG.isRef(agentPhoto)) agentPhoto = '';
   const aiaCode = ap.aiaCode || '';
   const agentPhone = ap.phone || '';
   const unit = ap.unit || '';
@@ -2665,7 +2678,9 @@ function _pfRenderAgent(agent, clientName) {
   const ap = (agent && agent.profile) || {};
   const agentName = ((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent';
   const nickname = ap.nickname || '';
-  const photo = ap.photo;
+  /* ใช้รูปที่ resolve แล้ว ; id ที่ยัง resolve ไม่ได้ → ซ่อน (กันรูปพังใน PDF) */
+  let photo = _pfAgentPhoto || ap.photo || '';
+  if (window.IMG && window.IMG.isRef(photo)) photo = '';
   const phone = ap.phone || '';
   const email = ap.email || '';
   const lineId = ap.lineId || '';

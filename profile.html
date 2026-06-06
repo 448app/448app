@@ -691,14 +691,7 @@ function handlePhotoUpload(input) {
       /* WebP if supported (≈25% smaller), JPEG fallback */
       const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas);
 
-      /* Save — try/catch กัน QuotaExceededError */
-      try {
-        updateUser(u => { if (!u.profile) u.profile = {}; u.profile.photo = dataUrl; });
-        applyPhoto(dataUrl);
-        showToast('✅ อัปโหลดรูปสำเร็จ');
-      } catch (err) {
-        showToast('❌ บันทึกรูปไม่สำเร็จ — พื้นที่ localStorage เต็ม', 'error');
-      }
+      commitProfilePhoto(dataUrl, '✅ อัปโหลดรูปสำเร็จ');
     };
     img.src = e.target.result;
   };
@@ -713,12 +706,15 @@ function applyPhoto(photoUrl) {
   const hintEl      = document.getElementById('avatar-edit-hint');
 
   if (photoUrl) {
-    /* Large avatar */
-    avatarEl.style.backgroundImage = `url('${photoUrl}')`;
+    /* Large avatar + sidebar — setBg resolve id→objectURL (data: passthrough) */
+    if (window.IMG) {
+      window.IMG.setBg(avatarEl, photoUrl);
+      window.IMG.setBg(sbAvatarEl, photoUrl);
+    } else {
+      avatarEl.style.backgroundImage = `url('${photoUrl}')`;
+      sbAvatarEl.style.backgroundImage = `url('${photoUrl}')`;
+    }
     if (initialEl) initialEl.style.display = 'none';
-
-    /* Sidebar avatar */
-    sbAvatarEl.style.backgroundImage = `url('${photoUrl}')`;
     sbAvatarEl.classList.add('has-photo');
 
     /* Show remove button */
@@ -736,6 +732,33 @@ function applyPhoto(photoUrl) {
   }
 }
 
+/* บันทึกรูปโปรไฟล์ → IndexedDB (เก็บ id) ; ลบ blob เก่าถ้าแทนที่ */
+async function commitProfilePhoto(dataUrl, okMsg) {
+  let ref = dataUrl;
+  if (window.IMG) { try { ref = await window.IMG.putDataURL(dataUrl); } catch (e) { ref = dataUrl; } }
+  let oldRef = null;
+  try {
+    updateUser(u => { if (!u.profile) u.profile = {}; oldRef = u.profile.photo; u.profile.photo = ref; });
+  } catch (err) { showToast('❌ บันทึกรูปไม่สำเร็จ', 'error'); return; }
+  if (oldRef && window.IMG && window.IMG.isRef(oldRef) && oldRef !== ref) window.IMG.remove(oldRef).catch(() => {});
+  applyPhoto(dataUrl);   /* แสดงทันทีด้วย data: ที่มีในมือ */
+  if (okMsg) showToast(okMsg);
+}
+
+/* lazy: ย้ายรูปโปรไฟล์ inline (data:) → IndexedDB (เบื้องหลัง) */
+async function maybeMigrateProfilePhoto() {
+  if (!window.IMG) return;
+  const photo = (getProfile() || {}).photo;
+  if (typeof photo !== 'string' || photo.indexOf('data:') !== 0) return;
+  try {
+    const id = await window.IMG.putDataURL(photo);
+    await window.IMG.getURL(id);
+    updateUser(uu => {
+      if (uu.profile && typeof uu.profile.photo === 'string' && uu.profile.photo.indexOf('data:') === 0) uu.profile.photo = id;
+    });
+  } catch (e) {}
+}
+
 function handleAvatarHintClick(e) {
   e.stopPropagation();
   openProfilePhotoMenu(e);
@@ -743,7 +766,9 @@ function handleAvatarHintClick(e) {
 
 function removePhoto() {
   if (!confirm('ลบรูปโปรไฟล์ออกใช่ไหม?')) return;
-  updateUser(u => { if (u.profile) u.profile.photo = null; });
+  let oldRef = null;
+  updateUser(u => { if (u.profile) { oldRef = u.profile.photo; u.profile.photo = null; } });
+  if (oldRef && window.IMG && window.IMG.isRef(oldRef)) window.IMG.remove(oldRef).catch(() => {});
   applyPhoto(null);
   showToast('🗑️ ลบรูปโปรไฟล์แล้ว');
 }
@@ -905,14 +930,8 @@ function captureProfilePhoto() {
   ctx.drawImage(video, 0, 0, w, h);
   /* WebP if supported (≈25% smaller), JPEG fallback */
   const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas);
-  try {
-    updateUser(u => { if (!u.profile) u.profile = {}; u.profile.photo = dataUrl; });
-    applyPhoto(dataUrl);
-    closeProfileCameraModal();
-    showToast('✅ ถ่ายรูปและบันทึกสำเร็จ');
-  } catch (err) {
-    alert('❌ บันทึกรูปไม่สำเร็จ — พื้นที่ localStorage เต็ม');
-  }
+  closeProfileCameraModal();
+  commitProfilePhoto(dataUrl, '✅ ถ่ายรูปและบันทึกสำเร็จ');
 }
 
 fbAuth.onAuthStateChanged(u => {
@@ -1198,8 +1217,9 @@ function renderAll() {
   const roleText = [profile.unit || 'AIA', 'ตัวแทน'].filter(Boolean).join(' · ');
   document.getElementById('card-role').textContent = roleText;
 
-  // Photo (restore on load)
+  // Photo (restore on load) — applyPhoto resolve id ผ่าน setBg
   applyPhoto(profile.photo || null);
+  maybeMigrateProfilePhoto();   /* lazy: ย้ายรูป inline เก่า → IndexedDB */
   // Sidebar initial (only if no photo)
   if (!profile.photo) {
     document.getElementById('sb-avatar').textContent = initChar;

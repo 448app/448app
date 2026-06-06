@@ -140,8 +140,88 @@
     }
   }
 
+  /* ═══════════════════════════════════════════════════════════════════
+     RESOLVER LAYER — ให้ render site ใช้ id ได้โดยแก้น้อยที่สุด
+     - tag(ref, attrs): สร้าง <img> — รูป data: ใส่ src ตรง; id ที่ยังไม่ warm
+       ใส่ data-imgref (observer patch ทีหลัง ไม่ยิง fetch)
+     - setBg(el, ref): set background-image — id → resolve async
+     - patchPending(): หา <img data-imgref> ใน DOM → resolve → set src
+     - MutationObserver: auto-patch <img data-imgref> ที่เพิ่งถูกเพิ่ม
+     - warm(ids): prefetch object URL ของ id เข้า cache (sync lookup ได้หลัง warm)
+  ═══════════════════════════════════════════════════════════════════ */
+  function srcOf(ref) {
+    if (!ref) return '';
+    if (ref.indexOf('data:') === 0) return ref;
+    if (isRef(ref)) return _urlCache[ref] || '';
+    return ref;
+  }
+  function tag(ref, attrs) {
+    attrs = attrs || '';
+    if (!ref) return '<img ' + attrs + '>';
+    if (ref.indexOf('data:') === 0) return '<img src="' + ref + '" ' + attrs + '>';
+    if (isRef(ref)) {
+      const c = _urlCache[ref];
+      return c ? '<img src="' + c + '" ' + attrs + '>'
+               : '<img data-imgref="' + ref + '" ' + attrs + '>';
+    }
+    return '<img src="' + ref + '" ' + attrs + '>';
+  }
+  function setBg(el, ref) {
+    if (!el) return;
+    if (!ref) { el.style.backgroundImage = ''; return; }
+    if (ref.indexOf('data:') === 0) { el.style.backgroundImage = "url('" + ref + "')"; return; }
+    if (isRef(ref)) {
+      const c = _urlCache[ref];
+      if (c) { el.style.backgroundImage = "url('" + c + "')"; return; }
+      getURL(ref).then(u => { if (u) el.style.backgroundImage = "url('" + u + "')"; }).catch(() => {});
+      return;
+    }
+    el.style.backgroundImage = "url('" + ref + "')";
+  }
+  function patchOne(im) {
+    const ref = im.getAttribute('data-imgref');
+    if (!ref) return;
+    im.removeAttribute('data-imgref');
+    if (!isRef(ref)) return;
+    getURL(ref).then(u => { if (u) im.src = u; }).catch(() => {});
+  }
+  function patchPending(root, deep) {
+    const scope = (root && root.querySelectorAll) ? root : document;
+    scope.querySelectorAll('img[data-imgref]').forEach(patchOne);
+    if (deep) {
+      /* safety net: <img src="img_xxx"> ที่ render site ไหนยังไม่ผ่าน tag() */
+      scope.querySelectorAll('img').forEach(im => {
+        const raw = im.getAttribute('src');
+        if (isRef(raw)) getURL(raw).then(u => { if (u) im.src = u; }).catch(() => {});
+      });
+    }
+  }
+  async function warm(ids) {
+    for (const id of (ids || [])) {
+      if (isRef(id) && !_urlCache[id]) { try { await getURL(id); } catch (e) {} }
+    }
+  }
+  /* MutationObserver — auto-patch <img data-imgref> ที่เพิ่งถูก inject */
+  function startObserver() {
+    if (!window.MutationObserver) return;
+    const mo = new MutationObserver(muts => {
+      for (const m of muts) {
+        for (const n of m.addedNodes) {
+          if (!n || n.nodeType !== 1) continue;
+          if (n.matches && n.matches('img[data-imgref]')) patchOne(n);
+          else if (n.querySelectorAll) patchPending(n);
+        }
+      }
+    });
+    const go = () => { try { mo.observe(document.body, { childList: true, subtree: true }); } catch (e) {} };
+    if (document.body) go();
+    else document.addEventListener('DOMContentLoaded', go, { once: true });
+  }
+  startObserver();
+
   window.IMG = {
     putDataURL, getBlob, getURL, getDataURL, remove,
     isRef, exportMap, importMap, genId,
+    srcOf, tag, setBg, patchPending, warm,
   };
 })();

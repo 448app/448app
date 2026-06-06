@@ -1186,17 +1186,22 @@ function showToast(msg, type = '') {
 async function exportData() {
   const user = getUser();
 
-  // ─── รวมรูป planner ที่ย้ายไป IndexedDB (id → dataURL) ให้ไฟล์ backup self-contained ───
-  // ถ้าไม่รวม รูปจะหายตอน restore บนเครื่องใหม่ (plan.images มีแค่ id ที่ชี้ไป IDB ว่าง)
+  // ─── รวมรูปที่ย้ายไป IndexedDB (id → dataURL) ให้ไฟล์ backup self-contained ───
+  // รวม: planner images, รูปลูกค้า (client.photo), รูปตัวแทน (profile.photo)
+  // ถ้าไม่รวม รูปจะหายตอน restore บนเครื่องใหม่ (เก็บแค่ id ที่ชี้ไป IDB ว่าง)
   let imageMap = {};
   try {
     if (window.IMG) {
       const ids = [];
-      (user.data.clients || []).forEach(c => (c.planTemplates || []).forEach(p => {
-        (Array.isArray(p.images) ? p.images : []).forEach(ref => {
-          if (window.IMG.isRef(ref)) ids.push(ref);
+      if (user.profile && window.IMG.isRef(user.profile.photo)) ids.push(user.profile.photo);
+      (user.data.clients || []).forEach(c => {
+        if (window.IMG.isRef(c.photo)) ids.push(c.photo);
+        (c.planTemplates || []).forEach(p => {
+          (Array.isArray(p.images) ? p.images : []).forEach(ref => {
+            if (window.IMG.isRef(ref)) ids.push(ref);
+          });
         });
-      }));
+      });
       if (ids.length) imageMap = await window.IMG.exportMap(ids);
     }
   } catch (e) { /* รูปรวมไม่ได้ → export ต่อ (รูปเก่า inline ยังอยู่ใน data) */ }

@@ -994,7 +994,7 @@
     const active  = c.id === selectedClientId ? 'active' : '';
     /* ใช้ <img> tag (robust กว่า inline background-image กับ dataUrl ที่มี ; )
        photo เป็น dataUrl ที่ generate เอง — แต่ใส่ esc เผื่อ ' หรือ " ใน URL */
-    const avatarInner = c.photo ? `<img src="${esc(c.photo)}" alt="">` : initial;
+    const avatarInner = c.photo ? (window.IMG ? window.IMG.tag(c.photo, 'alt=""') : `<img src="${esc(c.photo)}" alt="">`) : initial;
     const fullName    = esc(c.firstName) + (c.lastName ? ' ' + esc(c.lastName) : '');
     /* ถ้ามีรูป → กดได้ ซูมใหญ่ (stopPropagation กัน trigger showProfile) */
     const avatarClick = c.photo
@@ -1089,7 +1089,8 @@
     const pAv     = document.getElementById('p-avatar');
     const pAvWrap = document.getElementById('p-avatar-wrap');
     if (client.photo) {
-      pAv.innerHTML = `<img src="${client.photo}" alt="">`;
+      pAv.innerHTML = window.IMG ? window.IMG.tag(client.photo, 'alt=""') : `<img src="${client.photo}" alt="">`;
+      maybeMigrateClientPhoto(client.id);   /* lazy: ย้ายรูป inline เก่า → IndexedDB */
       if (!pAvWrap.querySelector('.pf-photo-remove')) {
         pAvWrap.insertAdjacentHTML('beforeend',
           `<button class="pf-photo-remove" onclick="event.stopPropagation(); removeClientPhoto();" title="ลบรูป">×</button>`);
@@ -1261,7 +1262,14 @@
     const c = (getCurrentUser().data.clients || []).find(x => x.id === clientId);
     if (!c || !c.photo) return;
     const fullName = (c.firstName || '') + (c.lastName ? ' ' + c.lastName : '');
-    document.getElementById('pl-img').src = c.photo;
+    const plImg = document.getElementById('pl-img');
+    if (window.IMG && window.IMG.isRef(c.photo)) {
+      const cached = window.IMG.srcOf(c.photo);
+      if (cached) plImg.src = cached;
+      else window.IMG.getURL(c.photo).then(u => { if (u) plImg.src = u; });
+    } else {
+      plImg.src = c.photo;   /* legacy data: */
+    }
     document.getElementById('pl-name').textContent = fullName;
     document.getElementById('photo-lightbox').classList.add('open');
     /* Esc to close */
@@ -1452,17 +1460,8 @@
     /* WebP if supported (≈25% smaller), JPEG fallback */
     const dataUrl = (window.compressPhotoCanvas || (c => c.toDataURL('image/jpeg', 0.82)))(canvas);
 
-    try {
-      updateCurrentUser(u => {
-        const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
-        if (c) c.photo = dataUrl;
-      });
-      closeCameraModal();
-      showProfile(selectedClientId);
-      renderList();
-    } catch (err) {
-      alert('❌ บันทึกรูปไม่สำเร็จ — พื้นที่ localStorage เต็ม');
-    }
+    closeCameraModal();
+    commitClientPhoto(dataUrl).then(ok => { if (!ok) alert('❌ บันทึกรูปไม่สำเร็จ'); });
   }
 
   function handleClientPhotoUpload(input) {
@@ -1503,8 +1502,48 @@
 
   /* บันทึกรูปพร้อม retry + ลด quality ทีละขั้นถ้า quota เกิน
      กัน data loss: ลองด้วย dataUrl เดิม → ถ้า fail → ลด quality → ถ้ายัง fail → ย่อขนาด */
+  /* บันทึกรูปลูกค้า → IndexedDB (เก็บ id) ; ลบ blob เก่าถ้าแทนที่ */
+  async function commitClientPhoto(dataUrl) {
+    if (!selectedClientId) return false;
+    const prev   = (getCurrentUser().data.clients||[]).find(x => x.id === selectedClientId);
+    const oldRef = prev && prev.photo;
+    let ref = dataUrl;
+    if (window.IMG) { try { ref = await window.IMG.putDataURL(dataUrl); } catch (e) { ref = dataUrl; } }
+    try {
+      updateCurrentUser(u => {
+        const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+        if (c) c.photo = ref;
+      });
+      if (oldRef && window.IMG && window.IMG.isRef(oldRef) && oldRef !== ref) window.IMG.remove(oldRef).catch(()=>{});
+      showProfile(selectedClientId);
+      renderList();
+      return true;
+    } catch (err) { return false; }
+  }
+
+  /* lazy: ย้ายรูป inline (data:) ของลูกค้าที่กำลังดู → IndexedDB (เบื้องหลัง ไม่ re-render) */
+  async function maybeMigrateClientPhoto(clientId) {
+    if (!window.IMG) return;
+    const c = (getCurrentUser().data.clients||[]).find(x => x.id === clientId);
+    if (!c || typeof c.photo !== 'string' || c.photo.indexOf('data:') !== 0) return;
+    try {
+      const id = await window.IMG.putDataURL(c.photo);
+      await window.IMG.getURL(id);
+      updateCurrentUser(u => {
+        const cc = (u.data.clients||[]).find(x => x.id === clientId);
+        if (cc && typeof cc.photo === 'string' && cc.photo.indexOf('data:') === 0) cc.photo = id;
+      });
+    } catch (e) {}
+  }
+
   function savePhotoWithRetry(canvas) {
     if (!selectedClientId) return;
+    /* IDB available → compress once + store (ไม่ต้องสู้ localStorage quota) */
+    if (window.IMG) {
+      const dataUrl = (window.compressPhotoCanvas || ((c, qq) => c.toDataURL('image/jpeg', qq)))(canvas, 0.82);
+      commitClientPhoto(dataUrl).then(ok => { if (!ok) alert('❌ บันทึกรูปไม่สำเร็จ'); });
+      return;
+    }
     const qualities = [0.82, 0.6, 0.4];
     const sizes = [1.0, 0.7, 0.5];
     for (const sizeRatio of sizes) {
@@ -1538,10 +1577,13 @@
   function removeClientPhoto() {
     if (!selectedClientId) return;
     if (!confirm('ลบรูปลูกค้าคนนี้?')) return;
+    const prev = (getCurrentUser().data.clients||[]).find(x => x.id === selectedClientId);
+    const oldRef = prev && prev.photo;
     updateCurrentUser(u => {
       const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
       if (c) delete c.photo;
     });
+    if (oldRef && window.IMG && window.IMG.isRef(oldRef)) window.IMG.remove(oldRef).catch(()=>{});
     showProfile(selectedClientId);
     renderList();
   }

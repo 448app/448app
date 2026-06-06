@@ -4,7 +4,7 @@
    - ใช้ cache เฉพาะตอน offline (fallback)
    ผลคือ: page reload ปกติ = ได้ของใหม่จาก server ทุกครั้ง
    ไม่ต้องกด Ctrl+Shift+R เอง */
-const SW_VERSION = 'v172-2026-06-06-images-indexeddb';
+const SW_VERSION = 'v173-2026-06-06-client-profile-photo-idb';
 const CACHE_NAME = 'aia-runtime-' + SW_VERSION;
 
 self.addEventListener('install', (event) => {

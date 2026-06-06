@@ -1943,7 +1943,7 @@ function initClientSelect() {
   if (av) {
     const c = clients.find(x => x.id === activeId);
     if (c && c.photo) {
-      av.innerHTML = `<img src="${c.photo}" alt="">`;
+      av.innerHTML = window.IMG ? window.IMG.tag(c.photo, 'alt=""') : `<img src="${c.photo}" alt="">`;
     } else if (c) {
       av.textContent = (c.firstName || '?').charAt(0).toUpperCase();
     } else {
@@ -2075,7 +2075,7 @@ function render() {
   const initials = (client.firstName || '?').charAt(0).toUpperCase();
   const cibAv = document.getElementById('cib-avatar');
   if (client.photo) {
-    cibAv.innerHTML = `<img src="${client.photo}" alt="">`;
+    cibAv.innerHTML = window.IMG ? window.IMG.tag(client.photo, 'alt=""') : `<img src="${client.photo}" alt="">`;
   } else {
     cibAv.textContent = initials;
   }

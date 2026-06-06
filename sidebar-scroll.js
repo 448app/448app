@@ -146,7 +146,7 @@ if ('serviceWorker' in navigator
       const u = users.find(x => x.id === uid);
       const c = (u && u.data && u.data.clients || []).find(x => x.id === cid);
       if (c && c.photo) {
-        av.innerHTML = `<img src="${c.photo}" alt="">`;
+        av.innerHTML = window.IMG ? window.IMG.tag(c.photo, 'alt=""') : `<img src="${c.photo}" alt="">`;
       } else if (c) {
         av.textContent = (c.firstName || '?').charAt(0).toUpperCase();
       } else {
@@ -154,6 +154,43 @@ if ('serviceWorker' in navigator
       }
     } catch (e) { av.innerHTML = '👤'; }
   }
+
+  /* ════════════════════════════════════════════
+     WARM APP IMAGES (client.photo + profile.photo จาก IndexedDB)
+     - prefetch object URL → patch <img> + sidebar avatar bg
+     - render site อ่าน id ได้โดยแก้น้อย (resolver ใน idb-images.js)
+  ═══════════════════════════════════════════ */
+  function refreshSidebarProfileAvatar(u) {
+    const sbAv = document.getElementById('sb-avatar');
+    if (!sbAv || !window.IMG) return;
+    const ref = u && u.profile && u.profile.photo;
+    if (window.IMG.isRef(ref)) {
+      window.IMG.setBg(sbAv, ref);
+      sbAv.style.backgroundSize = 'cover';
+      sbAv.style.backgroundPosition = 'center';
+      sbAv.classList.add('has-photo');
+      sbAv.textContent = '';
+    }
+  }
+  async function warmAppImages() {
+    if (!window.IMG) return;
+    let users, uid, u;
+    try {
+      uid = localStorage.getItem('aia_currentUser');
+      users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+      u = users.find(x => x.id === uid);
+    } catch (e) { return; }
+    if (!u) return;
+    const ids = [];
+    if (u.profile && window.IMG.isRef(u.profile.photo)) ids.push(u.profile.photo);
+    ((u.data && u.data.clients) || []).forEach(c => { if (window.IMG.isRef(c.photo)) ids.push(c.photo); });
+    if (!ids.length) return;
+    await window.IMG.warm(ids);
+    window.IMG.patchPending(document, true);   /* fix <img> ที่ใช้ id (deep safety net) */
+    refreshSidebarProfileAvatar(u);            /* fix sidebar bg avatar (profile.photo) */
+    updateClientMiniAvatar();                  /* fix client mini avatar */
+  }
+  window.warmAppImages = warmAppImages;
 
   /* ════════════════════════════════════════════
      COLLAPSE / EXPAND sidebar — Option A (slide out fully)
@@ -719,6 +756,7 @@ if ('serviceWorker' in navigator
     replaceSidebarIcons();
     installIosOnchangeFix();
     enableTransitionsAfterFirstPaint();
+    warmAppImages();   /* โหลดรูป client/profile จาก IndexedDB → patch อวตาร */
     const sb = document.querySelector('.app-sidebar');
     if (sb) {
       sb.addEventListener('click', (e) => {
