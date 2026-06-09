@@ -994,24 +994,8 @@ function computeMilestones(client) {
     const childName = ch.name || 'บุตร';
     /* parent's age when child reaches each milestone */
     const ageDiff = currentAge - childAge;
-    /* primary school (age 6) — round year กัน decimal (childAge เป็นทศนิยม) */
-    items.push({
-      type: 'child',
-      icon: '🏫',
-      name: `${escapeHtml(childName)} เข้า ป.1`,
-      parentAge: ageDiff + 6,
-      year: Math.round(currentYear + (6 - childAge)),
-      meta: 'อายุบุตร 6 ปี',
-    });
-    /* university (age 18) */
-    items.push({
-      type: 'child',
-      icon: '🎓',
-      name: `${escapeHtml(childName)} เข้ามหา\'ลัย`,
-      parentAge: ageDiff + 18,
-      year: Math.round(currentYear + (18 - childAge)),
-      meta: 'อายุบุตร 18 ปี',
-    });
+    /* เอา milestone การศึกษา (เข้า ป.1 / เข้ามหาลัย) ออกจาก timeline ตามที่ลูกค้าต้องการ
+       — เหลือไว้แค่ "จบ ป.ตรี" */
     /* university grad (age 22) */
     items.push({
       type: 'child',
