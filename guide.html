@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
@@ -8,106 +8,124 @@
   <link rel="stylesheet" href="style.css">
   <script src="analytics.js" async></script>
   <style>
-    .guide-nav-tabs {
-      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px;
-    }
-    .guide-tab {
-      padding: 8px 20px; border-radius: 50px; font-size: .88rem; font-weight: 600;
-      cursor: pointer; border: 2px solid var(--gray-200); background: white;
-      color: var(--gray-600); transition: all .2s;
-    }
-    .guide-tab:hover, .guide-tab.active {
-      border-color: var(--red-primary); background: var(--red-soft); color: var(--red-primary);
-    }
+    .gd-wrap { max-width: 980px; margin: 0 auto; padding: 8px 0 40px; }
 
-    .video-section { margin-bottom: 36px; }
-    .video-section h3 { font-size: 1.1rem; margin-bottom: 16px; color: var(--gray-800); }
-
-    .video-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 18px; }
-    .vid-card {
-      background: white; border-radius: var(--radius); overflow: hidden;
-      box-shadow: var(--shadow-sm); transition: all .25s; cursor: pointer;
+    /* Hero */
+    .gd-hero {
+      background: linear-gradient(135deg, #1F2D4F, #3A4F75);
+      color: white; border-radius: var(--radius);
+      padding: 34px 30px; text-align: center; margin-bottom: 24px;
     }
-    .vid-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
-    .vid-thumb {
-      height: 160px; position: relative; overflow: hidden;
+    .gd-hero .ico { font-size: 2.6rem; margin-bottom: 8px; }
+    .gd-hero h1 { font-size: 1.6rem; font-weight: 800; margin: 0 0 6px; }
+    .gd-hero p { opacity: .9; font-size: .95rem; margin: 0; }
+
+    /* TOC */
+    .gd-toc {
+      background: white; border-radius: var(--radius); box-shadow: var(--shadow-sm);
+      padding: 16px 18px; margin-bottom: 26px;
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .gd-toc a {
+      text-decoration: none; font-size: .84rem; font-weight: 700;
+      color: var(--gray-700, #374151); background: var(--gray-100, #F3F4F6);
+      padding: 7px 14px; border-radius: 50px; transition: all .15s;
+    }
+    .gd-toc a:hover { background: var(--red-soft, #FEE2E2); color: var(--red-primary, #DC2626); }
+
+    /* Section */
+    .gd-sec { margin-bottom: 34px; scroll-margin-top: 80px; }
+    .gd-sec-head {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    }
+    .gd-sec-head .n {
+      width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+      background: var(--red-primary, #DC2626); color: white;
       display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 1rem;
     }
-    .vid-thumb-bg {
-      position: absolute; inset: 0;
-      background: linear-gradient(135deg, var(--red-soft) 0%, var(--red-mid) 100%);
-    }
-    .vid-thumb-icon {
-      position: relative; z-index: 1;
-      width: 56px; height: 56px; border-radius: 50%;
-      background: var(--red-primary); color: white;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.4rem; box-shadow: var(--shadow-md);
-      transition: transform .25s;
-    }
-    .vid-card:hover .vid-thumb-icon { transform: scale(1.12); }
-    .vid-duration {
-      position: absolute; bottom: 10px; right: 10px;
-      background: rgba(0,0,0,.6); color: white;
-      font-size: 0.75rem; padding: 2px 8px; border-radius: 4px;
-    }
-    .vid-info { padding: 14px 16px; }
-    .vid-num { font-size: .72rem; font-weight: 700; color: var(--red-primary); margin-bottom: 4px; text-transform: uppercase; }
-    .vid-title { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
-    .vid-desc { font-size: .82rem; color: var(--gray-600); }
+    .gd-sec-head h2 { font-size: 1.25rem; font-weight: 800; color: #1F2D4F; margin: 0; }
 
-    /* FAQ accordion */
-    .faq-card {
-      background: white; border-radius: var(--radius);
-      box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 28px;
-    }
-    .faq-item { border-bottom: 1px solid var(--gray-200); }
-    .faq-item:last-child { border-bottom: none; }
-    .faq-q {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 18px 22px; cursor: pointer; font-weight: 600; font-size: .95rem;
-      transition: background .2s;
-    }
-    .faq-q:hover { background: var(--red-soft); color: var(--red-primary); }
-    .faq-q.open { background: var(--red-soft); color: var(--red-primary); }
-    .faq-arrow { font-size: 1rem; transition: transform .3s; }
-    .faq-q.open .faq-arrow { transform: rotate(180deg); }
-    .faq-a { display: none; padding: 0 22px 18px; color: var(--gray-600); font-size: .92rem; line-height: 1.7; }
-    .faq-a.open { display: block; }
-
-    /* Steps in guide */
-    .guide-steps { display: flex; flex-direction: column; gap: 16px; }
-    .guide-step {
-      display: flex; gap: 16px; background: white;
-      border-radius: var(--radius-sm); padding: 18px; box-shadow: var(--shadow-sm);
+    /* Steps */
+    .gd-steps { display: flex; flex-direction: column; gap: 12px; }
+    .gd-step {
+      display: flex; gap: 14px; background: white;
+      border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow-sm);
       align-items: flex-start;
     }
-    .g-num {
-      min-width: 40px; height: 40px; border-radius: 50%;
-      background: var(--red-primary); color: white; font-weight: 800;
-      display: flex; align-items: center; justify-content: center;
+    .gd-step .num {
+      min-width: 36px; height: 36px; border-radius: 50%;
+      background: #1F2D4F; color: white; font-weight: 800;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .g-text h4 { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
-    .g-text p { font-size: .88rem; color: var(--gray-600); }
+    .gd-step h4 { font-size: .98rem; font-weight: 800; margin: 2px 0 3px; color: #1F2D4F; }
+    .gd-step p  { font-size: .88rem; color: var(--gray-600, #4B5563); margin: 0; line-height: 1.55; }
+
+    /* Feature group cards */
+    .gd-group {
+      background: white; border-radius: 14px; box-shadow: var(--shadow-sm);
+      overflow: hidden; margin-bottom: 16px;
+    }
+    .gd-group-title {
+      display: flex; align-items: center; gap: 8px;
+      padding: 13px 18px; font-weight: 800; font-size: 1rem; color: #1F2D4F;
+      background: #F0F2F7; border-bottom: 1px solid #E3E7EF;
+    }
+    .gd-feat { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px 18px; }
+    .gd-feat + .gd-feat { border-top: 1px dashed #EDF0F5; }
+    .gd-feat-ico {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: #F0F2F7; display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    .gd-feat-name { font-weight: 800; font-size: .95rem; color: #1F2D4F; }
+    .gd-feat-desc { font-size: .86rem; color: var(--gray-600, #4B5563); line-height: 1.5; margin-top: 2px; }
+    .gd-feat-how {
+      font-size: .8rem; color: #A16207; background: rgba(245,194,66,.14);
+      border-radius: 6px; padding: 3px 8px; margin-top: 6px; display: inline-block;
+    }
+
+    /* Tips */
+    .gd-tip {
+      display: flex; gap: 12px; background: white; border-radius: 12px;
+      box-shadow: var(--shadow-sm); padding: 15px 18px; margin-bottom: 12px;
+      border-left: 4px solid #F5C242;
+    }
+    .gd-tip.warn { border-left-color: #DC3545; }
+    .gd-tip .t-ico { font-size: 1.5rem; flex-shrink: 0; }
+    .gd-tip h4 { font-size: .95rem; font-weight: 800; margin: 0 0 3px; color: #1F2D4F; }
+    .gd-tip p { font-size: .87rem; color: var(--gray-600, #4B5563); margin: 0; line-height: 1.6; }
+    .gd-tip b { color: #DC3545; }
+
+    /* FAQ */
+    .gd-faq { background: white; border-radius: 14px; box-shadow: var(--shadow-sm); overflow: hidden; }
+    .faq-item { border-bottom: 1px solid #EDF0F5; }
+    .faq-item:last-child { border-bottom: none; }
+    .faq-q {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 16px 20px; cursor: pointer; font-weight: 700; font-size: .93rem; color: #1F2D4F;
+      transition: background .15s;
+    }
+    .faq-q:hover, .faq-q.open { background: #F0F2F7; }
+    .faq-arrow { transition: transform .25s; color: #888; flex-shrink: 0; }
+    .faq-q.open .faq-arrow { transform: rotate(180deg); }
+    .faq-a { display: none; padding: 0 20px 16px; color: var(--gray-600, #4B5563); font-size: .88rem; line-height: 1.7; }
+    .faq-a.open { display: block; }
 
     /* Contact */
-    .contact-card {
-      background: linear-gradient(135deg, var(--red-primary), var(--red-dark));
-      color: white; border-radius: var(--radius); padding: 32px; text-align: center;
+    .gd-contact {
+      background: linear-gradient(135deg, #1F2D4F, #3A4F75);
+      color: white; border-radius: var(--radius); padding: 28px; text-align: center; margin-top: 30px;
     }
-    .contact-card h3 { margin-bottom: 8px; }
-    .contact-card p { opacity: .85; margin-bottom: 24px; }
-    .contact-methods { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
-    .contact-btn {
-      padding: 10px 22px; border-radius: 50px; background: rgba(255,255,255,.2);
-      color: white; border: 1px solid rgba(255,255,255,.4); font-weight: 600;
-      font-size: .9rem; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 8px;
-    }
-    .contact-btn:hover { background: rgba(255,255,255,.35); }
+    .gd-contact h3 { margin: 0 0 6px; font-size: 1.2rem; }
+    .gd-contact p { opacity: .88; margin: 0 0 4px; font-size: .9rem; }
 
-    @media(max-width:600px) { .video-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 600px) {
+      .gd-hero h1 { font-size: 1.35rem; }
+      .gd-feat { grid-template-columns: 1fr; }
+      .gd-feat-ico { display: none; }
+    }
   </style>
-  <!-- PWA -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#1F2D4F">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
@@ -116,7 +134,6 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="448 Wealth">
   <meta name="mobile-web-app-capable" content="yes">
-  <script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
 </head>
 <body>
 
@@ -143,225 +160,299 @@
       <div><div class="navbar-name">448 Wealth <span>Management Plan</span></div></div>
     </div>
     <ul class="navbar-menu">
-      <li><a href="index.html">หน้าหลัก</a></li>
-      <li><a href="dashboard.html">ฟีเจอร์</a></li>
+      <li><a href="dashboard.html">← กลับสู่แอป</a></li>
       <li><a href="guide.html" class="active">คู่มือการใช้งาน</a></li>
-      <li><a href="#">ติดต่อเรา</a></li>
     </ul>
     <div class="navbar-actions">
-      <a href="login.html" class="btn btn-outline" style="padding:9px 22px;font-size:.9rem;">เข้าสู่ระบบ</a>
-      <a href="login.html" class="btn btn-primary" style="padding:9px 22px;font-size:.9rem;">สมัครฟรี</a>
+      <a href="dashboard.html" class="btn btn-primary" style="padding:9px 22px;font-size:.9rem;">เปิดแอป</a>
     </div>
   </div>
 </nav>
 
 <div class="page">
-  <div class="guide-layout">
+  <div class="gd-wrap">
 
-    <!-- Header banner -->
-    <div class="guide-top">
-      <div style="font-size:2.5rem;margin-bottom:12px;">📚</div>
-      <h2>คู่มือการใช้งาน 448 Wealth Management Plan</h2>
-      <p>เรียนรู้วิธีใช้งานแต่ละฟีเจอร์ผ่านวิดีโอและบทความแนะนำ</p>
+    <!-- HERO -->
+    <div class="gd-hero">
+      <div class="ico">📚</div>
+      <h1>คู่มือการใช้งาน</h1>
+      <p>448 Wealth Management Plan — เครื่องมือวางแผนการเงินและความคุ้มครองสำหรับตัวแทน</p>
     </div>
 
-    <!-- Tab nav -->
-    <div class="guide-nav-tabs">
-      <div class="guide-tab active" onclick="showTab('all', this)">ทั้งหมด</div>
-      <div class="guide-tab" onclick="showTab('start', this)">เริ่มต้นใช้งาน</div>
-      <div class="guide-tab" onclick="showTab('finance', this)">วางแผนการเงิน</div>
-      <div class="guide-tab" onclick="showTab('policy', this)">กรมธรรม์</div>
-      <div class="guide-tab" onclick="showTab('tax', this)">ภาษี</div>
+    <!-- TABLE OF CONTENTS -->
+    <div class="gd-toc">
+      <a href="#start">🚀 เริ่มต้นใช้งาน</a>
+      <a href="#main">🏠 เมนูหลัก</a>
+      <a href="#finance">💰 วางแผนการเงิน</a>
+      <a href="#life">🎯 วางแผนชีวิต</a>
+      <a href="#analyze">📈 วิเคราะห์และแนะนำ</a>
+      <a href="#tools">🧾 เครื่องมือ</a>
+      <a href="#tips">💡 เคล็ดลับสำคัญ</a>
+      <a href="#faq">❓ คำถามที่พบบ่อย</a>
     </div>
 
-    <!-- Step-by-step -->
-    <div class="video-section">
-      <h3>🚀 เริ่มต้นใช้งาน</h3>
-      <div class="guide-steps">
-        <div class="guide-step">
-          <div class="g-num">1</div>
-          <div class="g-text">
-            <h4>สมัครสมาชิก</h4>
-            <p>กรอกชื่อ-นามสกุล เบอร์โทรศัพท์ และรหัสผ่าน จากนั้นยืนยัน OTP ทาง SMS</p>
+    <!-- ══ START ══ -->
+    <div class="gd-sec" id="start">
+      <div class="gd-sec-head"><div class="n">🚀</div><h2>เริ่มต้นใช้งาน 4 ขั้น</h2></div>
+      <div class="gd-steps">
+        <div class="gd-step">
+          <div class="num">1</div>
+          <div>
+            <h4>เข้าสู่ระบบ</h4>
+            <p>ล็อกอินด้วยบัญชีตัวแทนของคุณ (หากยังไม่มี ให้สมัครแล้วรอผู้ดูแลอนุมัติ) เมื่อเข้าสำเร็จจะมาที่หน้าแรก (Dashboard)</p>
           </div>
         </div>
-        <div class="guide-step">
-          <div class="g-num">2</div>
-          <div class="g-text">
-            <h4>เข้าสู่หน้า Dashboard</h4>
-            <p>หลังจากล็อกอินสำเร็จ ระบบจะพาคุณมาที่หน้า Dashboard ซึ่งแสดงภาพรวมทั้งหมด</p>
+        <div class="gd-step">
+          <div class="num">2</div>
+          <div>
+            <h4>เพิ่มลูกค้า</h4>
+            <p>ไปเมนู <b>“รายชื่อลูกค้า”</b> → เพิ่มลูกค้า กรอกชื่อ-นามสกุล วันเกิด และข้อมูลบุตร (ถ้ามี) — วันเกิดสำคัญมาก เพราะใช้คำนวณอายุ/เกษียณ/การศึกษา</p>
           </div>
         </div>
-        <div class="guide-step">
-          <div class="g-num">3</div>
-          <div class="g-text">
-            <h4>เพิ่มข้อมูลกรมธรรม์</h4>
-            <p>ไปที่เมนู "สรุปกรมธรรม์" แล้วกด "+ เพิ่มกรมธรรม์" เพื่อเพิ่มข้อมูลประกันและดูการวิเคราะห์ความคุ้มครองของคุณ</p>
+        <div class="gd-step">
+          <div class="num">3</div>
+          <div>
+            <h4>เลือกลูกค้า แล้วกรอกข้อมูล</h4>
+            <p>เลือกลูกค้าจากแถบด้านบน จากนั้นกรอกข้อมูลในเมนูต่าง ๆ — กระแสเงินสด สินทรัพย์ ประกัน เป้าหมาย ฯลฯ ระบบบันทึกให้อัตโนมัติทันทีที่กรอก</p>
           </div>
         </div>
-        <div class="guide-step">
-          <div class="g-num">4</div>
-          <div class="g-text">
-            <h4>วางแผนการเงิน</h4>
-            <p>ไปที่เมนู "วางแผนการเงิน" เลือกเป้าหมาย และกรอกข้อมูลเพื่อรับแผนส่วนตัว</p>
+        <div class="gd-step">
+          <div class="num">4</div>
+          <div>
+            <h4>วิเคราะห์ + สร้างแผนให้ลูกค้า</h4>
+            <p>ดู <b>“ลำดับความสำคัญ”</b> จัดอันดับเป้าหมาย แล้วไป <b>“จัดทำแผน”</b> หรือ <b>“สรุปแผน”</b> เพื่อสร้างไฟล์ PDF สรุปแผนสวย ๆ ให้ลูกค้า</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Video tutorials -->
-    <div class="video-section">
-      <h3>🎬 วิดีโอแนะนำการใช้งาน</h3>
-      <div class="video-grid">
-
-        <div class="vid-card">
-          <div class="vid-thumb">
-            <div class="vid-thumb-bg"></div>
-            <div class="vid-thumb-icon">▶</div>
-            <div class="vid-duration">2:15</div>
-          </div>
-          <div class="vid-info">
-            <div class="vid-num">บทที่ 1</div>
-            <div class="vid-title">การสมัครสมาชิกและเข้าสู่ระบบ</div>
-            <div class="vid-desc">เรียนรู้วิธีสมัครสมาชิกและตั้งค่าบัญชีครั้งแรก</div>
+    <!-- ══ MENU: MAIN ══ -->
+    <div class="gd-sec" id="main">
+      <div class="gd-sec-head"><div class="n">🏠</div><h2>เมนูหลัก</h2></div>
+      <div class="gd-group">
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🏠</div>
+          <div>
+            <div class="gd-feat-name">หน้าแรก (Dashboard)</div>
+            <div class="gd-feat-desc">ภาพรวมลูกค้าทั้งหมด · ปฏิทินนัดหมาย · แจ้งเตือนวันเกิดลูกค้าและกรมธรรม์ใกล้ครบกำหนด · งานที่ต้องทำ</div>
+            <span class="gd-feat-how">💾 มีปุ่ม “Export / Import ข้อมูล” สำหรับสำรอง-กู้คืน อยู่ด้านล่างของหน้านี้</span>
           </div>
         </div>
-
-        <div class="vid-card">
-          <div class="vid-thumb">
-            <div class="vid-thumb-bg" style="background:linear-gradient(135deg,#F4F6FA,#D4DAE6)"></div>
-            <div class="vid-thumb-icon">▶</div>
-            <div class="vid-duration">3:42</div>
-          </div>
-          <div class="vid-info">
-            <div class="vid-num">บทที่ 2</div>
-            <div class="vid-title">เก็บข้อมูลกรมธรรม์</div>
-            <div class="vid-desc">วิธีเพิ่มและจัดการข้อมูลกรมธรรม์ประกันทุกประเภท</div>
-          </div>
-        </div>
-
-        <div class="vid-card">
-          <div class="vid-thumb">
-            <div class="vid-thumb-bg" style="background:linear-gradient(135deg,#F0F2F7,#ffb3c1)"></div>
-            <div class="vid-thumb-icon">▶</div>
-            <div class="vid-duration">4:58</div>
-          </div>
-          <div class="vid-info">
-            <div class="vid-num">บทที่ 3</div>
-            <div class="vid-title">คำนวณภาษีและลดหย่อน</div>
-            <div class="vid-desc">ใช้เครื่องมือคำนวณภาษีและค้นหาสิทธิ์ลดหย่อนที่คุณมี</div>
-          </div>
-        </div>
-
-        <div class="vid-card">
-          <div class="vid-thumb">
-            <div class="vid-thumb-bg" style="background:linear-gradient(135deg,#ffe0e5,#ff8fa3)"></div>
-            <div class="vid-thumb-icon">▶</div>
-            <div class="vid-duration">5:10</div>
-          </div>
-          <div class="vid-info">
-            <div class="vid-num">บทที่ 4</div>
-            <div class="vid-title">วางแผนค่ารักษาพยาบาลและโรคร้ายแรง</div>
-            <div class="vid-desc">วิธีวางแผนค่ารักษาและโรคร้ายแรงใน 5 นาที</div>
-          </div>
-        </div>
-
-        <div class="vid-card">
-          <div class="vid-thumb">
-            <div class="vid-thumb-bg" style="background:linear-gradient(135deg,#ffe8ea,#fca5a5)"></div>
-            <div class="vid-thumb-icon">▶</div>
-            <div class="vid-duration">3:20</div>
-          </div>
-          <div class="vid-info">
-            <div class="vid-num">บทที่ 5</div>
-            <div class="vid-title">จำลองสถานการณ์การเงิน</div>
-            <div class="vid-desc">ทดลองจำลองสถานการณ์เพื่อวางแผนอนาคตได้แม่นยำ</div>
-          </div>
-        </div>
-
-        <div class="vid-card">
-          <div class="vid-thumb">
-            <div class="vid-thumb-bg" style="background:linear-gradient(135deg,#fff1f2,#fecdd3)"></div>
-            <div class="vid-thumb-icon">▶</div>
-            <div class="vid-duration">2:45</div>
-          </div>
-          <div class="vid-info">
-            <div class="vid-num">บทที่ 6</div>
-            <div class="vid-title">การใช้งานปฏิทินและการแจ้งเตือน</div>
-            <div class="vid-desc">ตั้งค่าการแจ้งเตือนและจัดการนัดหมายสำคัญ</div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- FAQ -->
-    <div class="video-section">
-      <h3>❓ คำถามที่พบบ่อย</h3>
-      <div class="faq-card">
-        <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">
-            <span>448 Wealth Management Plan ใช้งานได้ฟรีหรือเปล่า?</span>
-            <span class="faq-arrow">▼</span>
-          </div>
-          <div class="faq-a open">
-            ใช้งานฟรีในแพ็กเกจพื้นฐานได้ไม่จำกัด สามารถอัปเกรดเป็น Premium เพื่อรับฟีเจอร์เพิ่มเติม เช่น การวิเคราะห์เชิงลึก และการส่งออกรายงาน PDF
-          </div>
-        </div>
-        <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">
-            <span>ข้อมูลของฉันปลอดภัยไหม?</span>
-            <span class="faq-arrow">▼</span>
-          </div>
-          <div class="faq-a">
-            ข้อมูลทั้งหมดถูกเข้ารหัสด้วยมาตรฐาน SSL 256-bit และจัดเก็บบนเซิร์ฟเวอร์ที่ได้รับการรับรองมาตรฐาน ISO 27001 คุณสามารถลบข้อมูลได้ทุกเมื่อ
-          </div>
-        </div>
-        <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">
-            <span>สามารถใช้งานบนมือถือได้ไหม?</span>
-            <span class="faq-arrow">▼</span>
-          </div>
-          <div class="faq-a">
-            ได้เลย! 448 Wealth Management Plan รองรับทุกอุปกรณ์ ทั้งคอมพิวเตอร์ แท็บเล็ต และสมาร์ทโฟน ผ่านเว็บเบราว์เซอร์ โดยไม่ต้องติดตั้งแอพพลิเคชันเพิ่มเติม
-          </div>
-        </div>
-        <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">
-            <span>เพิ่มกรมธรรม์ได้กี่ฉบับ?</span>
-            <span class="faq-arrow">▼</span>
-          </div>
-          <div class="faq-a">
-            แพ็กเกจฟรีสามารถเพิ่มได้ 5 ฉบับ แพ็กเกจ Premium เพิ่มได้ไม่จำกัด รวมถึงรองรับการเพิ่มกรมธรรม์ของสมาชิกในครอบครัวด้วย
-          </div>
-        </div>
-        <div class="faq-item">
-          <div class="faq-q" onclick="toggleFaq(this)">
-            <span>หากมีปัญหาการใช้งานต้องติดต่อใคร?</span>
-            <span class="faq-arrow">▼</span>
-          </div>
-          <div class="faq-a">
-            ติดต่อทีมสนับสนุนได้ผ่าน Line Official @aiaguide หรืออีเมล support@aiaguide.th ทุกวันจันทร์-ศุกร์ เวลา 9:00-18:00 น.
+        <div class="gd-feat">
+          <div class="gd-feat-ico">👥</div>
+          <div>
+            <div class="gd-feat-name">รายชื่อลูกค้า</div>
+            <div class="gd-feat-desc">เพิ่ม/แก้ไขลูกค้า · ใส่รูป (ถ่ายด้วยกล้องหรืออัปโหลด) · วันเกิด · ข้อมูลติดต่อ · บุตร</div>
+            <span class="gd-feat-how">👆 เลือกลูกค้าที่แถบด้านบนเพื่อทำงานกับคนนั้นในทุกเมนู</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Contact -->
-    <div class="contact-card">
-      <h3>ยังมีคำถามเพิ่มเติม?</h3>
-      <p>ทีมงานของเราพร้อมช่วยเหลือคุณตลอดเวลา</p>
-      <div class="contact-methods">
-        <div class="contact-btn">💬 Line Chat</div>
-        <div class="contact-btn">📧 ส่งอีเมล</div>
-        <div class="contact-btn">📞 โทรหาเรา</div>
+    <!-- ══ FINANCE ══ -->
+    <div class="gd-sec" id="finance">
+      <div class="gd-sec-head"><div class="n">💰</div><h2>วางแผนการเงิน</h2></div>
+      <div class="gd-group">
+        <div class="gd-feat">
+          <div class="gd-feat-ico">💰</div>
+          <div><div class="gd-feat-name">กระแสเงินสด</div>
+          <div class="gd-feat-desc">บันทึกรายรับ-รายจ่ายต่อเดือน เพื่อดูว่าลูกค้าเหลือเงินออม/ลงทุนได้เท่าไร</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">💎</div>
+          <div><div class="gd-feat-name">สินทรัพย์</div>
+          <div class="gd-feat-desc">ลิสต์สินทรัพย์ (เงินฝาก กองทุน อสังหา ฯลฯ) และหนี้สินทั้งหมด</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">⚖️</div>
+          <div><div class="gd-feat-name">งบการเงิน</div>
+          <div class="gd-feat-desc">คำนวณความมั่งคั่งสุทธิ (สินทรัพย์ − หนี้สิน) จากข้อมูลที่กรอก</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">📐</div>
+          <div><div class="gd-feat-name">อัตราส่วนการเงิน</div>
+          <div class="gd-feat-desc">ตรวจสุขภาพการเงินของลูกค้า — อัตราการออม สภาพคล่อง ภาระหนี้</div></div>
+        </div>
       </div>
+    </div>
+
+    <!-- ══ LIFE ══ -->
+    <div class="gd-sec" id="life">
+      <div class="gd-sec-head"><div class="n">🎯</div><h2>วางแผนชีวิต</h2></div>
+      <div class="gd-group">
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🎓</div>
+          <div><div class="gd-feat-name">การศึกษาบุตร</div>
+          <div class="gd-feat-desc">วางแผนค่าเล่าเรียนบุตรตั้งแต่ ป.ตรี / ป.โท / ป.เอก พร้อมคิดเงินเฟ้อ</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🛋️</div>
+          <div><div class="gd-feat-name">วางแผนเกษียณ</div>
+          <div class="gd-feat-desc">คำนวณเงินที่ต้องเตรียมไว้ใช้หลังเกษียณ + จำลองสถานการณ์ (มีโหมดรักษาเงินต้น)</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🎯</div>
+          <div><div class="gd-feat-name">เป้าหมายชีวิต</div>
+          <div class="gd-feat-desc">ตั้งเป้าหมายการเงิน (บ้าน รถ ท่องเที่ยว ฯลฯ) พร้อมกำหนดเวลา</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">☂️</div>
+          <div><div class="gd-feat-name">ประกันชีวิต · ประกันสุขภาพ</div>
+          <div class="gd-feat-desc">ประเมินทุนคุ้มครองที่เหมาะสม และค่ารักษา/โรคร้ายแรงที่ควรมี</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">📊</div>
+          <div><div class="gd-feat-name">สรุปกรมธรรม์</div>
+          <div class="gd-feat-desc">รวมกรมธรรม์ที่ลูกค้ามีอยู่ + วิเคราะห์ช่องว่างความคุ้มครอง</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ ANALYZE ══ -->
+    <div class="gd-sec" id="analyze">
+      <div class="gd-sec-head"><div class="n">📈</div><h2>วิเคราะห์และแนะนำ</h2></div>
+      <div class="gd-group">
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🎯</div>
+          <div><div class="gd-feat-name">ลำดับความสำคัญ</div>
+          <div class="gd-feat-desc">จัดอันดับเป้าหมาย 1-7 (คลิกวงกลมแล้วเรียงเลขให้อัตโนมัติ) + กำหนดน้ำหนัก แล้วระบบช่วยจัดสรรงบ</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">📈</div>
+          <div><div class="gd-feat-name">พอร์ตแนะนำ</div>
+          <div class="gd-feat-desc">แนะนำสัดส่วนพอร์ตการลงทุนที่เหมาะกับความเสี่ยงและเป้าหมายของลูกค้า</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">📋</div>
+          <div><div class="gd-feat-name">สรุปแผน</div>
+          <div class="gd-feat-desc">สร้างไฟล์ PDF สรุปแผนครบวงจร (หน้าปก + การเงิน + เกษียณ + การศึกษา + ประกัน + โปรไฟล์ตัวแทน)</div>
+          <span class="gd-feat-how">🖨️ กดสร้าง → เลือก “Save as PDF” ในหน้าต่างพิมพ์</span></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">📊</div>
+          <div><div class="gd-feat-name">จัดทำแผน (One-Page Summary)</div>
+          <div class="gd-feat-desc">สร้างแผนแบบ 1 หน้า — เส้นเวลาเงิน (สะสม→เกษียณ→ถอนใช้) · ความคุ้มครองชีวิต/ทุพพลภาพ · สุขภาพ · แนบรูปประกอบได้ → ออกเป็น PDF</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">⏳</div>
+          <div><div class="gd-feat-name">Life Timeline</div>
+          <div class="gd-feat-desc">เส้นเวลาเหตุการณ์สำคัญในชีวิตลูกค้า (เกษียณ เป้าหมาย จบการศึกษาบุตร ฯลฯ)</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TOOLS ══ -->
+    <div class="gd-sec" id="tools">
+      <div class="gd-sec-head"><div class="n">🧾</div><h2>เครื่องมือ</h2></div>
+      <div class="gd-group">
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🧾</div>
+          <div><div class="gd-feat-name">คำนวณภาษี</div>
+          <div class="gd-feat-desc">คำนวณภาษีเงินได้บุคคลธรรมดาจากรายได้และค่าลดหย่อน</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🧮</div>
+          <div><div class="gd-feat-name">ลดหย่อนภาษี</div>
+          <div class="gd-feat-desc">เทียบช่อง “ปัจจุบัน” กับ “ปรับปรุง” เพื่อหาสิทธิ์ลดหย่อนเพิ่ม (เช่น ประกัน กองทุน) และดูภาษีที่ประหยัดได้</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">📅</div>
+          <div><div class="gd-feat-name">นัดหมาย</div>
+          <div class="gd-feat-desc">บันทึกและจัดการนัดหมายกับลูกค้า แสดงในปฏิทินหน้าแรก</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">🔺</div>
+          <div><div class="gd-feat-name">สามเหลี่ยมการเงิน</div>
+          <div class="gd-feat-desc">แผนภาพหลักการวางแผนการเงินเป็นขั้น (ป้องกันความเสี่ยง → ออม → ลงทุน → มั่งคั่ง)</div></div>
+        </div>
+        <div class="gd-feat">
+          <div class="gd-feat-ico">👤</div>
+          <div><div class="gd-feat-name">โปรไฟล์ตัวแทน</div>
+          <div class="gd-feat-desc">ข้อมูลตัวแทน รูป ใบอนุญาต รหัส AIA LINE — ใช้แสดงในหน้าปก PDF ที่ส่งให้ลูกค้า</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ TIPS ══ -->
+    <div class="gd-sec" id="tips">
+      <div class="gd-sec-head"><div class="n">💡</div><h2>เคล็ดลับสำคัญ</h2></div>
+
+      <div class="gd-tip warn">
+        <div class="t-ico">💾</div>
+        <div>
+          <h4>สำรองข้อมูลสม่ำเสมอ (สำคัญที่สุด!)</h4>
+          <p>ข้อมูลลูกค้าทั้งหมดเก็บอยู่ใน <b>เครื่องของคุณ</b> (เบราว์เซอร์ + รูปใน IndexedDB) <b>ไม่ได้อยู่บน cloud</b> — ถ้าเปลี่ยนเครื่อง ล้างเบราว์เซอร์ หรือไม่เปิดแอปนาน (iOS ~7 วัน) ข้อมูลอาจหาย
+          <br>→ ไปหน้าแรก กด <b>“Export ข้อมูล”</b> เก็บไฟล์ไว้เป็นประจำ · เครื่องใหม่ให้ <b>“Import”</b> ไฟล์กลับ · แอปจะเตือนถ้าคุณไม่ได้สำรองนาน</p>
+        </div>
+      </div>
+
+      <div class="gd-tip">
+        <div class="t-ico">📱</div>
+        <div>
+          <h4>ติดตั้งเป็นแอป (iPad / มือถือ)</h4>
+          <p>เปิดในเบราว์เซอร์ (Safari/Chrome) → กดปุ่มแชร์ → <b>“เพิ่มไปยังหน้าจอโฮม”</b> — จะใช้งานได้เหมือนแอปจริง เต็มจอ และช่วยลดโอกาสข้อมูลหาย</p>
+        </div>
+      </div>
+
+      <div class="gd-tip">
+        <div class="t-ico">⌨️</div>
+        <div>
+          <h4>ย่อ/ขยายเมนูด้านซ้าย</h4>
+          <p>กดปุ่ม ◀ ที่มุมเมนู หรือกด <b>Ctrl + B</b> เพื่อซ่อนเมนู ให้พื้นที่ทำงานกว้างขึ้น</p>
+        </div>
+      </div>
+
+      <div class="gd-tip">
+        <div class="t-ico">🔄</div>
+        <div>
+          <h4>อัปเดตเป็นเวอร์ชันล่าสุด</h4>
+          <p>ปกติแอปจะอัปเดตให้เอง ถ้าเห็นของเก่า/แก้แล้วยังไม่เปลี่ยน ให้ <b>reload หน้า</b> (บนคอมกด Ctrl + Shift + R) เพื่อโหลดเวอร์ชันใหม่</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ FAQ ══ -->
+    <div class="gd-sec" id="faq">
+      <div class="gd-sec-head"><div class="n">❓</div><h2>คำถามที่พบบ่อย</h2></div>
+      <div class="gd-faq">
+        <div class="faq-item">
+          <div class="faq-q open" onclick="toggleFaq(this)"><span>ข้อมูลลูกค้าเก็บที่ไหน ปลอดภัยไหม?</span><span class="faq-arrow">▼</span></div>
+          <div class="faq-a open">เก็บอยู่ใน <b>เครื่องของคุณเอง</b> (ในเบราว์เซอร์) ไม่ได้ส่งขึ้นเซิร์ฟเวอร์ภายนอก จึงไม่มีใครเข้าถึงได้ผ่านเน็ต แต่หมายความว่าถ้าเครื่องหาย/ล้างข้อมูล จะไม่มีสำเนาที่อื่น → ควร <b>Export สำรอง</b> เป็นประจำ และตั้งรหัสล็อกเครื่องไว้</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><span>จะย้ายข้อมูลไปเครื่องใหม่ยังไง?</span><span class="faq-arrow">▼</span></div>
+          <div class="faq-a">ที่เครื่องเก่า: หน้าแรก → <b>Export ข้อมูล</b> จะได้ไฟล์ <code>backup_448_….json</code> · ที่เครื่องใหม่: ล็อกอินบัญชีเดิม → หน้าแรก → <b>Import ข้อมูล</b> เลือกไฟล์นั้น — ข้อมูลและรูปทั้งหมดจะกลับมาครบ</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><span>สร้างไฟล์ PDF ให้ลูกค้ายังไง?</span><span class="faq-arrow">▼</span></div>
+          <div class="faq-a">ไปหน้า <b>“สรุปแผน”</b> (สรุปครบทุกส่วน) หรือ <b>“จัดทำแผน”</b> (One-Page Summary) → กดปุ่มสร้าง/บันทึก → ในหน้าต่างพิมพ์ที่เปิดขึ้น เลือกปลายทางเป็น <b>“Save as PDF / บันทึกเป็น PDF”</b></div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><span>ใช้บน iPad หรือมือถือได้ไหม?</span><span class="faq-arrow">▼</span></div>
+          <div class="faq-a">ได้เลย ใช้ผ่านเบราว์เซอร์ได้ทุกอุปกรณ์ แนะนำให้ <b>“เพิ่มไปยังหน้าจอโฮม”</b> เพื่อใช้เหมือนแอปเต็มจอ (ดูหัวข้อเคล็ดลับด้านบน)</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><span>กรอกค่าแล้วขึ้น comma (,) ให้อัตโนมัติไหม?</span><span class="faq-arrow">▼</span></div>
+          <div class="faq-a">ช่องกรอกเงินส่วนใหญ่จะใส่จุลภาคหลักพันให้อัตโนมัติระหว่างพิมพ์ (เช่น 100,000) เพื่ออ่านง่าย โดยยังเก็บเป็นตัวเลขจริงเบื้องหลัง</div>
+        </div>
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)"><span>เผลอไม่ได้สำรอง แล้วข้อมูลหาย กู้ได้ไหม?</span><span class="faq-arrow">▼</span></div>
+          <div class="faq-a">ถ้าไม่มีไฟล์ Export สำรองไว้ จะ <b>กู้คืนไม่ได้</b> เพราะข้อมูลอยู่ในเครื่องเท่านั้น — นี่คือเหตุผลที่ควร Export สำรองอย่างสม่ำเสมอ (แอปมีมาตรวัดพื้นที่และการเตือนสำรองช่วยเตือนคุณ)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="gd-contact">
+      <h3>ต้องการความช่วยเหลือเพิ่มเติม?</h3>
+      <p>ติดต่อผู้ดูแลระบบ/ทีมงานที่ดูแลแอปของคุณ</p>
+      <p style="opacity:.7;font-size:.82rem;margin-top:8px;">448 Wealth Management Plan</p>
     </div>
 
   </div>
 
   <footer>
-    <p>© 2025 <span>448 Wealth Management Plan</span> — วางแผนชีวิตให้ดีกว่าเดิม · สงวนลิขสิทธิ์ทุกประการ</p>
+    <p>© 2026 <span>448 Wealth Management Plan</span> — วางแผนชีวิตให้ดีกว่าเดิม</p>
   </footer>
 </div>
 
@@ -373,10 +464,17 @@
     document.querySelectorAll('.faq-a').forEach(a => a.classList.remove('open'));
     if (!isOpen) { el.classList.add('open'); body.classList.add('open'); }
   }
-  function showTab(tab, el) {
-    document.querySelectorAll('.guide-tab').forEach(t => t.classList.remove('active'));
-    el.classList.add('active');
-  }
+  /* smooth scroll for TOC links */
+  document.querySelectorAll('.gd-toc a').forEach(a => {
+    a.addEventListener('click', e => {
+      const id = a.getAttribute('href');
+      if (id && id.charAt(0) === '#') {
+        const t = document.querySelector(id);
+        if (t) { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      }
+    });
+  });
 </script>
-<script src="icons.js"></script></body>
+<script src="icons.js"></script>
+</body>
 </html>
