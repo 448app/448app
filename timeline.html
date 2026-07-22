@@ -874,7 +874,7 @@ function openMsDetailModal(idx) {
   document.getElementById('ms-detail-title').innerHTML = `${m.icon} ${m.name}`;
   document.getElementById('ms-detail-body').innerHTML = `
     <div class="msd-row"><span class="msd-lbl">หมวด</span><span class="msd-val">${TYPE_LABELS[m.type] || m.type}</span></div>
-    <div class="msd-row"><span class="msd-lbl">อายุ</span><span class="msd-val">${Math.round(m.parentAge)} ปี</span></div>
+    <div class="msd-row"><span class="msd-lbl">อายุ</span><span class="msd-val">${Math.floor(m.parentAge)} ปี</span></div>
     ${m.year ? `<div class="msd-row"><span class="msd-lbl">ปี ค.ศ.</span><span class="msd-val">${m.year}</span></div>` : ''}
     ${m.amount ? `<div class="msd-row"><span class="msd-lbl">จำนวนเงิน</span><span class="msd-val" style="color:var(--red-primary);">฿${Math.round(m.amount).toLocaleString('th-TH')}</span></div>` : ''}
     ${m.meta ? `<div class="msd-row"><span class="msd-lbl">รายละเอียด</span><span class="msd-val">${m.meta}</span></div>` : ''}
@@ -1335,8 +1335,10 @@ function render() {
   allMilestones.forEach((m, i) => m._idx = i);
   window._tlItems = allMilestones;
   const milestones = allMilestones.filter(m => tlFilter[m.type] !== false);
-  const yearsLeft = range.end - currentAge;
-  const yearsToRetire = Math.max(retireAge - currentAge, 0);
+  /* คิดจากอายุปีเต็ม (floor) ให้ตรงกับ "อายุปัจจุบัน" ที่แสดง — เช่น อายุ 45, เกษียณ 65 = 20 ปี */
+  const ageFloor = Math.floor(currentAge);
+  const yearsLeft = range.end - ageFloor;
+  const yearsToRetire = Math.max(retireAge - ageFloor, 0);
   const upcomingCount = milestones.filter(m => m.parentAge > currentAge).length;
   const customCount   = milestones.filter(m => m.isCustom).length;
   /* count แต่ละ type สำหรับ chip display */
@@ -1373,7 +1375,7 @@ function render() {
     <div class="stats-strip">
       <div class="stat-card">
         <div class="stat-lbl">📅 อายุปัจจุบัน</div>
-        <div class="stat-val">${currentAge.toFixed(0)} ปี</div>
+        <div class="stat-val">${Math.floor(currentAge)} ปี</div>
       </div>
       <div class="stat-card">
         <div class="stat-lbl">⏳ ปีถึงเกษียณ</div>
@@ -1417,10 +1419,10 @@ function onRangeChange() {
    - + ปุ่มที่ปลายเส้นเพื่อเพิ่ม node ใหม่
 ═══════════════════════════════════════════ */
 function renderPlanistaTimeline(currentAge, milestones, retireAge) {
-  /* Group milestones by อายุ (rounded) */
+  /* Group milestones by อายุ (ปีเต็ม — floor) */
   const ageMap = new Map();
   milestones.forEach(m => {
-    const age = Math.round(m.parentAge);
+    const age = Math.floor(m.parentAge);
     if (!ageMap.has(age)) ageMap.set(age, []);
     ageMap.get(age).push(m);
   });
@@ -1429,7 +1431,7 @@ function renderPlanistaTimeline(currentAge, milestones, retireAge) {
     .sort((a,b) => a.age - b.age);
 
   /* Build node list — รวม current age (ถ้ายังไม่มี node), retirement age, และ death */
-  const curAgeRounded = Math.round(currentAge);
+  const curAgeRounded = Math.floor(currentAge);   /* อายุปีเต็ม */
   const nodeMap = new Map();
   ageGroups.forEach(g => nodeMap.set(g.age, { age:g.age, items:g.items, type:'milestone' }));
   if (!nodeMap.has(curAgeRounded)) {
@@ -1519,10 +1521,10 @@ function renderTimeline(currentAge, milestones, rangeOpt) {
     yearMarks += `<div class="tl-year-text" style="left:${leftStyle(p)}">${y}</div>`;
   }
 
-  /* Group milestones by อายุ (rounded) — items อายุเดียวกัน = card เดียว */
+  /* Group milestones by อายุ (ปีเต็ม — floor) — items อายุเดียวกัน = card เดียว */
   const ageMap = new Map();
   milestones.forEach(m => {
-    const age = Math.round(m.parentAge);
+    const age = Math.floor(m.parentAge);
     if (!ageMap.has(age)) ageMap.set(age, []);
     ageMap.get(age).push(m);
   });
@@ -1564,7 +1566,7 @@ function renderTimeline(currentAge, milestones, rangeOpt) {
     <div class="tl-milestone above" style="left:${leftStyle(pos(currentAge))};">
       <div class="tl-mark-content" style="border-color:#1976D2;background:#E3F2FD;">
         <div class="tl-mark-name" style="color:#1976D2;">ปัจจุบัน</div>
-        <div class="tl-mark-year">อายุ ${currentAge.toFixed(0)} ปี</div>
+        <div class="tl-mark-year">อายุ ${Math.floor(currentAge)} ปี</div>
       </div>
       <div class="tl-mark-line"></div>
       <div class="tl-mark-icon t-current" style="color:white;">📍</div>
