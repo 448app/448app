@@ -523,7 +523,7 @@ const ROW_ORDER = [
    FIELD VISIBILITY per asset type
    - FV-type (red): standard fields, computes FV
    - Cash-flow type (blue): no term/FV, has cashFlow input
-   - PVD (green): no contribution input (employer-managed), badge 📊
+   - PVD (green): มีช่องเงินสมทบ (นายจ้าง+ลูกจ้าง), badge 📊
 ═══════════════════════════════════════════ */
 const ROW_FIELDS_BY_TYPE = {
   /* defaults (FV-type / red) */
@@ -531,8 +531,8 @@ const ROW_FIELDS_BY_TYPE = {
   /* Cash-flow type (blue) */
   annuity:    { contrib: true,  term: false, fv: false, cashFlow: true,  badge: '' },
   realestate: { contrib: true,  term: false, fv: false, cashFlow: true,  badge: '' },
-  /* PVD (green) — employer-managed contribution */
-  pvd:        { contrib: false, term: true,  fv: true,  cashFlow: false, badge: '📊' },
+  /* PVD (green) — มีช่องเงินสมทบ (นายจ้าง+ลูกจ้าง) รวมใน FV */
+  pvd:        { contrib: true,  term: true,  fv: true,  cashFlow: false, badge: '📊' },
 };
 function _rowFields(type) {
   return Object.assign({}, ROW_FIELDS_BY_TYPE._default, ROW_FIELDS_BY_TYPE[type] || {});
@@ -1131,7 +1131,7 @@ function renderRow(row) {
                     aria-label="ดูรายละเอียด">i</button>
           </span>
           ${f.badge ? `<button class="ast-row-badge" type="button" aria-label="ดูรายละเอียด"
-                              onclick="openInfoPopup('กองทุนสำรองเลี้ยงชีพ (PVD)','นายจ้างจ่ายสมทบให้ส่วนหนึ่งของเงินเดือน — ลดหย่อนภาษีได้ ≤15% ของรายได้ (ไม่เกิน 500,000 บาท/ปี รวมกับ RMF/SSF/ประกันบำนาญ) เมื่อเกษียณจะได้เงินก้อนพร้อมผลตอบแทน','🏢')">${f.badge}</button>` : ''}
+                              onclick="openInfoPopup('กองทุนสำรองเลี้ยงชีพ (PVD)','นายจ้างจ่ายสมทบให้ส่วนหนึ่งของเงินเดือน — ลดหย่อนภาษีได้ ≤15% ของรายได้ (ไม่เกิน 500,000 บาท/ปี รวมกับ RMF/SSF/ประกันบำนาญ) เมื่อเกษียณจะได้เงินก้อนพร้อมผลตอบแทน · ช่องออมเพิ่มต่อปี = ใส่เงินสมทบรวม (นายจ้าง+ลูกจ้าง) ต่อปี เช่น เดือนละ 3,000 → ใส่ 36,000','🏢')">${f.badge}</button>` : ''}
         </span>
       </td>
       <td class="ast-cell">
