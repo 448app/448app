@@ -566,7 +566,10 @@ function compute(client) {
   const currentAge = ageNow(client.dob);
   if (currentAge == null) return null;
 
-  const yearsBefore = Math.max(plan.retireAge - currentAge, 0);
+  /* ใช้อายุปีเต็ม (floor) ให้ "ระยะเวลาถึงเกษียณ" ตรงกับอายุที่แสดง + ตรงกับ sim
+     เช่น อายุ 45 (จาก 45.7), เกษียณ 60 → 15 ปี (ไม่ใช่ round(14.3)=14) */
+  const ageFloor = Math.floor(currentAge);
+  const yearsBefore = Math.max(plan.retireAge - ageFloor, 0);
   const yearsAfter  = Math.max(plan.lifeExpectancy - plan.retireAge, 1);
 
   const annualSpendNow = plan.annualSpend > 0
