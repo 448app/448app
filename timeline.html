@@ -1395,7 +1395,7 @@ function render() {
     </div>
 
     <!-- Compact node-circle timeline (Planista-style) — เป็นมุมมองเดียวที่แสดง -->
-    ${renderPlanistaTimeline(currentAge, milestones, retireAge)}
+    ${renderPlanistaTimeline(currentAge, milestones, retireAge, range.end)}
   `;
 }
 
@@ -1418,7 +1418,7 @@ function onRangeChange() {
    - labels above/below alternating
    - + ปุ่มที่ปลายเส้นเพื่อเพิ่ม node ใหม่
 ═══════════════════════════════════════════ */
-function renderPlanistaTimeline(currentAge, milestones, retireAge) {
+function renderPlanistaTimeline(currentAge, milestones, retireAge, endAge) {
   /* Group milestones by อายุ (ปีเต็ม — floor) */
   const ageMap = new Map();
   milestones.forEach(m => {
@@ -1439,8 +1439,12 @@ function renderPlanistaTimeline(currentAge, milestones, retireAge) {
   } else {
     nodeMap.get(curAgeRounded).type = 'now';
   }
-  /* Death node — อายุ LIFE_EXPECTANCY */
-  const deathAge = (typeof LIFE_EXPECTANCY !== 'undefined') ? LIFE_EXPECTANCY : 80;
+  /* Death node — อายุสิ้นสุด (range.end) ที่ผู้ใช้ตั้งในช่อง "อายุสิ้นสุด"
+     default = life expectancy จากแผนเกษียณ (ผ่าน getRange → getLifeExpectancy)
+     v184: เดิม hard-code LIFE_EXPECTANCY(85) → coffin ไม่ขยับตามช่อง "อายุสิ้นสุด" */
+  const deathAge = (endAge != null && !isNaN(Number(endAge)))
+    ? Number(endAge)
+    : ((typeof LIFE_EXPECTANCY !== 'undefined') ? LIFE_EXPECTANCY : 80);
   nodeMap.set(deathAge, { age: deathAge, items: nodeMap.get(deathAge)?.items || [], type: 'death' });
 
   const nodes = Array.from(nodeMap.values()).sort((a,b) => a.age - b.age);
