@@ -631,7 +631,8 @@ function getDerivedData(client) {
     (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
   /* current retirement savings = PVD + RMF + SSF + ThaiESG */
   const retireAssets = (client.assets || [])
-    .filter(a => ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
+    .filter(a => (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
+      && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
   const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
   /* current monthly contribution rate — normalize contribFreq ก่อนแล้ว ÷ 12 */
   const currentMonthlyContrib = retireAssets

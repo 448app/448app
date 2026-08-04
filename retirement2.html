@@ -533,7 +533,8 @@ function getDerivedData(client) {
      assets page). Matches the filter used in retirement.html line 633
      and confirmPull() line 971. */
   const retireAssets = (client.assets || []).filter(a =>
-    ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
+    (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
+    && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
   const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
   /* FV รายสินทรัพย์ = มูลค่าปัจจุบันโตตาม return/term ของตัวเอง + เงินสมทบ
      (ออมเพิ่มต่อปี) โตแบบ annuity-due — ใช้ calcFV() สูตรเดียวกับ assets.html
@@ -625,7 +626,8 @@ function compute(client) {
      cashFlow ใน assets เก็บเป็น "บาท/เดือน" → × 12 ได้รายปี
   ═══════════════════════════════════════════ */
   const incomeAssets = (client.assets || []).filter(a =>
-    ['annuity','realestate'].includes(a.type) || a.appliedTo === 'retire');
+    (['annuity','realestate'].includes(a.type) || a.appliedTo === 'retire')
+    && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
   const annualIncomeAfter = incomeAssets.reduce((s,a) => s + Number(a.cashFlow||0), 0) * 12;
   const cashFlowGap = Math.max(annualSpendAtRetire - annualIncomeAfter, 0);
 
@@ -1021,7 +1023,8 @@ function confirmPull() {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c) return;
     const retireAssets = (c.assets||[]).filter(a =>
-      ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
+      (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
+      && a.appliedTo !== 'education');
     const monthly = retireAssets.reduce((s,a) => {
       const v = Number(a.contribution || 0);
       return s + (a.contribFreq === 'monthly' ? v : v/12);
