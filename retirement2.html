@@ -505,6 +505,26 @@ function annualContribOf(a) {
   const v = Number(a.contribution || 0);
   return a.contribFreq === 'monthly' ? v * 12 : v;
 }
+/* FV รายสินทรัพย์ (annuity-due — เงินสมทบเข้าต้นงวด)
+   คัดลอกสูตรจาก assets.html calcFV() แบบเป๊ะ ๆ เพื่อให้ "เตรียมไว้แล้ว"
+   ตรงกับคอลัมน์ "มูลค่าอนาคต" ในหน้าสินทรัพย์ทุกบาท */
+function calcFV(pv, rate, years, pmt, freq) {
+  pv = Number(pv) || 0;
+  rate = (Number(rate) || 0) / 100;
+  years = Number(years) || 0;
+  pmt = Number(pmt) || 0;
+  if (years <= 0) return pv;
+  if (freq === 'monthly' && pmt > 0) {
+    const r_m = rate / 12;
+    const n_m = years * 12;
+    const factor_m = Math.pow(1 + r_m, n_m);
+    if (r_m === 0) return pv + pmt * n_m;
+    return pv * Math.pow(1 + rate, years) + pmt * (factor_m - 1) / r_m * (1 + r_m);
+  }
+  const factor = Math.pow(1 + rate, years);
+  if (rate === 0) return pv + pmt * years;
+  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
+}
 function getDerivedData(client) {
   const annualIncome = Number(client.income) ||
     (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
@@ -515,27 +535,16 @@ function getDerivedData(client) {
   const retireAssets = (client.assets || []).filter(a =>
     ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire');
   const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  /* Per-asset FV of current values — each asset compounds at ITS own
-     expectedReturn for ITS own term. Mirrors the FV column on the
-     assets.html page, so the two screens agree.
+  /* FV รายสินทรัพย์ = มูลค่าปัจจุบันโตตาม return/term ของตัวเอง + เงินสมทบ
+     (ออมเพิ่มต่อปี) โตแบบ annuity-due — ใช้ calcFV() สูตรเดียวกับ assets.html
+     เป๊ะ ๆ ดังนั้น "เตรียมไว้แล้ว" = ผลรวม "มูลค่าอนาคต" ของสินทรัพย์เกษียณ
+     ในหน้าสินทรัพย์ทุกบาท (ถ้าติ๊ก "ใช้ตอนเกษียณ" ครบทุกตัว → เท่ายอดรวมหน้าสินทรัพย์)
 
-     Previously fvCurrent = currentSavings × (1+planReturnBefore)^yearsBefore
-     — bulk-compounded at the plan rate, ignoring per-asset assumptions.
-     For e.g. an Investment Portfolio set to 10 % / 17 y, that knocked
-     ~47 M off the corpus because the 10 % was downgraded to the plan's
-     6 %. The new formula keeps the user's per-asset assumptions intact.
-
-     Contribution PMTs are NOT included here — they're handled separately
-     in compute() via plan.monthlyContribution × yearsBefore, so user-
-     adjusted savings still flow into fvTotal without double-counting. */
-  const fvCurrentSavings = retireAssets.reduce((s, a) => {
-    const pv = Number(a.currentValue || 0);
-    const r  = (Number(a.expectedReturn) || 0) / 100;
-    const n  = Number(a.term) || 0;
-    if (pv <= 0) return s;
-    if (n <= 0 || r === 0) return s + pv;     /* no growth → just PV */
-    return s + pv * Math.pow(1 + r, n);
-  }, 0);
+     v183: เดิมนับเฉพาะ currentValue ไม่รวมเงินสมทบ → ต้องกดปุ่ม 📊 "ดึงค่า"
+     เอง และเงินสมทบยังโตด้วย plan rate ไม่ใช่ rate ของสินทรัพย์ ทำให้ยอดไม่ตรง
+     กับหน้าสินทรัพย์ ตอนนี้รวมเงินสมทบอัตโนมัติแล้ว ไม่ต้องกดดึงค่า */
+  const fvCurrentSavings = retireAssets.reduce((s, a) =>
+    s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq || 'annual'), 0);
   const currentMonthlyContrib = retireAssets.reduce((s,a) => s + annualContribOf(a), 0) / 12;
   return { annualIncome, currentSavings, fvCurrentSavings, currentMonthlyContrib };
 }
@@ -589,20 +598,12 @@ function compute(client) {
       : annualSpendAtRetire * (1 - Math.pow(1 + realRate, -yearsAfter)) / realRate;
   }
 
-  /* FV ของเงินที่มี + ออม/เดือน ตอนเกษียณ
-     fvCurrent ใช้สูตร per-asset (เคารพ return + term ของแต่ละ asset)
-     — ดู getDerivedData() สำหรับเหตุผลและการเปลี่ยนแปลง */
+  /* FV ของเงินที่เตรียมไว้ตอนเกษียณ — รวมมูลค่าปัจจุบัน + เงินสมทบของแต่ละ
+     สินทรัพย์แล้วใน derived.fvCurrentSavings (per-asset, ตรงกับหน้าสินทรัพย์)
+     v183: ยกเลิกการบวก fvContrib จาก plan.monthlyContribution แยกต่างหาก
+     (เดิมต้องกดปุ่มดึงค่า + โตด้วย plan rate) เพื่อไม่ให้นับเงินสมทบซ้ำ */
   const rB = plan.returnBefore / 100;
-  const fvCurrent = derived.fvCurrentSavings;
-  const monthly = plan.monthlyContribution || 0;
-  const annualContrib = monthly * 12;
-  let fvContrib = 0;
-  if (yearsBefore > 0 && annualContrib > 0) {
-    fvContrib = Math.abs(rB) < 0.0001
-      ? annualContrib * yearsBefore
-      : annualContrib * (Math.pow(1 + rB, yearsBefore) - 1) / rB;
-  }
-  const fvTotal = fvCurrent + fvContrib;
+  const fvTotal = derived.fvCurrentSavings;
   const gap = targetCorpus - fvTotal;
 
   /* เก็บเงินเพิ่ม/ปี เพื่อปิด gap */
@@ -1070,7 +1071,6 @@ function render() {
         <div class="r3-head-icon">${window.IconLib ? window.IconLib.getIcon('sofa', { size: 38 }) : '🛋️'}</div>
         <div class="r3-head-title">
           เกษียณ
-          <button class="r3-head-icon-chart" onclick="openPullModal()" title="ดึงข้อมูลหน้าสินทรัพย์มาใช้">📊</button>
         </div>
         <div class="r3-head-spacer"></div>
         <div class="r3-head-mid">
