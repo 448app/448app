@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>เครื่องคำนวณแผนงานรายเดือน 10-5-3-1 | 448 Wealth Group</title>
+<style>
+  :root{
+    --navy:#141B33; --navy2:#232C4D; --red:#D31145; --red-dk:#A50D36;
+    --gold:#E8B54D; --ink:#23262B; --muted:#6B7280; --card:#F4F5F8;
+    --line:#E3E5EB; --paper:#fff; --green:#0E7A4E;
+    --font:"Leelawadee UI","Sukhumvit Set","Noto Sans Thai",Tahoma,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font);background:#EEF0F4;color:var(--ink);line-height:1.55;font-size:15.5px;padding-bottom:60px}
+  .wrap{max-width:860px;margin:0 auto;padding:0 12px}
+
+  header{background:var(--navy);color:#fff;padding:26px 14px 22px;text-align:center}
+  header .eyebrow{color:var(--gold);font-size:12px;letter-spacing:.18em;font-weight:700}
+  header h1{font-size:24px;font-weight:800;margin-top:6px}
+  header p{color:#C9CFE3;font-size:13.5px;margin-top:4px}
+
+  .panel{background:var(--paper);border-radius:16px;padding:18px 16px;margin-top:16px;box-shadow:0 2px 12px rgba(20,27,51,.08)}
+  .panel h2{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .panel h2::before{content:"";width:5px;height:17px;border-radius:3px;background:var(--red)}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field label{font-size:12.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px}
+  .field input{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:17px;font-weight:700;color:var(--navy);font-family:var(--font)}
+  .field input:focus{outline:none;border-color:var(--red)}
+  .hint{font-size:11.5px;color:var(--muted);margin-top:3px}
+
+  .ratio{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .ratio .field input{text-align:center}
+
+  .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .day{border:none;border-radius:10px;padding:9px 2px 7px;text-align:center;cursor:pointer;font-family:var(--font)}
+  .day .dn{font-weight:800;font-size:14px}
+  .day .dm{font-size:10px;margin-top:2px;font-weight:700}
+  .day.full{background:var(--navy);color:#fff}
+  .day.half{background:var(--gold);color:#5b4306}
+  .day.off{background:var(--card);color:#AeB2BD}
+  .day:active{transform:scale(.95)}
+  .legend{font-size:11.5px;color:var(--muted);margin-top:8px}
+
+  /* summary */
+  .sum{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:4px}
+  @media(min-width:560px){.sum{grid-template-columns:repeat(4,1fr)}}
+  .stat{background:var(--card);border-radius:12px;padding:12px 8px;text-align:center}
+  .stat .v{font-size:24px;font-weight:800;color:var(--navy)}
+  .stat.hot .v{color:var(--red)}
+  .stat .l{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:2px}
+  .funnel{margin-top:12px;background:var(--navy);border-radius:12px;padding:12px;text-align:center;color:#fff;font-weight:800;font-size:15px}
+  .funnel small{display:block;color:#C9CFE3;font-weight:400;font-size:11.5px;margin-top:2px}
+
+  .warn{margin-top:12px;border-radius:12px;padding:12px 14px;font-size:13.5px;display:none}
+  .warn.amber{display:block;background:#FFF6E3;border:1.5px solid #EBCB8B;color:#6b5518}
+  .warn.red{display:block;background:#FBE9EE;border:1.5px solid #EFC3CF;color:var(--red-dk)}
+  .warn b{display:block;margin-bottom:2px}
+
+  /* week tables */
+  .week{margin-top:16px;background:var(--paper);border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(20,27,51,.08)}
+  .week h3{background:var(--navy);color:#fff;padding:11px 16px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
+  .week h3 .wk-close{background:var(--red);border-radius:999px;padding:2px 12px;font-size:12.5px}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th{background:var(--card);color:var(--navy);font-size:12px;padding:8px 6px;text-align:center}
+  th:first-child,td:first-child{text-align:left;padding-left:14px}
+  td{padding:9px 6px;border-top:1px solid var(--line);text-align:center}
+  td .mode{font-size:10.5px;color:var(--muted);display:block}
+  td.num{font-weight:800;color:var(--navy2);font-size:15px}
+  td.num.zero{color:#C6CAD4;font-weight:400}
+  td.close-cell{color:var(--red);font-weight:800;font-size:15px}
+  tr.total td{background:#FBF2F4;font-weight:800;color:var(--red-dk);border-top:2px solid var(--red)}
+  td .focus{font-size:11px;color:var(--muted);display:block;margin-top:1px}
+  tr.dayoff td{color:#C6CAD4;background:#FAFBFC}
+
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">448 WEALTH GROUP · ระบบขาย 10-5-3-1</div>
+  <h1>เครื่องคำนวณแผนงานรายเดือน</h1>
+  <p>กรอกเป้ารายได้ + สถิติของคุณ → รับตารางทำงานรายสัปดาห์ทันที</p>
+</header>
+
+<div class="wrap">
+
+  <!-- inputs -->
+  <div class="panel">
+    <h2>1 · เป้าหมายและสถิติ</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>รายได้ที่ต้องการ (บาท/เดือน)</label>
+        <input type="number" id="income" value="40000" min="0" step="1000" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>คอมมิชชั่นเฉลี่ยต่อเคส (บาท)</label>
+        <input type="number" id="comm" value="10000" min="500" step="500" inputmode="numeric">
+        <div class="hint">แพ็กมาตรฐานเบี้ย ~30,000 ≈ คอมฯ 10,000</div>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label style="font-size:12.5px;font-weight:700;color:var(--muted)">สถิติการทำงาน (ค่าเริ่มต้น 10-5-3-1 — แก้เป็นสถิติจริงของคุณได้)</label>
+      <div class="ratio" style="margin-top:6px">
+        <div class="field"><label>ทำนัด</label><input type="number" id="rCall" value="10" min="1" inputmode="numeric"></div>
+        <div class="field"><label>รับนัด</label><input type="number" id="rMeet" value="5" min="0" inputmode="numeric"></div>
+        <div class="field"><label>เสนอขาย</label><input type="number" id="rPresent" value="3" min="0" inputmode="numeric"></div>
+        <div class="field"><label>ปิดได้</label><input type="number" id="rClose" value="1" min="1" inputmode="numeric"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>2 · วันทำงานต่อสัปดาห์ <span style="font-weight:400;font-size:12px;color:var(--muted)">(แตะเพื่อสลับ: เต็มวัน → ครึ่งวัน → หยุด)</span></h2>
+    <div class="days" id="days"></div>
+    <div class="legend">ค่าเริ่มต้น: ฟูลไทม์ 6 วัน จันทร์–ศุกร์เต็มวัน · เสาร์ครึ่งวัน · อาทิตย์หยุด</div>
+  </div>
+
+  <!-- summary -->
+  <div class="panel">
+    <h2>3 · สรุปเป้าเดือนนี้</h2>
+    <div class="sum">
+      <div class="stat hot"><div class="v" id="sCases">–</div><div class="l">เคสที่ต้องปิด/เดือน</div></div>
+      <div class="stat"><div class="v" id="sCalls">–</div><div class="l">ทำนัด/เดือน</div></div>
+      <div class="stat"><div class="v" id="sMeets">–</div><div class="l">รับนัด(พบ)/เดือน</div></div>
+      <div class="stat"><div class="v" id="sPresents">–</div><div class="l">เสนอขาย/เดือน</div></div>
+    </div>
+    <div class="funnel" id="funnelLine">–</div>
+    <div class="warn" id="warnBox"></div>
+  </div>
+
+  <!-- weeks -->
+  <div id="weeks"></div>
+
+  <footer>ตัวเลขปัดขึ้นเพื่อความปลอดภัยของเป้า · ใช้คู่กับฟอร์มเก็บสถิติรายวัน — ครบ 90 วันอย่าลืมอัปเดตสถิติจริงของตัวเองแทน 10-5-3-1</footer>
+</div>
+
+<script>
+const DAY_NAMES = ["จันทร์","อังคาร","พุธ","พฤหัส","ศุกร์","เสาร์","อาทิตย์"];
+const DAY_SHORT = ["จ","อ","พ","พฤ","ศ","ส","อา"];
+// state: 2 = full, 1 = half, 0 = off  | default: Mon-Fri full, Sat half, Sun off
+let dayState = [2,2,2,2,2,1,0];
+
+const $ = id => document.getElementById(id);
+
+function renderDays(){
+  const box = $("days"); box.innerHTML = "";
+  dayState.forEach((st,i)=>{
+    const b = document.createElement("button");
+    b.className = "day " + (st===2?"full":st===1?"half":"off");
+    b.innerHTML = `<div class="dn">${DAY_SHORT[i]}</div><div class="dm">${st===2?"เต็มวัน":st===1?"ครึ่งวัน":"หยุด"}</div>`;
+    b.onclick = ()=>{ dayState[i] = st===2?1:st===1?0:2; renderDays(); calc(); };
+    box.appendChild(b);
+  });
+}
+
+// largest-remainder allocation: split `total` by `weights` into integers
+function allocate(total, weights){
+  const sum = weights.reduce((a,b)=>a+b,0);
+  if(sum<=0 || total<=0) return weights.map(()=>0);
+  const raw = weights.map(w => total*w/sum);
+  const base = raw.map(Math.floor);
+  let rem = total - base.reduce((a,b)=>a+b,0);
+  const order = raw.map((v,i)=>[v-base[i],i]).sort((a,b)=>b[0]-a[0]);
+  for(let k=0;k<rem;k++) base[order[k%order.length][1]]++;
+  return base;
+}
+
+function fmt(n){ return n.toLocaleString("en-US"); }
+
+function calc(){
+  const income = Math.max(0, +$("income").value || 0);
+  const comm   = Math.max(1, +$("comm").value || 1);
+  const rCall = Math.max(1, +$("rCall").value||1), rMeet = Math.max(0,+$("rMeet").value||0),
+        rPres = Math.max(0, +$("rPresent").value||0), rClose = Math.max(1,+$("rClose").value||1);
+
+  const cases = Math.ceil(income / comm);
+  const mCalls = Math.ceil(cases * rCall / rClose);
+  const mMeets = Math.ceil(cases * rMeet / rClose);
+  const mPres  = Math.ceil(cases * rPres / rClose);
+
+  $("sCases").textContent = fmt(cases);
+  $("sCalls").textContent = fmt(mCalls);
+  $("sMeets").textContent = fmt(mMeets);
+  $("sPresents").textContent = fmt(mPres);
+  $("funnelLine").innerHTML =
+    `${fmt(mCalls)} นัด → ${fmt(mMeets)} พบ → ${fmt(mPres)} เสนอ → <span style="color:var(--gold)">${fmt(cases)} ปิด</span> = รายได้ ~${fmt(cases*comm)} บาท` +
+    `<small>เฉลี่ยสัปดาห์ละ ทำนัด ${Math.ceil(mCalls/4)} · พบ ${Math.ceil(mMeets/4)} · เสนอ ${Math.ceil(mPres/4)} · ปิด ${(cases/4).toFixed(1)}</small>`;
+
+  // feasibility: calls per full-day-equivalent
+  const weekWeight = dayState.reduce((a,s)=>a+(s===2?1:s===1?0.5:0),0);
+  const warn = $("warnBox");
+  warn.className = "warn";
+  if(weekWeight===0){
+    warn.className = "warn red";
+    warn.innerHTML = "<b>ยังไม่ได้เลือกวันทำงาน</b>แตะเลือกอย่างน้อย 1 วัน";
+  } else {
+    const callsPerFD = mCalls / (4*weekWeight);
+    if(callsPerFD > 25){
+      warn.className = "warn red";
+      warn.innerHTML = `<b>เกินกำลังจริง (โทร ~${callsPerFD.toFixed(0)} สาย/วันเต็ม)</b>ทางแก้: เพิ่มขนาดเคส/คอมฯ ต่อเคส (ยกระดับแพ็กตาม Level 3–4) · เพิ่มวันทำงาน · หรือลดเป้ารายได้ลงชั่วคราวแล้วไต่ทีละ Level`;
+    } else if(callsPerFD > 15){
+      warn.className = "warn amber";
+      warn.innerHTML = `<b>หนักมือ (โทร ~${callsPerFD.toFixed(0)} สาย/วันเต็ม)</b>ทำได้แต่ต้องวินัยสูง — พิจารณาเพิ่มคอมฯ เฉลี่ยต่อเคสเพื่อลดจำนวนนัด`;
+    }
+  }
+
+  buildWeeks(cases, mCalls, mMeets, mPres);
+}
+
+function buildWeeks(cases, mCalls, mMeets, mPres){
+  const holder = $("weeks"); holder.innerHTML = "";
+  const even = [1,1,1,1];
+  const wCloses = allocate(cases, even);
+  const wCalls  = allocate(mCalls, even);
+  const wMeets  = allocate(mMeets, even);
+  const wPres   = allocate(mPres, even);
+
+  const active = [];
+  dayState.forEach((s,i)=>{ if(s>0) active.push({i, w:s===2?1:0.5}); });
+
+  for(let wk=0; wk<4; wk++){
+    const sec = document.createElement("div");
+    sec.className = "week";
+    let html = `<h3><span>สัปดาห์ที่ ${wk+1}</span><span class="wk-close">ปิด ${wCloses[wk]} เคส · เป้านัด ${wCalls[wk]}</span></h3>`;
+    html += `<table><tr><th>วัน</th><th>โทรทำนัด</th><th>พบลูกค้า</th><th>เสนอขาย</th><th>ปิดการขาย</th></tr>`;
+
+    if(active.length){
+      const n = active.length;
+      // calls: front-loaded | meets: mid | presents: mid-late | closes: last days
+      const callW = active.map((d,idx)=> d.w * (n-idx+1));
+      const meetW = active.map((d,idx)=> d.w * (idx===0?0.4:1));
+      const presW = active.map((d,idx)=> d.w * (idx===0?0.15:0.35+idx/n));
+      const closeW= active.map((d,idx)=> idx>=n-2 ? d.w*(idx===n-1?2:1) : 0.0001);
+      const aCall = allocate(wCalls[wk], callW);
+      const aMeet = allocate(wMeets[wk], meetW);
+      const aPres = allocate(wPres[wk], presW);
+      const aClose= allocate(wCloses[wk], closeW);
+
+      for(let i=0;i<7;i++){
+        const st = dayState[i];
+        if(st===0){
+          html += `<tr class="dayoff"><td>${DAY_NAMES[i]}<span class="mode">วันหยุด</span></td><td>–</td><td>–</td><td>–</td><td>–</td></tr>`;
+          continue;
+        }
+        const k = active.findIndex(a=>a.i===i);
+        const c=aCall[k], m=aMeet[k], p=aPres[k], cl=aClose[k];
+        let focus = "";
+        if(k===0) focus = "ทำลิสต์ + โทรทำนัด";
+        else if(cl>0) focus = "ปิดการขาย + ตามเอกสาร";
+        else if(p>0) focus = "นำเสนอแบบประกัน";
+        else if(m>0) focus = "พบ / Fact Find";
+        if(st===1) focus += (focus?" · ":"") + "ครึ่งวัน + ขอ Referral";
+        html += `<tr>
+          <td>${DAY_NAMES[i]}<span class="mode">${st===2?"เต็มวัน":"ครึ่งวัน"}</span><span class="focus">${focus}</span></td>
+          <td class="num ${c?'':'zero'}">${c||"–"}</td>
+          <td class="num ${m?'':'zero'}">${m||"–"}</td>
+          <td class="num ${p?'':'zero'}">${p||"–"}</td>
+          <td class="${cl?'close-cell':'num zero'}">${cl||"–"}</td>
+        </tr>`;
+      }
+      html += `<tr class="total"><td>รวมสัปดาห์</td><td>${wCalls[wk]}</td><td>${wMeets[wk]}</td><td>${wPres[wk]}</td><td>${wCloses[wk]}</td></tr>`;
+    } else {
+      html += `<tr><td colspan="5" style="padding:16px;color:var(--muted)">เลือกวันทำงานก่อนครับ</td></tr>`;
+    }
+    html += `</table>`;
+    sec.innerHTML = html;
+    holder.appendChild(sec);
+  }
+}
+
+["income","comm","rCall","rMeet","rPresent","rClose"].forEach(id=>{
+  $(id).addEventListener("input", calc);
+});
+renderDays();
+calc();
+</script>
+</body>
+</html>
