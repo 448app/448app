@@ -79,6 +79,20 @@
   tr.dayoff td{color:#C6CAD4;background:#FAFBFC}
 
   footer{text-align:center;color:var(--muted);font-size:12px;margin-top:26px}
+
+  /* product recommendation */
+  .reco{margin-top:14px;border:1.5px solid var(--line);border-radius:12px;overflow:hidden}
+  .reco-head{background:var(--navy);color:#fff;padding:10px 14px;font-size:14px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .reco-head .prem{background:var(--gold);color:#5b4306;border-radius:999px;padding:2px 12px;font-size:12px;font-weight:800}
+  .reco-body{padding:6px 0}
+  .reco-item{display:flex;gap:10px;align-items:flex-start;padding:9px 14px;border-bottom:1px solid var(--line)}
+  .reco-item:last-of-type{border-bottom:none}
+  .reco-item .rate{flex:0 0 auto;background:var(--red);color:#fff;font-weight:800;font-size:12.5px;border-radius:8px;padding:4px 8px;min-width:52px;text-align:center}
+  .reco-item .rate.navy{background:var(--navy2)}
+  .reco-item .nm{font-weight:800;font-size:14px;color:var(--navy)}
+  .reco-item .nt{font-size:12.5px;color:var(--muted)}
+  .reco-tip{background:#FFF9EC;color:#6b5518;font-size:12.5px;padding:9px 14px}
+  .reco-foot{font-size:11px;color:var(--muted);padding:8px 14px;background:var(--card)}
 </style>
 </head>
 <body>
@@ -117,6 +131,7 @@
         <div class="field"><label>ปิดได้</label><input type="number" id="rClose" value="1" min="1" inputmode="numeric"></div>
       </div>
     </div>
+    <div class="reco" id="reco"></div>
   </div>
 
   <div class="panel">
@@ -177,6 +192,58 @@ function allocate(total, weights){
 
 function fmt(n){ return n.toLocaleString("en-US"); }
 
+/* ===== ผลิตภัณฑ์แนะนำตามคอมฯ ต่อเคส (อ้างอิงตารางคอมมิชชั่น 18 มิ.ย. 2569) ===== */
+const RECO_TIERS = [
+  { min:0, max:7999, title:"เคสเริ่มต้น", prem:"เบี้ยรวม ~15,000–22,000/ปี",
+    items:[
+      {rate:"30%", nm:"AIA Health Happy แผน 1 ล้าน (Rider)", nt:"อายุ 11–59 · เกาะแบบประกันหลักขั้นต่ำ"},
+      {rate:"40%", nm:"AIA CI SuperCare 20/99 ทุน ~500,000", nt:"อายุ ≤40 ปี ได้อัตราสูงสุด 40% (41–65 = 35%)"},
+      {rate:"25%", nm:"AIA Excellent (Non Par)", nt:"เข้าเงื่อนไข Rider ≥20% หรือเบี้ยสัญญาเพิ่มเติม ≥18,000/ปี"},
+    ],
+    tip:"เคสเล็กเหมาะฝึกมือ/ตลาด mass แต่ต้องปิดจำนวนเยอะ — วางแผนขยับสู่เคสมาตรฐานโดยเร็ว"},
+  { min:8000, max:12999, title:"เคสมาตรฐาน (3 แพ็กหลักของทีม)", prem:"เบี้ยรวม ~25,000–35,000/ปี",
+    items:[
+      {rate:"35%", nm:"แพ็ก A สุขภาพครบ — 20Pay Life 3 แสน + Health Happy 1 ล้าน + HB/CI Plus", nt:"หลัก 35% · Health Happy 30% · Rider 40%"},
+      {rate:"40%", nm:"แพ็ก B โรคร้าย — CI SuperCare 20/99 ทุน 1–1.5 ล้าน + HB", nt:"อายุ ≤40 ปี = 40%"},
+      {rate:"35%", nm:"แพ็ก C ออมทรัพย์ — Lifetime Income 9/99 (Par) + Rider เข้าเงื่อนไข", nt:"เข้าเงื่อนไข Rider ≥20% หรือ ≥18,000/ปี → 35% (ไม่เข้า = 25%)"},
+    ],
+    tip:"โซน Level 1–2 · ใช้เซลทอล์ก 5 จังหวะตามคู่มือได้ตรง ๆ"},
+  { min:13000, max:17999, title:"เคสกลาง–บน", prem:"เบี้ยรวม ~40,000–50,000/ปี",
+    items:[
+      {rate:"35%", nm:"แพ็ก A พลัส — 20Pay Life 5 แสน + Health Happy 5 ล้าน + CI Plus + HB", nt:"อัปเกรดแผนสุขภาพ + เพิ่มทุน"},
+      {rate:"40%", nm:"CI SuperCare 20/99 ทุน 2 ล้าน + HB", nt:"เสาหลักครอบครัว/เจ้าของกิจการเล็ก"},
+      {rate:"35%", nm:"Lifetime Income 9/99 เบี้ย ~45,000 + Rider เข้าเงื่อนไข", nt:"ขายคู่เรื่องลดหย่อนภาษีฐาน 20%"},
+    ],
+    tip:"โซน Level 3 · ลูกค้าเดิมที่เคยซื้อเคสมาตรฐาน = เป้าอัปเกรดที่ง่ายที่สุด"},
+  { min:18000, max:29999, title:"เคสใหญ่ · โซน Top Agent", prem:"เบี้ยรวม ~55,000–85,000/ปี",
+    items:[
+      {rate:"35%", nm:"15Pay/20Pay Life ทุน 1 ล้าน+ พร้อม Rider ครบชุด", nt:"หลัก 35% + Rider ปีแรก 40%"},
+      {rate:"40%", nm:"CI SuperCare Prestige 20/99 ทุน 5 ล้านขึ้นไป", nt:"ทุน 5,000,000–15,000,000 · อายุ ≤40 = 40%"},
+      {rate:"25–35%", navy:1, nm:"Lifetime Income / Excellent เบี้ยก้อนใหญ่", nt:"เจ้าของกิจการวางแผนเกษียณ/ภาษี"},
+    ],
+    tip:"โซน Level 4 · Scale ด้วยขนาดเคส ไม่ใช่จำนวนนัด — เจาะเจ้าของกิจการ ผู้บริหาร แพทย์"},
+  { min:30000, max:Infinity, title:"เคสกลุ่มบน HNW / Prestige", prem:"เบี้ยรวม ~100,000+/ปี",
+    items:[
+      {rate:"35%", nm:"AIA Legacy Prestige (New) 15/99 — ทุนขั้นต่ำ 10 ล้าน", nt:"ส่งต่อมรดก · 15Pay = 35% (10Pay = 25%)"},
+      {rate:"35%", nm:"AIA Legacy Prestige Plus (New) 15/20 Pay", nt:"ทุนขั้นต่ำ 10 ล้าน – สูงสุด 1,000 ล้าน/รายชีวิต"},
+      {rate:"35%*", navy:1, nm:"Unit Linked: Issara Plus / Issara Prestige Plus (RPP)", nt:"*คอมฯ 12 เดือนแรกของเบี้ยหลัก RPP · ต้องมีใบอนุญาต IC"},
+      {rate:"40%", nm:"แนบ AIA Infinite Care (มาตรฐานใหม่)", nt:"สุขภาพเหมาจ่ายระดับพรีเมียมสำหรับกลุ่มนี้"},
+    ],
+    tip:"ต้องเรียนผลิตภัณฑ์ Prestige/Unit Linked เพิ่ม — เส้นทางเดียวกับการเตรียมขึ้น Level 4 และ MDRT"},
+];
+
+function renderReco(comm){
+  const tier = RECO_TIERS.find(t => comm >= t.min && comm <= t.max) || RECO_TIERS[1];
+  const needPrem = Math.round(comm / 0.35 / 500) * 500;
+  let html = `<div class="reco-head"><span>ผลิตภัณฑ์แนะนำ: ${tier.title}</span><span class="prem">${tier.prem}</span></div><div class="reco-body">`;
+  tier.items.forEach(it=>{
+    html += `<div class="reco-item"><span class="rate ${it.navy?'navy':''}">${it.rate}</span><div><div class="nm">${it.nm}</div><div class="nt">${it.nt}</div></div></div>`;
+  });
+  html += `</div><div class="reco-tip">💡 ${tier.tip}</div>`;
+  html += `<div class="reco-foot">คอมฯ ~${fmt(comm)} บาท/เคส ≈ ต้องขายเบี้ยรวมประมาณ ${fmt(needPrem)} บาท/ปี (ที่อัตราเฉลี่ย ~35%) · อัตราจริงขึ้นกับอายุ/เงื่อนไข — ตรวจตารางคอมมิชชั่นและใบเสนอราคาก่อนเสนอทุกครั้ง</div>`;
+  document.getElementById("reco").innerHTML = html;
+}
+
 function calc(){
   const income = Math.max(0, +$("income").value || 0);
   const comm   = Math.max(1, +$("comm").value || 1);
@@ -187,6 +254,8 @@ function calc(){
   const mCalls = Math.ceil(cases * rCall / rClose);
   const mMeets = Math.ceil(cases * rMeet / rClose);
   const mPres  = Math.ceil(cases * rPres / rClose);
+
+  renderReco(comm);
 
   $("sCases").textContent = fmt(cases);
   $("sCalls").textContent = fmt(mCalls);
