@@ -98,6 +98,7 @@
     '⏳': 'timeline',
     '🧾': 'tax',
     '📅': 'calendar',
+    '📆': 'calendar',
     '📖': 'book',
     '💵': 'cash',
     '🐷': 'deposit',
