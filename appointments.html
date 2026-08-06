@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>448 Wealth Management Plan — นัดหมาย</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>Money Match — นัดหมาย</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <!-- Firebase Auth -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -84,7 +84,7 @@
       border-left: 4px solid transparent; transition: box-shadow .18s, transform .18s; cursor: default;
     }
     .appt-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
-    .appt-card.type-meet  { border-left-color: #1F2D4F; }
+    .appt-card.type-meet  { border-left-color: #1B2A5E; }
     .appt-card.type-call  { border-left-color: #FF8C00; }
     .appt-card.type-online{ border-left-color: #0E76A8; }
     .appt-card.type-video { border-left-color: #7B2FF7; }
@@ -108,7 +108,7 @@
       display: inline-flex; align-items: center; gap: 4px;
       padding: 2px 8px; border-radius: 20px; font-size: .73rem; font-weight: 700;
     }
-    .badge-meet   { background: #F0F2F7; color: #1F2D4F; }
+    .badge-meet   { background: #EEF1FA; color: #1B2A5E; }
     .badge-call   { background: #FFF5E5; color: #FF8C00; }
     .badge-online { background: #E8F4FB; color: #0E76A8; }
     .badge-video  { background: #F3EEFF; color: #7B2FF7; }
@@ -235,12 +235,12 @@
   </style>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1F2D4F">
+  <meta name="theme-color" content="#1B2A5E">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="448 Wealth">
+  <meta name="apple-mobile-web-app-title" content="Money Match">
   <meta name="mobile-web-app-capable" content="yes">
   <script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
 </head>
@@ -251,45 +251,45 @@
   <aside class="app-sidebar">
     <div class="sb-top-accent"></div>
     <div class="sb-logo-area">
-      <div class="sb-brand">448</div>
-      <div class="sb-tagline">Wealth Management</div>
+      <img src="assets/logo-vertical.png" alt="Money Match" class="sb-logo-img" style="width:154px;height:auto;display:block;margin:2px auto 0">
+      
     </div>
     <div class="sb-divider"></div>
     <div class="app-sb-section">
       <div class="app-sb-lbl">เมนูหลัก</div>
-      <div class="app-sb-item" onclick="location.href='dashboard.html'"><span class="sb-ico">🏠</span> หน้าแรก</div>
-      <div class="app-sb-item" onclick="location.href='clients.html'"><span class="sb-ico">👥</span> รายชื่อลูกค้า</div>
+      <div class="app-sb-item" onclick="location.href='dashboard.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg></span> หน้าแรก</div>
+      <div class="app-sb-item" onclick="location.href='clients.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.4-3 2.7-4.7 5.5-4.7s5.1 1.7 5.5 4.7"/><path d="M15.5 5.6a3 3 0 0 1 0 5.6"/><path d="M17.4 14.4c1.7.5 2.9 2 3.1 4"/></svg></span> รายชื่อลูกค้า</div>
     </div>
     <div class="app-sb-section">
       <div class="app-sb-lbl">วางแผนการเงิน</div>
-      <div class="app-sb-item" onclick="location.href='financial.html'"><span class="sb-ico">💰</span> กระแสเงินสด</div>
-      <div class="app-sb-item" onclick="location.href='assets.html'"><span class="sb-ico">💎</span> สินทรัพย์</div>
-      <div class="app-sb-item" onclick="location.href='networth.html'"><span class="sb-ico">⚖️</span> งบการเงิน</div>
-      <div class="app-sb-item" onclick="location.href='ratios.html'"><span class="sb-ico">📐</span> อัตราส่วนการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='financial.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg></span> กระแสเงินสด</div>
+      <div class="app-sb-item" onclick="location.href='assets.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M6 4h12l3 5-9 11.5L3 9z"/><path d="M3 9h18"/><path d="M9.5 4 8 9l4 11.5"/><path d="M14.5 4 16 9l-4 11.5"/></svg></span> สินทรัพย์</div>
+      <div class="app-sb-item" onclick="location.href='networth.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4"/><path d="M10 12h5M10 15.5h5M10 8.5h2"/></svg></span> งบการเงิน</div>
+      <div class="app-sb-item" onclick="location.href='ratios.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M6 18 18 6"/><circle cx="8" cy="8" r="2.3"/><circle cx="16" cy="16" r="2.3"/></svg></span> อัตราส่วนการเงิน</div>
     </div>
     <div class="app-sb-section">
       <div class="app-sb-lbl">วางแผนชีวิต</div>
-      <div class="app-sb-item" onclick="location.href='education.html'"><span class="sb-ico">🎓</span> การศึกษาบุตร</div>
-      <div class="app-sb-item" onclick="location.href='retirement.html'"><span class="sb-ico">🛋️</span> วางแผนเกษียณ</div>
-      <div class="app-sb-item" onclick="location.href='goals.html'"><span class="sb-ico">🎯</span> เป้าหมายชีวิต</div>
-      <div class="app-sb-item" onclick="location.href='life-insurance.html'"><span class="sb-ico">☂️</span> ประกันชีวิต</div>
-      <div class="app-sb-item" onclick="location.href='health-insurance.html'"><span class="sb-ico">⚕️</span> ประกันสุขภาพ</div>
-      <div class="app-sb-item" onclick="location.href='policies.html'"><span class="sb-ico">📊</span> สรุปกรมธรรม์</div>
+      <div class="app-sb-item" onclick="location.href='education.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M12 5 2.5 9 12 13l9.5-4z"/><path d="M6.5 11v4.5c0 1.4 2.7 2.7 5.5 2.7s5.5-1.3 5.5-2.7V11"/><path d="M21.5 9v5"/></svg></span> การศึกษาบุตร</div>
+      <div class="app-sb-item" onclick="location.href='retirement.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M5 11V8.5A2.5 2.5 0 0 1 7.5 6h9A2.5 2.5 0 0 1 19 8.5V11"/><rect x="3" y="11" width="18" height="6" rx="2"/><path d="M6 17v2M18 17v2"/></svg></span> วางแผนเกษียณ</div>
+      <div class="app-sb-item" onclick="location.href='goals.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1.2"/></svg></span> เป้าหมายชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='life-insurance.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M12 3.5c4.4 0 8 3.4 8 7.5H4c0-4.1 3.6-7.5 8-7.5z"/><path d="M12 3.5V2.5M12 11v6.5a2.2 2.2 0 0 0 4.4 0"/></svg></span> ประกันชีวิต</div>
+      <div class="app-sb-item" onclick="location.href='health-insurance.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M12 20.5S4.5 15.8 4.5 10.2A3.7 3.7 0 0 1 12 8.3a3.7 3.7 0 0 1 7.5 1.9c0 5.6-7.5 10.3-7.5 10.3z"/><path d="M7.5 12h2l1.2-2.3L12.5 14l1-2h2.5"/></svg></span> ประกันสุขภาพ</div>
+      <div class="app-sb-item" onclick="location.href='policies.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M12 3 5.5 5.5v5.2c0 4.4 2.8 7.4 6.5 8.8 3.7-1.4 6.5-4.4 6.5-8.8V5.5z"/><path d="M9 11.7l2.2 2.2 4-4.2"/></svg></span> สรุปกรมธรรม์</div>
     </div>
     <div class="app-sb-section">
       <div class="app-sb-lbl">วิเคราะห์และแนะนำ</div>
-      <div class="app-sb-item" onclick="location.href='priority.html'"><span class="sb-ico">🎯</span> ลำดับความสำคัญ</div>
-      <div class="app-sb-item" onclick="location.href='portfolio.html'"><span class="sb-ico">📈</span> พอร์ตแนะนำ</div>
-      <div class="app-sb-item" onclick="location.href='plan_summary.html'"><span class="sb-ico">📋</span> สรุปแผน</div>
-      <div class="app-sb-item" onclick="location.href='planner.html'"><span class="sb-ico">📊</span> จัดทำแผน</div>
-      <div class="app-sb-item" onclick="location.href='timeline.html'"><span class="sb-ico">⏳</span> Life Timeline</div>
+      <div class="app-sb-item" onclick="location.href='priority.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M5.5 21V4"/><path d="M5.5 4.5h11l-2.2 3.2 2.2 3.3H5.5"/></svg></span> ลำดับความสำคัญ</div>
+      <div class="app-sb-item" onclick="location.href='portfolio.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M4 4v16h16"/><path d="M7.5 15l3.3-4 3 2.4L20 8"/><path d="M16 8h4v4"/></svg></span> พอร์ตแนะนำ</div>
+      <div class="app-sb-item" onclick="location.href='plan_summary.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><rect x="5.5" y="4.5" width="13" height="16.5" rx="2"/><rect x="9" y="2.8" width="6" height="3.4" rx="1.2"/><path d="M9 11.5h6M9 15h5"/></svg></span> สรุปแผน</div>
+      <div class="app-sb-item" onclick="location.href='planner.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M13.5 4H6.5v16h11v-8.5"/><path d="M9.5 12h3M9.5 15.5h4"/><path d="M18 3.2l2.6 2.6-6.4 6.4-3.2.6.6-3.2z"/></svg></span> จัดทำแผน</div>
+      <div class="app-sb-item" onclick="location.href='timeline.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M6.5 3.5h11M6.5 20.5h11"/><path d="M7.5 3.5c0 5 4.5 5.5 4.5 8.5s-4.5 3.5-4.5 8.5"/><path d="M16.5 3.5c0 5-4.5 5.5-4.5 8.5s4.5 3.5 4.5 8.5"/></svg></span> Life Timeline</div>
     </div>
     <div class="app-sb-section">
       <div class="app-sb-lbl">เครื่องมือ</div>
-      <div class="app-sb-item" onclick="location.href='tax.html'"><span class="sb-ico">🧾</span> คำนวณภาษี</div>
-      <div class="app-sb-item active" onclick="location.href='appointments.html'"><span class="sb-ico">📅</span> นัดหมาย</div>
-      <div class="app-sb-item" onclick="location.href='monthly-planner.html'"><span class="sb-ico">📆</span> แผนงานรายเดือน</div>
-      <div class="app-sb-item" onclick="location.href='guide.html'"><span class="sb-ico">📖</span> คู่มือการใช้งาน</div>
+      <div class="app-sb-item" onclick="location.href='tax.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z"/><path d="M9 8.5h6M9 12h6"/></svg></span> คำนวณภาษี</div>
+      <div class="app-sb-item active" onclick="location.href='appointments.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15.5" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/></svg></span> นัดหมาย</div>
+      <div class="app-sb-item" onclick="location.href='monthly-planner.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15.5" rx="2"/><path d="M4 9.5h16M8.5 3v4M15.5 3v4"/><path d="M9 14.5l2 2 4-4"/></svg></span> แผนงานรายเดือน</div>
+      <div class="app-sb-item" onclick="location.href='guide.html'"><span class="sb-ico"><svg viewBox="0 0 24 24"><path d="M12 5.5C10.5 4.2 8.3 3.8 6 4c-1 .1-2 .3-2 .3v14s1-.3 2-.4c2.3-.2 4.5.2 6 1.5 1.5-1.3 3.7-1.7 6-1.5 1 .1 2 .4 2 .4v-14s-1-.2-2-.3c-2.3-.2-4.5.2-6 1.5z"/><path d="M12 5.5v13.8"/></svg></span> คู่มือการใช้งาน</div>
     </div>
     <div class="sb-bottom-area">
       <div class="sb-profile-row" onclick="location.href='profile.html'">

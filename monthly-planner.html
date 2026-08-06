@@ -3,13 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>เครื่องคำนวณแผนงานรายเดือน 10-5-3-1 | 448 Wealth Group</title>
+<title>เครื่องคำนวณแผนงานรายเดือน 10-5-3-1 | Money Match</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --navy:#141B33; --navy2:#232C4D; --red:#D31145; --red-dk:#A50D36;
-    --gold:#E8B54D; --ink:#23262B; --muted:#6B7280; --card:#F4F5F8;
-    --line:#E3E5EB; --paper:#fff; --green:#0E7A4E;
-    --font:"Leelawadee UI","Sukhumvit Set","Noto Sans Thai",Tahoma,sans-serif;
+    --navy:#1B2A5E; --navy2:#2E3A66; --red:#B3261E; --red-dk:#8A1D17;
+    --gold:#C79A3F; --ink:#303A57; --muted:#6C7490; --card:#F6F7FB;
+    --line:#E4E7F0; --paper:#fff; --green:#1F7A55;
+    --font:"IBM Plex Sans Thai","Leelawadee UI","Noto Sans Thai",Tahoma,sans-serif;
+    --font-display:"Prompt","IBM Plex Sans Thai",sans-serif;
   }
   *{margin:0;padding:0;box-sizing:border-box}
   body{font-family:var(--font);background:#EEF0F4;color:var(--ink);line-height:1.55;font-size:15.5px;padding-bottom:60px}
@@ -26,12 +29,12 @@
 
   .panel{background:var(--paper);border-radius:16px;padding:18px 16px;margin-top:16px;box-shadow:0 2px 12px rgba(20,27,51,.08)}
   .panel h2{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:12px;display:flex;align-items:center;gap:8px}
-  .panel h2::before{content:"";width:5px;height:17px;border-radius:3px;background:var(--red)}
+  .panel h2::before{content:"";width:5px;height:17px;border-radius:3px;background:var(--gold)}
 
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .field label{font-size:12.5px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px}
   .field input{width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;font-size:17px;font-weight:700;color:var(--navy);font-family:var(--font)}
-  .field input:focus{outline:none;border-color:var(--red)}
+  .field input:focus{outline:none;border-color:var(--navy)}
   .hint{font-size:11.5px;color:var(--muted);margin-top:3px}
 
   .ratio{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
@@ -52,7 +55,7 @@
   @media(min-width:560px){.sum{grid-template-columns:repeat(4,1fr)}}
   .stat{background:var(--card);border-radius:12px;padding:12px 8px;text-align:center}
   .stat .v{font-size:24px;font-weight:800;color:var(--navy)}
-  .stat.hot .v{color:var(--red)}
+  .stat.hot .v{color:var(--gold)}
   .stat .l{font-size:11.5px;color:var(--muted);font-weight:700;margin-top:2px}
   .funnel{margin-top:12px;background:var(--navy);border-radius:12px;padding:12px;text-align:center;color:#fff;font-weight:800;font-size:15px}
   .funnel small{display:block;color:#C9CFE3;font-weight:400;font-size:11.5px;margin-top:2px}
@@ -65,7 +68,7 @@
   /* week tables */
   .week{margin-top:16px;background:var(--paper);border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(20,27,51,.08)}
   .week h3{background:var(--navy);color:#fff;padding:11px 16px;font-size:15px;display:flex;justify-content:space-between;align-items:center}
-  .week h3 .wk-close{background:var(--red);border-radius:999px;padding:2px 12px;font-size:12.5px}
+  .week h3 .wk-close{background:var(--navy);border-radius:999px;padding:2px 12px;font-size:12.5px}
   table{width:100%;border-collapse:collapse;font-size:13.5px}
   th{background:var(--card);color:var(--navy);font-size:12px;padding:8px 6px;text-align:center}
   th:first-child,td:first-child{text-align:left;padding-left:14px}
@@ -73,8 +76,8 @@
   td .mode{font-size:10.5px;color:var(--muted);display:block}
   td.num{font-weight:800;color:var(--navy2);font-size:15px}
   td.num.zero{color:#C6CAD4;font-weight:400}
-  td.close-cell{color:var(--red);font-weight:800;font-size:15px}
-  tr.total td{background:#FBF2F4;font-weight:800;color:var(--red-dk);border-top:2px solid var(--red)}
+  td.close-cell{color:var(--gold);font-weight:800;font-size:15px}
+  tr.total td{background:#F1F3F9;font-weight:800;color:var(--navy);border-top:2px solid var(--gold)}
   td .focus{font-size:11px;color:var(--muted);display:block;margin-top:1px}
   tr.dayoff td{color:#C6CAD4;background:#FAFBFC}
 
@@ -87,7 +90,7 @@
   .reco-body{padding:6px 0}
   .reco-item{display:flex;gap:10px;align-items:flex-start;padding:9px 14px;border-bottom:1px solid var(--line)}
   .reco-item:last-of-type{border-bottom:none}
-  .reco-item .rate{flex:0 0 auto;background:var(--red);color:#fff;font-weight:800;font-size:12.5px;border-radius:8px;padding:4px 8px;min-width:52px;text-align:center}
+  .reco-item .rate{flex:0 0 auto;background:var(--navy);color:#fff;font-weight:800;font-size:12.5px;border-radius:8px;padding:4px 8px;min-width:52px;text-align:center}
   .reco-item .rate.navy{background:var(--navy2)}
   .reco-item .nm{font-weight:800;font-size:14px;color:var(--navy)}
   .reco-item .nt{font-size:12.5px;color:var(--muted)}
@@ -96,8 +99,8 @@
 
   /* editable day cells */
   .cell-input{width:100%;max-width:58px;padding:6px 2px;border:1.5px solid var(--line);border-radius:8px;font-family:var(--font);font-size:15px;font-weight:800;color:var(--navy2);text-align:center;background:#fff}
-  .cell-input:focus{outline:none;border-color:var(--red);background:#FFFDF7}
-  .cell-input.cl{color:var(--red)}
+  .cell-input:focus{outline:none;border-color:var(--navy);background:#F7F9FE}
+  .cell-input.cl{color:var(--gold)}
   .cell-input::-webkit-outer-spin-button,.cell-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   .cell-input[type=number]{-moz-appearance:textfield}
   /* monthly check panel */
@@ -105,7 +108,7 @@
   .chk th{background:var(--card);color:var(--navy);font-size:12px;padding:8px 6px}
   .chk td{padding:9px 6px;border-top:1px solid var(--line);text-align:center}
   .chk td:first-child{text-align:left;padding-left:12px;font-weight:700;color:var(--navy2)}
-  .chk tr.hot-row td:first-child{color:var(--red)}
+  .chk tr.hot-row td:first-child{color:var(--gold)}
   .chk-ok{color:var(--green);font-weight:800}
   .chk-short{color:var(--red);font-weight:800}
   .chk-banner{border-radius:12px;padding:11px 14px;font-weight:800;font-size:13.5px;margin-bottom:12px}
@@ -193,13 +196,13 @@
   .rep-card{background:var(--paper);border-radius:16px;max-width:820px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);overflow:hidden;margin:auto}
   .rep-bar{background:var(--navy);color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0}
   .rep-bar .rep-t{font-weight:800;font-size:14.5px}
-  .rep-close{background:var(--red);border:none;color:#fff;border-radius:999px;width:30px;height:30px;font-size:17px;font-weight:800;cursor:pointer;line-height:1}
+  .rep-close{background:var(--navy);border:none;color:#fff;border-radius:999px;width:30px;height:30px;font-size:17px;font-weight:800;cursor:pointer;line-height:1}
   .rep-body{padding:14px 14px 22px}
   .rep-badge{display:inline-block;background:var(--card);color:var(--muted);font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 12px;margin-bottom:12px}
   .rep-sum{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px}
   .rep-stat{background:var(--card);border-radius:10px;padding:10px 6px;text-align:center}
   .rep-stat .v{font-size:20px;font-weight:800;color:var(--navy)}
-  .rep-stat.hot .v{color:var(--red)}
+  .rep-stat.hot .v{color:var(--gold)}
   .rep-stat .l{font-size:11px;color:var(--muted);font-weight:700;margin-top:1px}
   .rep-week{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:10px}
   .rep-week .rep-wk-h{background:var(--card);color:var(--navy);font-weight:800;font-size:13px;padding:8px 12px}
@@ -207,7 +210,7 @@
   .rep-week th{background:#fafbfd;color:var(--muted);font-size:11px;padding:6px 4px}
   .rep-week td{padding:7px 4px;text-align:center;border-top:1px solid var(--line)}
   .rep-week td:first-child,.rep-week th:first-child{text-align:left;padding-left:12px;font-weight:700;color:var(--navy2)}
-  .rep-week td.cl{color:var(--red);font-weight:800}
+  .rep-week td.cl{color:var(--gold);font-weight:800}
   .rep-week tr.tot td{background:#FBF2F4;font-weight:800;color:var(--red-dk)}
   .rep-week tr.off td{color:#C6CAD4;background:#FAFBFC}
 </style>
@@ -218,7 +221,8 @@
   <button class="back-btn" onclick="if(history.length>1){history.back()}else{location.href='dashboard.html'}" aria-label="กลับ">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>กลับ
   </button>
-  <div class="eyebrow">448 WEALTH GROUP · ระบบขาย 10-5-3-1</div>
+  <img src="assets/logo-h-white.png" alt="Money Match" style="width:198px;max-width:72%;height:auto;display:block;margin:2px auto 12px">
+  <div class="eyebrow">ระบบขาย 10-5-3-1</div>
   <h1>เครื่องคำนวณแผนงานรายเดือน</h1>
   <p>กรอกเป้ารายได้ + สถิติของคุณ → รับตารางทำงานรายสัปดาห์ทันที</p>
 </header>

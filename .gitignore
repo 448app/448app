@@ -5,6 +5,8 @@
 # Exception: PWA icons + icon library PNGs (required for app)
 !icon-*.png
 !icon_*.png
+# Exception: Money Match brand logos (required for app)
+!assets/*.png
 
 # OS files
 .DS_Store

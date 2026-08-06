@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>448 Wealth Management Plan — เข้าสู่ระบบ / สมัครสมาชิก</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>Money Match — เข้าสู่ระบบ / สมัครสมาชิก</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="storage-safe.js"></script>
   <script src="analytics.js" async></script>
@@ -99,12 +99,12 @@
   </style>
   <!-- PWA -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1F2D4F">
+  <meta name="theme-color" content="#1B2A5E">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="448 Wealth">
+  <meta name="apple-mobile-web-app-title" content="Money Match">
   <meta name="mobile-web-app-capable" content="yes">
   <script>(function(){try{if(localStorage.getItem('aia_sidebar_collapsed')==='1'){document.documentElement.setAttribute('data-sb-collapsed','1');}}catch(e){}})();</script>
 </head>
@@ -113,27 +113,8 @@
 <div class="login-page">
   <div class="login-left">
     <!-- Logo -->
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:40px;">
-      <div style="width:52px;height:52px;flex-shrink:0;filter:drop-shadow(0 4px 12px rgba(0,0,0,.25));">
-        <svg viewBox="0 0 42 42" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;">
-          <defs>
-            <linearGradient id="llg" x1="0" y1="0" x2="42" y2="42" gradientUnits="userSpaceOnUse">
-              <stop stop-color="rgba(255,255,255,.35)"/><stop offset="1" stop-color="rgba(255,255,255,.08)"/>
-            </linearGradient>
-          </defs>
-          <rect width="42" height="42" rx="13" fill="rgba(255,255,255,.18)" stroke="rgba(255,255,255,.35)" stroke-width="1.5"/>
-          <rect x="0" y="0" width="42" height="21" rx="13" fill="url(#llg)"/>
-          <rect x="8"  y="24" width="6" height="11" rx="1.8" fill="white" opacity=".55"/>
-          <rect x="18" y="17" width="6" height="18" rx="1.8" fill="white" opacity=".82"/>
-          <rect x="28" y="10" width="6" height="25" rx="1.8" fill="white"/>
-          <path d="M11 23 L21 16 L31 9" stroke="rgba(255,255,255,.45)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2.5 2"/>
-          <circle cx="31" cy="9" r="2.2" fill="white"/>
-        </svg>
-      </div>
-      <div>
-        <div style="font-size:1.35rem;font-weight:800;letter-spacing:-.01em;line-height:1.1;">448 Wealth Management Plan</div>
-        <div style="font-size:.8rem;opacity:.65;letter-spacing:.06em;margin-top:2px;text-transform:uppercase;">Wealth Platform</div>
-      </div>
+    <div style="margin-bottom:40px;">
+      <img src="assets/logo-h-white.png" alt="Money Match" style="width:240px;max-width:82%;height:auto;display:block;filter:drop-shadow(0 4px 12px rgba(0,0,0,.25))">
     </div>
 
     <h1 style="font-size:2.2rem;margin-bottom:12px;text-align:center;">วางแผนชีวิต<br>ให้ดีกว่าเดิม</h1>
@@ -173,6 +154,8 @@
   <!-- ─── RIGHT PANEL ─── -->
   <div class="login-right">
 
+    <img src="assets/logo-h.png" alt="Money Match" style="width:188px;height:auto;display:block;margin:4px auto 22px">
+
     <!-- LOGIN FORM -->
     <div class="form-panel active" id="panel-login">
       <h2>ยินดีต้อนรับกลับ</h2>
@@ -200,11 +183,11 @@
       </div>
       <div class="form-footer">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-          <input type="checkbox" style="accent-color:#1F2D4F;"> จดจำฉัน
+          <input type="checkbox" style="accent-color:#1B2A5E;"> จดจำฉัน
         </label>
         <a href="#" onclick="showForgot()">ลืมรหัสผ่าน?</a>
       </div>
-      <div id="login-error" style="display:none;background:#F0F2F7;border:1px solid #D4BA82;border-radius:8px;padding:10px 14px;font-size:.88rem;color:#1F2D4F;margin-bottom:12px;"></div>
+      <div id="login-error" style="display:none;background:#EEF1FA;border:1px solid #D4BA82;border-radius:8px;padding:10px 14px;font-size:.88rem;color:#1B2A5E;margin-bottom:12px;"></div>
       <button class="btn btn-primary login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
       <p style="text-align:center;margin-top:20px;font-size:.88rem;color:var(--gray-600);">
         ยังไม่มีบัญชี? <a href="#" onclick="switchTab('register')" style="color:var(--red-primary);font-weight:700;">สมัครสมาชิกฟรี</a>
@@ -257,7 +240,7 @@
         <input type="checkbox" id="terms">
         <label for="terms">ฉันยอมรับ <a href="#">ข้อตกลงการใช้งาน</a> และ <a href="#">นโยบายความเป็นส่วนตัว</a></label>
       </div>
-      <div id="reg-error" style="display:none;background:#F0F2F7;border:1px solid #D4BA82;border-radius:8px;padding:10px 14px;font-size:.88rem;color:#1F2D4F;margin-bottom:12px;"></div>
+      <div id="reg-error" style="display:none;background:#EEF1FA;border:1px solid #D4BA82;border-radius:8px;padding:10px 14px;font-size:.88rem;color:#1B2A5E;margin-bottom:12px;"></div>
       <button class="btn btn-primary login-btn" onclick="doRegister()">สมัครสมาชิกฟรี</button>
       <p style="text-align:center;margin-top:16px;font-size:.88rem;color:var(--gray-600);">
         มีบัญชีแล้ว? <a href="#" onclick="switchTab('login')" style="color:var(--red-primary);font-weight:700;">เข้าสู่ระบบ</a>
@@ -273,7 +256,7 @@
         <label>อีเมล</label>
         <input id="forgot-email" type="email" placeholder="example@email.com">
       </div>
-      <div id="forgot-error" style="display:none;background:#F0F2F7;border:1px solid #D4BA82;border-radius:8px;padding:10px 14px;font-size:.88rem;color:#1F2D4F;margin-bottom:12px;"></div>
+      <div id="forgot-error" style="display:none;background:#EEF1FA;border:1px solid #D4BA82;border-radius:8px;padding:10px 14px;font-size:.88rem;color:#1B2A5E;margin-bottom:12px;"></div>
       <div id="forgot-ok" style="display:none;background:#F0FFF4;border:1px solid #9AE6B4;border-radius:8px;padding:10px 14px;font-size:.88rem;color:#276749;margin-bottom:12px;">
         📧 ส่งอีเมลรีเซ็ตรหัสผ่านแล้ว — กรุณาตรวจสอบกล่องจดหมายของคุณ
       </div>

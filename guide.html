@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>448 Wealth Management Plan — คู่มือการใช้งาน</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>Money Match — คู่มือการใช้งาน</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
   <script src="analytics.js" async></script>
   <style>
@@ -12,7 +12,7 @@
 
     /* Hero */
     .gd-hero {
-      background: linear-gradient(135deg, #1F2D4F, #3A4F75);
+      background: linear-gradient(135deg, #1B2A5E, #3A4F75);
       color: white; border-radius: var(--radius);
       padding: 34px 30px; text-align: center; margin-bottom: 24px;
     }
@@ -44,7 +44,7 @@
       display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: 1rem;
     }
-    .gd-sec-head h2 { font-size: 1.25rem; font-weight: 800; color: #1F2D4F; margin: 0; }
+    .gd-sec-head h2 { font-size: 1.25rem; font-weight: 800; color: #1B2A5E; margin: 0; }
 
     /* Steps */
     .gd-steps { display: flex; flex-direction: column; gap: 12px; }
@@ -55,10 +55,10 @@
     }
     .gd-step .num {
       min-width: 36px; height: 36px; border-radius: 50%;
-      background: #1F2D4F; color: white; font-weight: 800;
+      background: #1B2A5E; color: white; font-weight: 800;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .gd-step h4 { font-size: .98rem; font-weight: 800; margin: 2px 0 3px; color: #1F2D4F; }
+    .gd-step h4 { font-size: .98rem; font-weight: 800; margin: 2px 0 3px; color: #1B2A5E; }
     .gd-step p  { font-size: .88rem; color: var(--gray-600, #4B5563); margin: 0; line-height: 1.55; }
 
     /* Feature group cards */
@@ -68,17 +68,17 @@
     }
     .gd-group-title {
       display: flex; align-items: center; gap: 8px;
-      padding: 13px 18px; font-weight: 800; font-size: 1rem; color: #1F2D4F;
-      background: #F0F2F7; border-bottom: 1px solid #E3E7EF;
+      padding: 13px 18px; font-weight: 800; font-size: 1rem; color: #1B2A5E;
+      background: #EEF1FA; border-bottom: 1px solid #E3E7EF;
     }
     .gd-feat { display: grid; grid-template-columns: 44px 1fr; gap: 12px; padding: 14px 18px; }
     .gd-feat + .gd-feat { border-top: 1px dashed #EDF0F5; }
     .gd-feat-ico {
       width: 40px; height: 40px; border-radius: 10px;
-      background: #F0F2F7; display: flex; align-items: center; justify-content: center;
+      background: #EEF1FA; display: flex; align-items: center; justify-content: center;
       font-size: 1.2rem;
     }
-    .gd-feat-name { font-weight: 800; font-size: .95rem; color: #1F2D4F; }
+    .gd-feat-name { font-weight: 800; font-size: .95rem; color: #1B2A5E; }
     .gd-feat-desc { font-size: .86rem; color: var(--gray-600, #4B5563); line-height: 1.5; margin-top: 2px; }
     .gd-feat-how {
       font-size: .8rem; color: #A16207; background: rgba(245,194,66,.14);
@@ -89,11 +89,11 @@
     .gd-tip {
       display: flex; gap: 12px; background: white; border-radius: 12px;
       box-shadow: var(--shadow-sm); padding: 15px 18px; margin-bottom: 12px;
-      border-left: 4px solid #F5C242;
+      border-left: 4px solid #C79A3F;
     }
     .gd-tip.warn { border-left-color: #DC3545; }
     .gd-tip .t-ico { font-size: 1.5rem; flex-shrink: 0; }
-    .gd-tip h4 { font-size: .95rem; font-weight: 800; margin: 0 0 3px; color: #1F2D4F; }
+    .gd-tip h4 { font-size: .95rem; font-weight: 800; margin: 0 0 3px; color: #1B2A5E; }
     .gd-tip p { font-size: .87rem; color: var(--gray-600, #4B5563); margin: 0; line-height: 1.6; }
     .gd-tip b { color: #DC3545; }
 
@@ -103,10 +103,10 @@
     .faq-item:last-child { border-bottom: none; }
     .faq-q {
       display: flex; justify-content: space-between; align-items: center; gap: 12px;
-      padding: 16px 20px; cursor: pointer; font-weight: 700; font-size: .93rem; color: #1F2D4F;
+      padding: 16px 20px; cursor: pointer; font-weight: 700; font-size: .93rem; color: #1B2A5E;
       transition: background .15s;
     }
-    .faq-q:hover, .faq-q.open { background: #F0F2F7; }
+    .faq-q:hover, .faq-q.open { background: #EEF1FA; }
     .faq-arrow { transition: transform .25s; color: #888; flex-shrink: 0; }
     .faq-q.open .faq-arrow { transform: rotate(180deg); }
     .faq-a { display: none; padding: 0 20px 16px; color: var(--gray-600, #4B5563); font-size: .88rem; line-height: 1.7; }
@@ -114,7 +114,7 @@
 
     /* Contact */
     .gd-contact {
-      background: linear-gradient(135deg, #1F2D4F, #3A4F75);
+      background: linear-gradient(135deg, #1B2A5E, #3A4F75);
       color: white; border-radius: var(--radius); padding: 28px; text-align: center; margin-top: 30px;
     }
     .gd-contact h3 { margin: 0 0 6px; font-size: 1.2rem; }
@@ -127,12 +127,12 @@
     }
   </style>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1F2D4F">
+  <meta name="theme-color" content="#1B2A5E">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="448 Wealth">
+  <meta name="apple-mobile-web-app-title" content="Money Match">
   <meta name="mobile-web-app-capable" content="yes">
 </head>
 <body>
@@ -157,7 +157,7 @@
           <circle cx="31" cy="9" r="2" fill="white" opacity=".9"/>
         </svg>
       </div>
-      <div><div class="navbar-name">448 Wealth <span>Management Plan</span></div></div>
+      <div><div class="navbar-name">Money Match <span>Management Plan</span></div></div>
     </div>
     <ul class="navbar-menu">
       <li><a href="dashboard.html">← กลับสู่แอป</a></li>
@@ -176,7 +176,7 @@
     <div class="gd-hero">
       <div class="ico">📚</div>
       <h1>คู่มือการใช้งาน</h1>
-      <p>448 Wealth Management Plan — เครื่องมือวางแผนการเงินและความคุ้มครองสำหรับตัวแทน</p>
+      <p>Money Match — เครื่องมือวางแผนการเงินและความคุ้มครองสำหรับตัวแทน</p>
     </div>
 
     <!-- TABLE OF CONTENTS -->
@@ -446,13 +446,13 @@
     <div class="gd-contact">
       <h3>ต้องการความช่วยเหลือเพิ่มเติม?</h3>
       <p>ติดต่อผู้ดูแลระบบ/ทีมงานที่ดูแลแอปของคุณ</p>
-      <p style="opacity:.7;font-size:.82rem;margin-top:8px;">448 Wealth Management Plan</p>
+      <p style="opacity:.7;font-size:.82rem;margin-top:8px;">Money Match</p>
     </div>
 
   </div>
 
   <footer>
-    <p>© 2026 <span>448 Wealth Management Plan</span> — วางแผนชีวิตให้ดีกว่าเดิม</p>
+    <p>© 2026 <span>Money Match</span> — วางแผนชีวิตให้ดีกว่าเดิม</p>
   </footer>
 </div>
 

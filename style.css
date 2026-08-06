@@ -17,28 +17,30 @@
 @keyframes fade-in  { from { opacity: 0; } to { opacity: 1; } }
 
 :root {
-  /* AIA Prestige theme — navy + gold (variable names kept for compatibility) */
-  --red-primary:   #1F2D4F;   /* deep navy */
-  --red-dark:      #0F1A2F;   /* darker navy */
-  --red-light:     #3A4F75;   /* lighter navy */
-  --red-soft:      #F0F2F7;   /* very soft navy bg */
-  --red-mid:       #D4DAE6;   /* mid navy */
-  --gold-primary:  #C9A961;   /* champagne gold accent */
-  --gold-dark:     #9C7F47;   /* warm bronze */
+  /* Money Match Design System — navy + signal gold (var names kept for compatibility) */
+  --red-primary:   #1B2A5E;   /* Brand Navy — primary */
+  --red-dark:      #101A3D;   /* Navy Deep */
+  --red-light:     #2E4CA6;   /* Navy 700 — links / lighter navy */
+  --red-soft:      #EEF1FA;   /* soft navy — hover fill / field bg */
+  --red-mid:       #C3CADD;   /* mid navy — field border */
+  --gold-primary:  #C79A3F;   /* Signal Gold — accent */
+  --gold-dark:     #9C7A2F;   /* warm bronze */
   --gold-soft:     #F5EDD9;
-  --gold-light:    #D4BA82;   /* lighter gold for highlights */
+  --gold-light:    #D9B975;   /* lighter gold for highlights */
   --white:         #FFFFFF;
-  --gray-100:      #F8F9FA;
-  --gray-200:      #E9ECEF;
-  --gray-400:      #ADB5BD;
-  --gray-600:      #6C757D;
-  --gray-800:      #343A40;
-  --shadow-sm:     0 2px 8px rgba(31,45,79,.12);
-  --shadow-md:     0 4px 20px rgba(31,45,79,.18);
-  --shadow-lg:     0 8px 40px rgba(31,45,79,.22);
+  --gray-100:      #F6F7FB;   /* page bg */
+  --gray-200:      #E4E7F0;   /* border */
+  --gray-400:      #8FA0C7;   /* muted on navy / disabled */
+  --gray-600:      #6C7490;   /* muted label */
+  --gray-800:      #303A57;   /* body ink */
+  --shadow-sm:     0 2px 8px rgba(16,26,61,.08);
+  --shadow-md:     0 6px 20px rgba(16,26,61,.10);
+  --shadow-lg:     0 12px 32px rgba(16,26,61,.12);
   --radius:        16px;
   --radius-sm:     10px;
-  --font:          'Sarabun', 'Prompt', sans-serif;
+  --font:          'IBM Plex Sans Thai', 'Sarabun', sans-serif;
+  --font-display:  'Prompt', 'IBM Plex Sans Thai', sans-serif;
+  --font-mono:     'IBM Plex Mono', monospace;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -69,9 +71,9 @@ a { text-decoration: none; color: inherit; }
 img { max-width: 100%; }
 
 /* ─── TYPOGRAPHY ─── */
-h1 { font-size: 2.4rem; font-weight: 700; line-height: 1.2; }
-h2 { font-size: 1.8rem; font-weight: 700; }
-h3 { font-size: 1.2rem; font-weight: 600; }
+h1 { font-family: var(--font-display); font-size: 2.4rem; font-weight: 600; line-height: 1.2; letter-spacing: -.01em; }
+h2 { font-family: var(--font-display); font-size: 1.8rem; font-weight: 600; letter-spacing: -.01em; }
+h3 { font-family: var(--font-display); font-size: 1.2rem; font-weight: 600; }
 p  { font-size: 1rem; line-height: 1.6; }
 
 /* ─── BUTTONS ─── */
@@ -113,7 +115,7 @@ p  { font-size: 1rem; line-height: 1.6; }
 }
 .navbar-logo {
   width: 42px; height: 42px; flex-shrink: 0;
-  filter: drop-shadow(0 2px 6px rgba(208,2,27,.35));
+  filter: drop-shadow(0 2px 6px rgba(16,26,61,.30));
 }
 .navbar-logo svg { width: 100%; height: 100%; display: block; }
 .navbar-name {
@@ -389,7 +391,7 @@ footer span { color: var(--red-primary); font-weight: 700; }
    (ใช้กับ dashboard.html, clients.html, etc.)
 ════════════════════════════════════════════════ */
 .app-layout {
-  display: flex; min-height: 100vh; background: #FAFAFA;
+  display: flex; min-height: 100vh; background: var(--gray-100);
   overflow-x: hidden; max-width: 100vw;
 }
 
@@ -409,10 +411,22 @@ footer span { color: var(--red-primary); font-weight: 700; }
 .app-sidebar::-webkit-scrollbar-thumb:hover { background: var(--red-primary); }
 .sb-top-accent {
   height: 4px;
-  background: linear-gradient(90deg, var(--red-primary), #FF6B6B);
+  background: linear-gradient(90deg, var(--red-primary), var(--gold-primary));
   flex-shrink: 0;
 }
 .sb-logo-area { padding: 22px 28px 16px; }
+/* Money Match logo mark (recreated as SVG — scalable, light/dark) */
+.mm-mark { width: 40px; height: auto; display: block; }
+.mm-mark .n  { fill: var(--red-primary); }
+.mm-mark .ns { stroke: var(--red-primary); stroke-width: 13; stroke-linecap: round; fill: none; }
+.mm-mark .gs { stroke: var(--gold-primary); stroke-width: 12; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.mm-mark.on-dark .n  { fill: #fff; }
+.mm-mark.on-dark .ns { stroke: #fff; }
+.mm-word { font-family: var(--font-display); font-weight: 600; letter-spacing: .13em; color: var(--red-primary); font-size: 1.02rem; margin-top: 9px; }
+.mm-word .au { color: var(--gold-primary); }
+.mm-logo-h { display: flex; align-items: center; gap: 12px; }
+.mm-logo-h .mm-word { margin-top: 0; }
+.on-navy .mm-word, .mm-word.on-navy { color: #fff; }
 .sb-brand { font-size: 2.1rem; font-weight: 800; color: var(--red-primary); }
 .sb-tagline {
   font-size: 1.05rem; color: #bbb;
@@ -431,9 +445,10 @@ footer span { color: var(--red-primary); font-weight: 700; }
   font-size: 1.38rem; font-weight: 600; color: #888;
   cursor: pointer; transition: all .15s; margin-bottom: 3px;
 }
-.app-sb-item:hover  { background: #FFF5F5; color: var(--red-primary); }
-.app-sb-item.active { background: #FFF0F0; color: var(--red-primary); font-weight: 700; }
+.app-sb-item:hover  { background: var(--red-soft); color: var(--red-primary); }
+.app-sb-item.active { background: var(--red-soft); color: var(--red-primary); font-weight: 700; }
 .app-sb-item .sb-ico { font-size: 1.58rem; width: 30px; text-align: center; flex-shrink: 0; }
+.app-sb-item .sb-ico svg { width: 21px; height: 21px; stroke: currentColor; stroke-width: 1.7; fill: none; stroke-linecap: round; stroke-linejoin: round; vertical-align: -4px; }
 .app-sb-item .sb-badge {
   margin-left: auto; background: var(--red-primary); color: #fff;
   font-size: 1rem; font-weight: 700; padding: 3px 10px; border-radius: 12px;
@@ -444,10 +459,10 @@ footer span { color: var(--red-primary); font-weight: 700; }
 }
 .sb-profile-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px; border-radius: 10px; background: #FAFAFA;
+  padding: 10px; border-radius: 10px; background: var(--gray-100);
   cursor: pointer; transition: background .15s;
 }
-.sb-profile-row:hover { background: #FFF5F5; }
+.sb-profile-row:hover { background: var(--red-soft); }
 .sb-avatar-box {
   width: 44px; height: 44px; border-radius: 12px;
   background: var(--red-primary); color: #fff;
@@ -633,19 +648,30 @@ footer span { color: var(--red-primary); font-weight: 700; }
 }
 .feature-hero > * { position: relative; z-index: 1; }
 
-/* Primary CTA — gold gradient with navy text (premium pop) */
+/* Primary CTA — solid navy (Money Match design system); gold = accent variant */
 .btn-primary {
-  background: linear-gradient(135deg, var(--gold-light), var(--gold-primary)) !important;
-  color: var(--red-primary) !important;
-  border: 1.5px solid var(--gold-primary) !important;
-  text-shadow: 0 1px 0 rgba(255,255,255,.3);
-  font-weight: 800 !important;
+  background: var(--red-primary) !important;
+  color: #fff !important;
+  border: 1.5px solid var(--red-primary) !important;
+  font-weight: 600 !important;
 }
 .btn-primary:hover {
-  background: linear-gradient(135deg, var(--gold-primary), var(--gold-dark)) !important;
-  color: white !important;
+  background: var(--red-dark) !important;
+  border-color: var(--red-dark) !important;
+  color: #fff !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(156,127,71,.35) !important;
+  box-shadow: var(--shadow-md) !important;
+}
+/* Gold accent button (secondary CTA) */
+.btn-gold {
+  background: var(--gold-primary) !important;
+  color: var(--red-dark) !important;
+  border: 1.5px solid var(--gold-primary) !important;
+  font-weight: 700 !important;
+}
+.btn-gold:hover {
+  background: var(--gold-dark) !important;
+  color: #fff !important;
 }
 
 /* Active sidebar item — gold left border accent */
@@ -749,7 +775,7 @@ body:has(.app-layout) .page   { padding-top: 0; }
   display: flex; align-items: flex-start; gap: 14px;
   transition: box-shadow .18s;
 }
-.mc-stat:hover { box-shadow: 0 4px 16px rgba(208,2,27,.1); }
+.mc-stat:hover { box-shadow: 0 4px 16px rgba(16,26,61,.12); }
 .mc-stat-ico { font-size: 1.35rem; margin-top: 2px; flex-shrink: 0; }
 .mc-stat-lbl { font-size: .72rem; color: #bbb; font-weight: 600; margin-bottom: 5px; }
 .mc-stat-val { font-size: 1.3rem; font-weight: 800; color: #1a1a1a; line-height: 1.1; }

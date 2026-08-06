@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>448 Wealth Management — QR Code</title>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <title>Money Match — QR Code</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script src="analytics.js" async></script>
   <!-- QR generator library (small, no dependencies) -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#1F2D4F">
+  <meta name="theme-color" content="#1B2A5E">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <link rel="apple-touch-icon" href="icon-192.png">
   <style>
@@ -20,9 +20,9 @@
       font-family: 'Sarabun', sans-serif;
       background:
         radial-gradient(ellipse at 30% 20%, rgba(245,194,66,.18) 0%, transparent 50%),
-        radial-gradient(ellipse at 70% 80%, rgba(31,45,79,.95) 0%, #0F1A2F 80%),
-        #0F1A2F;
-      color: #1F2D4F;
+        radial-gradient(ellipse at 70% 80%, rgba(31,45,79,.95) 0%, #101A3D 80%),
+        #101A3D;
+      color: #1B2A5E;
       display: flex; align-items: center; justify-content: center;
       padding: 24px 18px;
     }
@@ -32,12 +32,12 @@
       max-width: 460px; width: 100%;
       text-align: center;
       box-shadow: 0 24px 64px rgba(0,0,0,.45);
-      border-top: 5px solid #F5C242;
+      border-top: 5px solid #C79A3F;
       position: relative;
     }
     .qr-brand {
       font-size: 2.6rem; font-weight: 800;
-      color: #1F2D4F; letter-spacing: -.02em;
+      color: #1B2A5E; letter-spacing: -.02em;
       line-height: 1; margin-bottom: 6px;
     }
     .qr-tagline {
@@ -56,15 +56,15 @@
     #qr-canvas { display: inline-block; }
     #qr-canvas img, #qr-canvas canvas { display: block; }
     .qr-instruction {
-      margin-top: 22px; color: #1F2D4F;
+      margin-top: 22px; color: #1B2A5E;
       font-size: 1.08rem; font-weight: 800;
       display: flex; align-items: center; justify-content: center; gap: 8px;
     }
     .qr-url {
       margin-top: 12px; padding: 11px 16px;
-      background: #F0F2F7;
+      background: #EEF1FA;
       border-radius: 10px;
-      font-size: .82rem; color: #1F2D4F;
+      font-size: .82rem; color: #1B2A5E;
       font-weight: 600;
       word-break: break-all;
       font-family: ui-monospace, 'SF Mono', monospace;
@@ -76,7 +76,7 @@
     }
     .qr-btn {
       padding: 11px 22px; border-radius: 50px;
-      background: linear-gradient(135deg, #1F2D4F 0%, #2A3B66 100%);
+      background: linear-gradient(135deg, #1B2A5E 0%, #2A3B66 100%);
       color: white; border: 2px solid transparent;
       font-family: inherit; font-weight: 800; cursor: pointer;
       font-size: .9rem;
@@ -87,15 +87,15 @@
     .qr-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 16px rgba(31,45,79,.35);
-      border-color: #F5C242;
+      border-color: #C79A3F;
     }
     .qr-btn.outline {
-      background: white; color: #1F2D4F;
-      border: 1.5px solid #1F2D4F;
+      background: white; color: #1B2A5E;
+      border: 1.5px solid #1B2A5E;
       box-shadow: 0 2px 8px rgba(0,0,0,.08);
     }
     .qr-btn.outline:hover {
-      background: #F0F2F7;
+      background: #EEF1FA;
     }
     .qr-pwa-hint {
       margin-top: 22px; padding-top: 18px;
@@ -104,7 +104,7 @@
       border-top: 1px dashed #D1D5DB;
       text-align: left;
     }
-    .qr-pwa-hint b { color: #1F2D4F; }
+    .qr-pwa-hint b { color: #1B2A5E; }
     .qr-pwa-hint .step {
       display: flex; gap: 8px; margin-top: 6px;
       align-items: flex-start;
@@ -113,23 +113,23 @@
       display: inline-flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       width: 18px; height: 18px;
-      background: #F5C242; color: #1F2D4F;
+      background: #C79A3F; color: #1B2A5E;
       border-radius: 50%; font-size: .68rem; font-weight: 800;
     }
     .qr-back {
       position: absolute; top: 14px; left: 14px;
       width: 36px; height: 36px; border-radius: 50%;
-      background: #F0F2F7; color: #1F2D4F;
+      background: #EEF1FA; color: #1B2A5E;
       border: none; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
       font-size: 1.05rem; font-weight: 700;
       transition: all .15s;
     }
-    .qr-back:hover { background: #1F2D4F; color: white; }
+    .qr-back:hover { background: #1B2A5E; color: white; }
     .qr-toast {
       position: fixed; bottom: 28px; left: 50%;
       transform: translateX(-50%) translateY(100px);
-      background: #1F2D4F; color: white;
+      background: #1B2A5E; color: white;
       padding: 12px 20px; border-radius: 50px;
       font-size: .88rem; font-weight: 700;
       box-shadow: 0 8px 24px rgba(0,0,0,.3);
@@ -152,8 +152,7 @@
 <body>
   <div class="qr-card">
     <button class="qr-back" onclick="goBack()" title="กลับ" aria-label="กลับ">←</button>
-    <div class="qr-brand">448</div>
-    <div class="qr-tagline">Wealth Management Plan</div>
+    <img src="assets/logo-h.png" alt="Money Match" style="width:240px;max-width:82%;height:auto;display:block;margin:2px auto 24px">
 
     <div class="qr-canvas-wrap">
       <div id="qr-canvas"></div>
@@ -192,7 +191,7 @@
         text: APP_URL,
         width: 280,
         height: 280,
-        colorDark: '#1F2D4F',
+        colorDark: '#1B2A5E',
         colorLight: '#FFFFFF',
         correctLevel: QRCode.CorrectLevel.H,   /* High — ~30% error correction */
       });
