@@ -166,7 +166,7 @@
         <button class="tab-btn" onclick="switchTab('register')">สมัครสมาชิก</button>
       </div>
 
-      <button class="social-btn">
+      <button class="social-btn" onclick="signInWithGoogle()">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/><path fill="#34A853" d="M6.3 14.7l7 5.1C15.2 16 19.3 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2c-7.7 0-14.3 4.5-17.7 11.1z" opacity=".9"/><path fill="#FBBC05" d="M24 46c5.5 0 10.5-1.9 14.4-5l-6.7-5.5C29.6 37 26.9 38 24 38c-5.1 0-9.5-3.1-11.5-7.6l-6.9 5.3C9.5 41.5 16.3 46 24 46z" opacity=".9"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-1 2.7-2.8 5-5.1 6.6l6.7 5.5C40.9 36.9 44.5 30.9 44.5 24c0-1.3-.2-2.7-.5-4z" opacity=".9"/></svg>
         เข้าสู่ระบบด้วย Google
       </button>
@@ -204,7 +204,7 @@
         <button class="tab-btn active" onclick="switchTab('register')">สมัครสมาชิก</button>
       </div>
 
-      <button class="social-btn">
+      <button class="social-btn" onclick="signInWithGoogle()">
         <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#4285F4" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/><path fill="#34A853" d="M6.3 14.7l7 5.1C15.2 16 19.3 13 24 13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2c-7.7 0-14.3 4.5-17.7 11.1z" opacity=".9"/><path fill="#FBBC05" d="M24 46c5.5 0 10.5-1.9 14.4-5l-6.7-5.5C29.6 37 26.9 38 24 38c-5.1 0-9.5-3.1-11.5-7.6l-6.9 5.3C9.5 41.5 16.3 46 24 46z" opacity=".9"/><path fill="#EA4335" d="M44.5 20H24v8.5h11.8c-1 2.7-2.8 5-5.1 6.6l6.7 5.5C40.9 36.9 44.5 30.9 44.5 24c0-1.3-.2-2.7-.5-4z" opacity=".9"/></svg>
         สมัครด้วย Google
       </button>
@@ -413,6 +413,75 @@
       isLoggingIn = false;
       showError('login-error', firebaseErrorMsg(err.code));
       btn.textContent = 'เข้าสู่ระบบ'; btn.disabled = false;
+    }
+  }
+
+  /* ── Google Sign-in (ปุ่ม login + สมัคร ใช้ฟังก์ชันเดียวกัน) ── */
+  async function signInWithGoogle() {
+    const errId = document.getElementById('panel-register').classList.contains('active') ? 'reg-error' : 'login-error';
+    hideError('login-error'); hideError('reg-error');
+    isLoggingIn = true;   // กัน onAuthStateChanged auto-redirect ก่อนเช็คอนุมัติ
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      const cred  = await fbAuth.signInWithPopup(provider);
+      const user  = cred.user;
+      const fuid  = user.uid;
+      const email = (user.email || '').toLowerCase();
+      const parts = (user.displayName || '').trim().split(/\s+/);
+      const firstName = parts[0] || (email.split('@')[0] || 'ผู้ใช้');
+      const lastName  = parts.slice(1).join(' ') || '';
+      const isAdmin   = email === 'pasuk.agent@gmail.com';
+
+      const ref  = db.collection('users').doc(fuid);
+      const snap = await ref.get();
+
+      if (!snap.exists) {
+        /* ผู้ใช้ใหม่ → สร้าง + เข้าคิวรออนุมัติ (เหมือนสมัครด้วยอีเมล) */
+        const approveToken = isAdmin ? null : Math.random().toString(36).slice(2) + Date.now().toString(36);
+        await ref.set({
+          firstName, lastName, email,
+          approved: isAdmin ? true : false,
+          approveToken, provider: 'google',
+          createdAt: new Date().toISOString()
+        });
+        if (!isAdmin) {
+          try { await notifyAdminByEmail(firstName + ' ' + lastName, email, fuid, approveToken); } catch (e) {}
+          await fbAuth.signOut();
+          isLoggingIn = false;
+          const el = document.getElementById(errId);
+          showError(errId, '✅ สมัครด้วย Google สำเร็จ! กรุณารอการอนุมัติจาก admin ก่อนเข้าใช้งาน');
+          el.style.color = '#1a7f3c'; el.style.background = '#e6f4ea'; el.style.borderColor = '#1a7f3c';
+          return;
+        }
+      } else if (snap.data().approved === false) {
+        /* ผู้ใช้เดิม ยังไม่อนุมัติ */
+        await fbAuth.signOut();
+        isLoggingIn = false;
+        showError(errId, '⏳ บัญชีของคุณยังรอการอนุมัติจาก admin กรุณารอสักครู่');
+        return;
+      }
+
+      /* อนุมัติแล้ว (หรือ admin) → เข้าแอป */
+      ensureLocalProfile(fuid, { firstName, lastName, email }, email);
+      localStorage.setItem('aia_currentUser', fuid);
+      isLoggingIn = false;
+      window.location.href = 'dashboard.html';
+    } catch (err) {
+      isLoggingIn = false;
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+      let msg;
+      if (err.code === 'auth/operation-not-allowed')
+        msg = 'ยังไม่ได้เปิด Google sign-in — admin ต้องเปิดใน Firebase Console ก่อน';
+      else if (err.code === 'auth/unauthorized-domain')
+        msg = 'โดเมนนี้ยังไม่ได้รับอนุญาต — เพิ่ม 448app.github.io ใน Firebase Authorized domains';
+      else if (err.code === 'auth/popup-blocked')
+        msg = 'เบราว์เซอร์บล็อก popup — อนุญาต popup แล้วลองใหม่';
+      else if (err.code === 'auth/account-exists-with-different-credential')
+        msg = 'อีเมลนี้เคยสมัครด้วยรหัสผ่านไว้แล้ว กรุณาเข้าสู่ระบบด้วยอีเมล + รหัสผ่าน';
+      else
+        msg = firebaseErrorMsg(err.code) || ('เข้าสู่ระบบด้วย Google ไม่สำเร็จ: ' + (err.message || err.code));
+      showError(errId, msg);
     }
   }
 
