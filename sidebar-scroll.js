@@ -35,7 +35,7 @@ if ('serviceWorker' in navigator
   function checkSwVersion() {
     if (_swCheckBusy) return;
     _swCheckBusy = true;
-    fetch('/sw.js?_check=' + Date.now(), { cache: 'no-store' })
+    fetch('sw.js?_check=' + Date.now(), { cache: 'no-store' })
       .then(r => r.text())
       .then(text => {
         const m = text.match(/SW_VERSION\s*=\s*['"]([^'"]+)['"]/);
@@ -61,7 +61,7 @@ if ('serviceWorker' in navigator
           banner.style.cssText = `
             position: fixed; top: 14px; left: 50%;
             transform: translateX(-50%); z-index: 99999;
-            background: linear-gradient(135deg, #1F2D4F, #2C3E61);
+            background: linear-gradient(135deg, #1B2A5E, #2C3E61);
             color: white; padding: 10px 22px;
             border-radius: 50px; font-family: 'Sarabun', sans-serif;
             font-weight: 700; font-size: .88rem;
@@ -95,7 +95,7 @@ if ('serviceWorker' in navigator
   window.addEventListener('load', () => {
     /* updateViaCache:'none' → browser ดึง sw.js สดทุกครั้งที่ check update
        (สำคัญมากบน iOS — default 'imports' อาจ cache sw.js เอง ทำให้ไม่เห็น version ใหม่) */
-    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then(reg => {
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
       reg.update();
       reg.addEventListener('updatefound', () => {
         const nw = reg.installing;
