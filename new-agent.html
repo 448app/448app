@@ -30,35 +30,7 @@
   <meta name="apple-mobile-web-app-title" content="Money Match">
   <meta name="mobile-web-app-capable" content="yes">
   <style>
-    :root{ --na-mono:'IBM Plex Mono','IBM Plex Sans Thai',monospace; }
-
-    /* Hero */
-    .na-hero{ background:linear-gradient(135deg,var(--red-primary),var(--red-dark)); color:#fff; padding:26px 32px 28px; }
-    .na-hero .eyebrow{ font-family:var(--na-mono); font-size:11.5px; letter-spacing:.12em; color:var(--gold-primary); font-weight:600; text-transform:uppercase; }
-    .na-hero h1{ font-family:var(--font-display); font-size:1.6rem; font-weight:600; margin:6px 0 5px; letter-spacing:-.01em; }
-    .na-hero p{ opacity:.85; font-size:.92rem; max-width:640px; line-height:1.55; }
-    .na-note{ display:flex; align-items:center; gap:8px; margin-top:14px; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.22); border-radius:10px; padding:8px 14px; font-size:12px; max-width:max-content; }
-
-    /* Deck */
-    .na-deck{ max-width:980px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
-    .na-slide{ position:relative; border:1px solid var(--gray-200); border-radius:12px; overflow:hidden; box-shadow:var(--shadow-sm); background:#fff; cursor:zoom-in; transition:box-shadow .15s,transform .15s; }
-    .na-slide:hover{ box-shadow:var(--shadow-md); transform:translateY(-1px); }
-    .na-slide img{ width:100%; display:block; }
-    .na-slide .num{ position:absolute; top:10px; left:10px; font-family:var(--na-mono); font-size:11px; font-weight:500; background:rgba(16,26,61,.72); color:#fff; padding:3px 9px; border-radius:6px; letter-spacing:.03em; }
-    .na-slide .zoom{ position:absolute; bottom:10px; right:10px; background:rgba(16,26,61,.72); color:#fff; font-size:11px; padding:3px 9px; border-radius:6px; opacity:0; transition:opacity .15s; }
-    .na-slide:hover .zoom{ opacity:1; }
-
-    /* Lightbox */
-    .na-lb{ display:none; position:fixed; inset:0; background:rgba(8,12,26,.94); z-index:9998; align-items:center; justify-content:center; padding:24px; }
-    .na-lb.open{ display:flex; }
-    .na-lb img{ max-width:100%; max-height:90vh; border-radius:8px; box-shadow:0 24px 70px rgba(0,0,0,.55); }
-    .na-lb-btn{ position:fixed; width:46px; height:46px; border-radius:50%; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3); color:#fff; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s; -webkit-tap-highlight-color:transparent; }
-    .na-lb-btn:hover{ background:rgba(255,255,255,.28); }
-    .na-lb-close{ top:18px; right:22px; }
-    .na-lb-prev{ left:18px; top:50%; transform:translateY(-50%); }
-    .na-lb-next{ right:18px; top:50%; transform:translateY(-50%); }
-    .na-lb-count{ position:fixed; bottom:20px; left:50%; transform:translateX(-50%); color:#fff; font-family:var(--na-mono); font-size:13px; background:rgba(255,255,255,.14); padding:6px 16px; border-radius:999px; }
-    @media (max-width:600px){ .na-lb-prev{ left:8px } .na-lb-next{ right:8px } }
+    .na-frame{ width:100%; height:100%; border:0; display:block; }
   </style>
 </head>
 <body>
@@ -119,61 +91,14 @@
     </div>
   </aside>
 
-  <!-- ─── Main ─── -->
-  <main class="app-main" style="overflow-y:auto;">
-
-    <div class="na-hero">
-      <div class="eyebrow">New Agent Journey · Update Feb 2026</div>
-      <h1>ออกรหัสตัวแทนใหม่</h1>
-      <p>เส้นทางตัวแทนใหม่ — ตั้งแต่กรอกใบสมัคร → สอบและอบรม → ออกรหัสตัวแทน → ผลประโยชน์ที่ได้รับ · แตะสไลด์เพื่อดูเต็มจอ</p>
-      <div class="na-note">🔒 เอกสารประกอบการอบรมภายในหน่วย · ใช้ภายในเท่านั้น</div>
-    </div>
-
-    <div class="app-content">
-      <div class="na-deck" id="na-deck"></div>
-    </div>
+  <!-- ─── Main: embed the New Agent Journey document ─── -->
+  <main class="app-main" style="height:100vh;overflow:hidden;padding:0;">
+    <iframe class="na-frame" src="new-agent-journey.html" title="เส้นทางตัวแทนใหม่ — Money Match" loading="eager"></iframe>
   </main>
 </div>
 
-<!-- Lightbox -->
-<div class="na-lb" id="na-lb" onclick="if(event.target===this)closeLB()">
-  <button class="na-lb-btn na-lb-close" onclick="closeLB()" aria-label="ปิด">✕</button>
-  <button class="na-lb-btn na-lb-prev" onclick="lbNav(-1)" aria-label="ก่อนหน้า">‹</button>
-  <img id="na-lb-img" src="" alt="สไลด์">
-  <button class="na-lb-btn na-lb-next" onclick="lbNav(1)" aria-label="ถัดไป">›</button>
-  <div class="na-lb-count" id="na-lb-count">1 / 14</div>
-</div>
-
 <script>
-  /* ── render slide deck ── */
-  const NA_TOTAL = 14;
-  function naSrc(i){ return 'assets/new-agent/slide-' + String(i).padStart(2,'0') + '.png'; }
-  (function renderDeck(){
-    let h = '';
-    for (let i = 1; i <= NA_TOTAL; i++){
-      h += '<div class="na-slide" onclick="openLB(' + i + ')">'
-         + '<span class="num">' + i + ' / ' + NA_TOTAL + '</span>'
-         + '<img src="' + naSrc(i) + '" alt="สไลด์ ' + i + '" loading="lazy">'
-         + '<span class="zoom">🔍 ดูเต็มจอ</span></div>';
-    }
-    document.getElementById('na-deck').innerHTML = h;
-  })();
-
-  /* ── lightbox ── */
-  let lbIdx = 1;
-  const lbEl = document.getElementById('na-lb');
-  function showLB(){ document.getElementById('na-lb-img').src = naSrc(lbIdx); document.getElementById('na-lb-count').textContent = lbIdx + ' / ' + NA_TOTAL; }
-  function openLB(i){ lbIdx = i; showLB(); lbEl.classList.add('open'); }
-  function closeLB(){ lbEl.classList.remove('open'); }
-  function lbNav(d){ lbIdx = ((lbIdx - 1 + d + NA_TOTAL) % NA_TOTAL) + 1; showLB(); }
-  document.addEventListener('keydown', e => {
-    if (!lbEl.classList.contains('open')) return;
-    if (e.key === 'Escape') closeLB();
-    else if (e.key === 'ArrowRight') lbNav(1);
-    else if (e.key === 'ArrowLeft') lbNav(-1);
-  });
-
-  /* ── auth guard + sidebar profile ── */
+  /* auth guard + sidebar profile */
   function getUser() {
     const uid = localStorage.getItem('aia_currentUser');
     let users = [];
