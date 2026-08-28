@@ -7,6 +7,7 @@
 !icon_*.png
 # Exception: Money Match brand logos (required for app)
 !assets/*.png
+!assets/new-agent/*.png
 
 # OS files
 .DS_Store
