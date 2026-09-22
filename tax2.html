@@ -601,6 +601,14 @@ function computeScope(client, scope) {
   if (lifeIns + healthIns > 100000) {
     total -= (lifeIns + healthIns - 100000);
   }
+  /* 500K รวมกลุ่มออมเพื่อเกษียณ: SSF + RMF + PVD + กบข. + กอช. + ประกันบำนาญ (กฎกรมสรรพากร)
+     แผนภาษีใน PDF (plan_summary.html → _psTaxScope) ใช้เพดานเดียวกัน */
+  const retGroup = ['ssf','rmf','pvd','gpf','nsf','annuity'].reduce((s, k) => {
+    const row = DEDUCTION_ROWS.find(r => r.key === k);
+    return s + Math.min(getValue(ti, scope, k, 0), row.cap(annualIncome).amount);
+  }, 0);
+  const retExcess = Math.max(retGroup - 500000, 0);
+  total -= retExcess;
 
   const eduDonate = scope === 'imp'
     ? Number((ti.improve||{}).eduDonate || 0)
@@ -619,7 +627,7 @@ function computeScope(client, scope) {
 
   return {
     annualIncome, expense,
-    totalDeduct: total,
+    totalDeduct: total, retExcess,
     afterDeduct,
     eduDeduct, eduDonate,
     net,
@@ -728,7 +736,7 @@ function buildTaxHTML() {
       <div id="t3-after">
       <!-- Summary rows -->
       <div class="t3-sum">
-        <div class="t3-sum-lbl">รวมค่าลดหย่อน</div>
+        <div class="t3-sum-lbl">รวมค่าลดหย่อน${(cur.retExcess || imp.retExcess) ? '<div style="font-size:.72rem;font-weight:500;color:var(--gray-500);margin-top:2px;">หักส่วนที่เกินเพดานรวมกลุ่มเกษียณ 500,000 แล้ว</div>' : ''}</div>
         <div class="t3-cell"><div class="t3-sum-pill">${fmt(cur.totalDeduct)}</div></div>
         <div class="t3-cell"><div class="t3-sum-pill">${fmt(imp.totalDeduct)}</div></div>
       </div>

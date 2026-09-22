@@ -673,26 +673,33 @@ function getHospitalTier(hospitalRate) {
   return 'international';                          // International
 }
 
-/* รวม coverage จาก medical riders ใน policies → ใช้เป็น default ของ "เตรียมไว้แล้ว"
-   Heuristic: rider.sumAssured คืออะไร? ปกติคือ ค่าห้องต่อวัน (perVisit) หรือยอดรวมต่อปี
-   ตอนนี้ใช้แบบ pragmatic — ใส่ใน perVisit (ค่าห้อง) เพราะนี่คือ rider value ที่ผู้ใช้กรอก */
+/* รวมความคุ้มครองจากสัญญาเพิ่มเติมใน policies → ใช้เป็นค่าเริ่มต้นของ "เตรียมไว้แล้ว"
+   ชื่อช่องตรงกับฟอร์มสัญญาเพิ่มเติมใน policies.html (renderRiderFields)
+   แผนประกันสุขภาพใน PDF (plan_summary.html → _psHealthFromPolicies) ใช้ mapping เดียวกัน
+   (เดิมอ่าน r.sumAssured ที่ฟอร์มไม่ได้บันทึก → ได้ 0 และเอาทุนประกันชีวิต p.coverage
+    มานับเป็นวงเงินค่ารักษาของกรมธรรม์ที่ไม่มีสัญญาเพิ่มเติม) */
 function computeMedicalCoverageFromPolicies(client) {
   if (!client || !client.policies) return {};
   const out = {};
-  let totalRoom = 0;
+  const add = (k, v) => { const n = Number(v || 0); if (n > 0) out[k] = (out[k] || 0) + n; };
   client.policies.forEach(p => {
     const riders = Array.isArray(p.riders) ? p.riders : [];
     riders.forEach(r => {
       if (r.type === 'medical') {
-        totalRoom += Number(r.sumAssured || r.cov || 0);
+        add('roomMeal', r.roomMeal);
+        add('perVisit', r.perVisit);
+        add('opdPerVisit', r.opdPerVisit);
+        add('opdPerYear', r.opdPerYear);
+      } else if (r.type === 'income') {
+        add('incomeReplace', r.dailyComp);
+      } else if (r.type === 'critical') {
+        add('ciEarly', r.ciEarly);
+        add('ciSevere', r.ciSevere);
       }
     });
-    /* legacy field — riderHealthCov */
-    if ((!riders.length || !riders.some(r => r.type === 'medical')) && Number(p.riderHealthCov || p.coverage || 0)) {
-      totalRoom += Number(p.riderHealthCov || p.coverage || 0);
-    }
+    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — riderHealthCov = วงเงินค่ารักษาต่อครั้ง */
+    if (!riders.some(r => r.type === 'medical')) add('perVisit', p.riderHealthCov);
   });
-  if (totalRoom > 0) out.perVisit = totalRoom; // ค่าห้องต่อวัน (เป็น default ที่ใช้ได้)
   return out;
 }
 

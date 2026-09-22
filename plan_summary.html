@@ -788,6 +788,14 @@
       background: var(--red-dark);
       color: white;
     }
+    /* หัวข้อที่ยังไม่มีข้อมูล — ติ๊กไม่ได้ (กันหัวข้อว่างพิมพ์ ฿0 ลง PDF) */
+    .pf-section-item .pf-si-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.35; }
+    .pf-section-item .pf-si-hint { font-size: .72rem; font-weight: 500; color: var(--gray-500); margin-top: 2px; }
+    .pf-section-item.pf-disabled { cursor: not-allowed; background: #FAFBFD; border-style: dashed; }
+    .pf-section-item.pf-disabled .pf-si-name { color: var(--gray-500); }
+    .pf-section-item.pf-disabled input[type="checkbox"] { cursor: not-allowed; }
+    .pf-section-item.pf-disabled:hover { border-color: var(--gray-100); background: #FAFBFD; }
+    .pf-section-item.pf-disabled:hover .pf-si-icon { background: var(--gray-100); color: var(--gray-600); }
 
     /* ════════════════════════════════════════════════
        PREVIEW DOCUMENT — Formal/Premium financial report style
@@ -1054,6 +1062,21 @@
       background: #FAFBFD;
       border: 1px dashed #E5E7EB; border-radius: 8px;
     }
+    /* ข้อควรทราบ (compliance) — อยู่ท้ายเนื้อหาทุกครั้งที่เอกสารมีตัวเลข */
+    .pf-disclaimer {
+      margin-top: 20px; padding: 14px 16px;
+      border: 1px solid #E5E7EB; border-radius: 8px; background: #FAFBFD;
+      font-size: .74rem; line-height: 1.65; color: #4B5563;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .pf-disclaimer-title { font-weight: 800; color: #1B2A5E; font-size: .8rem; margin-bottom: 4px; }
+    .pf-disclaimer p { margin: 2px 0; }
+    .pf-disclaimer b { color: #1F2937; }
+    .pf-skip-note { margin-top: 10px; font-size: .78rem; color: #6B7280; }
+    .pf-doc-table td.muted { color: #9CA3AF; }
+    .pf-basis-note { margin-top: 8px; font-size: .74rem; color: #6B7280; line-height: 1.6; }
+    .pf-doc-table tr.pf-tax-sub td { color: #6B7280; font-size: .92em; }
+    .pf-doc-table tr.pf-tax-sub td:first-child { padding-left: 22px; }
 
     /* ═══ Status badges + KPI cards ═══ */
     .pf-status-badge {
@@ -1910,69 +1933,231 @@ function _psChildEdu(child, client) {
   return { totalFuture, fvSavings: fvLump + fvAnnuity, k12Total, uniTotal, uniBreakdown };
 }
 
-/* === HEALTH — match policies.html renderHealthGap (HOSPITAL_TIERS by trustedTier) === */
-const _PS_HOSPITAL_TIERS = [
-  { dailyRoom: 1500, surgeryAvg: 50000, ipdAvg: 30000 },
-  { dailyRoom: 3500, surgeryAvg: 150000, ipdAvg: 80000 },
-  { dailyRoom: 8000, surgeryAvg: 400000, ipdAvg: 200000 },
-  { dailyRoom: 15000, surgeryAvg: 800000, ipdAvg: 500000 },
+/* === HEALTH — sync กับหน้า "ประกันสุขภาพ" (health-insurance.html) ===
+   แนะนำ  = สูตรเดียวกับหน้าประกันสุขภาพ (รพ.+ห้องที่เลือก · อายุ · รายได้) + ค่าที่ตัวแทนแก้เอง
+   มีแล้ว = ค่าที่กรอกในคอลัมน์ "เตรียมไว้แล้ว" · ถ้าไม่ได้กรอก → รวมจากสัญญาเพิ่มเติมในสรุปกรมธรรม์
+   (เดิมรวมจากช่อง sumAssured ที่ฟอร์มกรมธรรม์ไม่ได้บันทึก → ยอดที่มีเป็น 0 เสมอ
+    และใช้ Tier โรงพยาบาลจากช่องที่ถูกซ่อน → ติด Tier 2 ทุกคน) */
+const _PS_HEALTH_ROWS = [
+  { key:'roomMeal',          label:'ค่าห้อง ค่าอาหาร (ต่อวัน)' },
+  { key:'perVisit',          label:'วงเงินค่ารักษา (ต่อครั้ง)' },
+  { key:'opdPerVisit',       label:'ผู้ป่วยนอก (ต่อครั้ง)' },
+  { key:'opdPerYear',        label:'ผู้ป่วยนอก (ต่อปี)' },
+  { key:'incomeReplace',     label:'ชดเชยรายได้ (รายวัน)' },
+  { key:'ciEarly',           label:'โรคร้ายแรง (ระยะต้น-ปานกลาง)' },
+  { key:'ciSevere',          label:'โรคร้ายแรง (ระยะรุนแรง)' },
+  { key:'accidentWeekly',    label:'ชดเชยอุบัติเหตุ (ต่อสัปดาห์)' },
+  { key:'accidentTreatment', label:'ค่ารักษาอุบัติเหตุ (ต่อครั้ง)' },
+  { key:'disability',        label:'ทุพพลภาพ' },
 ];
+function _psHealthAgeInt(client) {
+  const dob = client && (client.dob || client.birthdate);
+  if (!dob) return null;
+  const bd = new Date(dob);
+  if (isNaN(bd)) return null;
+  const today = new Date();
+  let age = today.getFullYear() - bd.getFullYear();
+  const m = today.getMonth() - bd.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
+  return age;
+}
+/* = computeRecommendations() ใน health-insurance.html — แก้สูตรที่นั่นต้องแก้ที่นี่ด้วย */
+function _psHealthRecommend(client, hi) {
+  const hospital = hi.hospital || null;
+  const hospitalRate = hospital ? Number(hi.tier === 'vip' ? hospital.vip : hospital.std) || 0 : 0;
+  const rate = hospitalRate || 3000;
+  const tierKey = rate < 3000 ? 'state' : rate < 6000 ? 'mid' : rate < 10000 ? 'premium' : 'international';
+  const m = {
+    state:         { perVisitMult: 100, opdRatio: 0.25, accidentTreat: 50000  },
+    mid:           { perVisitMult: 130, opdRatio: 0.27, accidentTreat: 100000 },
+    premium:       { perVisitMult: 150, opdRatio: 0.30, accidentTreat: 200000 },
+    international: { perVisitMult: 200, opdRatio: 0.35, accidentTreat: 500000 },
+  }[tierKey];
+  const monthlyIncome = client.income ? Number(client.income) / 12
+    : (client.cashflow && client.cashflow.income ? Number(client.cashflow.income) : 0);
+  const annualIncome = monthlyIncome * 12;
+  const dailyIncome  = monthlyIncome / 30;
+  const age = _psHealthAgeInt(client) || 35;
+  const ageMult = age < 30 ? 0.85 : age < 45 ? 1.0 : age < 60 ? 1.2 : 1.4;
+  const baseMonthly = monthlyIncome || 30000;
+  const auto = {
+    roomMeal:          rate,
+    perVisit:          Math.max(Math.round(rate * m.perVisitMult * ageMult / 100000) * 100000, 100000),
+    opdPerVisit:       Math.max(Math.round(rate * m.opdRatio / 100) * 100, 500),
+    opdPerYear:        Math.max(Math.round(rate * m.opdRatio * 20 / 1000) * 1000, 5000),
+    incomeReplace:     Math.max(Math.round(dailyIncome * 0.7 / 500) * 500, 1500),
+    ciEarly:           Math.max(Math.round(annualIncome * 2 / 100000) * 100000, 500000),
+    ciSevere:          Math.max(Math.round(annualIncome * 5 / 100000) * 100000, 2000000),
+    accidentWeekly:    Math.max(Math.round(dailyIncome * 7 / 1000) * 1000, 5000),
+    accidentTreatment: Math.max(Math.round(m.accidentTreat * ageMult / 10000) * 10000, 50000),
+    disability:        Math.max(Math.round(baseMonthly * 24 * ageMult / 100000) * 100000, 1000000),
+  };
+  const custom = hi.customRecommendations || {};
+  const rec = {};
+  Object.keys(auto).forEach(k => { rec[k] = custom[k] != null ? Number(custom[k]) || 0 : auto[k]; });
+  return { rec, hospital, rate };
+}
+/* = computeMedicalCoverageFromPolicies() ใน health-insurance.html
+   ชื่อช่องตรงกับฟอร์มสัญญาเพิ่มเติมใน policies.html (renderRiderFields) */
+function _psHealthFromPolicies(client) {
+  const out = {};
+  const add = (k, v) => { const n = Number(v || 0); if (n > 0) out[k] = (out[k] || 0) + n; };
+  (client.policies || []).forEach(p => {
+    const riders = Array.isArray(p.riders) ? p.riders : [];
+    riders.forEach(r => {
+      if (r.type === 'medical') {
+        add('roomMeal', r.roomMeal);
+        add('perVisit', r.perVisit);
+        add('opdPerVisit', r.opdPerVisit);
+        add('opdPerYear', r.opdPerYear);
+      } else if (r.type === 'income') {
+        add('incomeReplace', r.dailyComp);
+      } else if (r.type === 'critical') {
+        add('ciEarly', r.ciEarly);
+        add('ciSevere', r.ciSevere);
+      }
+    });
+    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — riderHealthCov = วงเงินค่ารักษาต่อครั้ง */
+    if (!riders.some(r => r.type === 'medical')) add('perVisit', p.riderHealthCov);
+  });
+  return out;
+}
 function _psHealthCalc(client) {
-  const policies = client.policies || [];
-  /* รวม medical riders + legacy riderHealthCov — total IPD coverage */
-  const medicalRiders = policies.flatMap(p => Array.isArray(p.riders) ? p.riders : [])
-    .filter(r => r.type === 'medical')
-    .reduce((s,r) => s + Number(r.sumAssured||0), 0);
-  const legacyHealth = policies
-    .filter(p => !Array.isArray(p.riders) || !p.riders.length)
-    .reduce((s,p) => s + Number(p.riderHealthCov||0), 0);
-  const totalIPD = medicalRiders + legacyHealth;
-  const tier = client.trustedHospitalTier || 2;
-  const tierData = _PS_HOSPITAL_TIERS[tier - 1] || _PS_HOSPITAL_TIERS[1];
-  const ipdNeed = tierData.ipdAvg;
-  return { target: ipdNeed, have: totalIPD, gap: Math.max(ipdNeed - totalIPD, 0) };
+  const hi = client.healthInputs || {};
+  const { rec, hospital, rate } = _psHealthRecommend(client, hi);
+  const fromPolicies = _psHealthFromPolicies(client);
+  const prepared = hi.prepared || {};
+  const rows = _PS_HEALTH_ROWS.map(r => {
+    const typed = prepared[r.key];
+    const have = (typed != null && typed !== '') ? (Number(typed) || 0) : Number(fromPolicies[r.key] || 0);
+    const need = Number(rec[r.key] || 0);
+    return { key: r.key, label: r.label, have, need, ok: need > 0 && have >= need };
+  });
+  const ipd = rows.find(r => r.key === 'perVisit');
+  return {
+    target: ipd.need, have: ipd.have, gap: Math.max(ipd.need - ipd.have, 0),
+    rows, okCount: rows.filter(r => r.ok).length,
+    hospital, roomType: hi.tier === 'vip' ? 'VIP' : 'STD', rate,
+  };
 }
 
-/* === TAX — proper income-based caps (match tax.html + policies.html caps) === */
+/* === TAX — คำนวณแบบเดียวกับหน้า "ลดหย่อนภาษี" (tax2.html → computeScope) ===
+   เงินได้ = ช่องรายได้ 40(1)–40(8) ในหน้าคำนวณภาษี · ค่าลดหย่อน = คอลัมน์ "ปัจจุบัน" (taxInputs)
+   และ "ปรับปรุง" (taxInputs.improve) · ภาษีคิดแบบขั้นบันไดจากเงินได้สุทธิ
+   (เดิมเอาเพดานทุกช่องมาบวกกันโดยไม่คิดเพดานรวม แล้วคูณอัตราภาษีที่คิดจากรายได้ก่อนหักค่าใช้จ่าย
+    → "เหลือใช้สิทธิ์" และ "ประหยัดภาษีได้อีก" สูงเกินจริงมาก) */
+const _PS_TAX_BRACKETS = [
+  { lo:0,       hi:150000,   rate:0    },
+  { lo:150001,  hi:300000,   rate:0.05 },
+  { lo:300001,  hi:500000,   rate:0.10 },
+  { lo:500001,  hi:750000,   rate:0.15 },
+  { lo:750001,  hi:1000000,  rate:0.20 },
+  { lo:1000001, hi:2000000,  rate:0.25 },
+  { lo:2000001, hi:5000000,  rate:0.30 },
+  { lo:5000001, hi:Infinity, rate:0.35 },
+];
+/* เพดานรายช่อง = DEDUCTION_ROWS ใน tax2.html (แก้ที่นั่นต้องแก้ที่นี่ด้วย) */
+const _PS_TAX_CAPS = {
+  personal: () => 60000,  spouse: () => 60000,  child: () => Infinity,  parent: () => 120000,  disabled: () => Infinity,
+  lifeIns: () => 100000,  lifeInsSpouse: () => 10000,  healthIns: () => 25000,  parentIns: () => 15000,  mortgage: () => 100000,
+  thaiesg: inc => Math.min(inc * 0.30, 300000),  thaiesgx: () => 500000,
+  ssf: inc => Math.min(inc * 0.30, 200000),  rmf: inc => Math.min(inc * 0.30, 500000),
+  pvd: inc => Math.min(inc * 0.15, 500000),  gpf: inc => Math.min(inc * 0.30, 500000),  nsf: () => 30000,
+  annuity: inc => Math.min(inc * 0.15, 200000),
+  sso: () => 9000,  maternity: () => 60000,  politicalDonate: () => 10000,  debitFee: () => Infinity,
+};
+const _PS_TAX_DEFAULTS = { personal: 60000, sso: 9000 };
+const _PS_RET_GROUP = ['ssf','rmf','pvd','gpf','nsf','annuity'];   /* รวมกันไม่เกิน 500,000 (กฎกรมสรรพากร) */
+
+function _psTaxBracket(net) {   /* = calcTax() ใน tax2.html + อัตราขั้นสูงสุดที่ถึง */
+  if (net <= 0) return { tax: 0, rate: 0 };
+  let tax = 0, rate = 0;
+  for (const b of _PS_TAX_BRACKETS) {
+    if (net <= b.lo) break;
+    tax += Math.max(Math.min(net, b.hi) - b.lo + 1, 0) * b.rate;
+    rate = b.rate;
+    if (net <= b.hi) break;
+  }
+  return { tax, rate };
+}
+function _psTaxIncome(c) {      /* = getAnnualIncome() ใน tax2.html */
+  const ti = c.taxInputs || {};
+  return ['salary','bonus','other','inc402','inc403','inc404','inc405','inc406','inc407','inc408']
+    .reduce((s, k) => s + (Number(ti[k]) || 0), 0);
+}
+function _psTaxExpense(c) {     /* = computeExpense() ใน tax2.html */
+  const ti = c.taxInputs || {};
+  const n = k => Number(ti[k] || 0);
+  return Math.min((n('salary') + n('bonus') + n('inc402') + n('inc403')) * 0.5, 100000)
+    + Math.max(n('act405'), n('inc405') * 0.30)
+    + Math.max(n('act406'), n('inc406') * (ti.isMedical ? 0.60 : 0.30))
+    + Math.max(n('act407'), n('inc407') * 0.60)
+    + Math.max(n('act408'), n('inc408') * 0.60);
+}
+function _psTaxVal(c, scope, key) {   /* = getValue() ใน tax2.html */
+  const ti = c.taxInputs || {};
+  const v = (scope === 'imp' ? (ti.improve || {}) : ti)[key];
+  if (v == null || v === '') return _PS_TAX_DEFAULTS[key] || 0;
+  return Number(v) || 0;
+}
+/* = computeScope() ใน tax2.html · extra = ค่าลดหย่อนที่เพิ่มเข้าไป (ใช้หาภาษีหลังใช้สิทธิ์เพิ่ม) */
+function _psTaxScope(c, scope, extra) {
+  const income = _psTaxIncome(c);
+  const used = k => Math.min(_psTaxVal(c, scope, k), _PS_TAX_CAPS[k](income));
+  let total = Object.keys(_PS_TAX_CAPS).reduce((s, k) => s + used(k), 0);
+  const lifeHealth = used('lifeIns') + used('healthIns');
+  if (lifeHealth > 100000) total -= lifeHealth - 100000;
+  const retGroup = _PS_RET_GROUP.reduce((s, k) => s + used(k), 0);
+  if (retGroup > 500000) total -= retGroup - 500000;
+  total += extra || 0;
+  const ti = c.taxInputs || {};
+  const eduDonate = Number((scope === 'imp' ? (ti.improve || {}).eduDonate : ti.eduDonate) || 0);
+  const expense = _psTaxExpense(c);
+  const afterDeduct = Math.max(income - expense, 0) - total;
+  const net = afterDeduct - Math.min(eduDonate * 2, Math.max(afterDeduct, 0) * 0.10);
+  const { tax, rate } = _psTaxBracket(Math.max(net, 0));
+  return { income, expense, totalDeduct: total, net, tax, rate };
+}
 function _psTaxCalc(client) {
-  const ti = client.taxInputs || {};
-  const hi = client.healthInputs || {};
-  const annualIncome = Number(client.income) ||
-    (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
-  /* available cap per type ตามรายได้ + เพดานกฎหมาย */
-  const incomeBased15 = annualIncome > 0 ? annualIncome * 0.15 : Infinity;
-  const incomeBased30 = annualIncome > 0 ? annualIncome * 0.30 : Infinity;
-  const caps = {
-    lifeIns:   100000,                                    /* ชีวิต ≤ 100K (ร่วมกับสุขภาพ) */
-    healthIns: 25000,                                     /* สุขภาพ ≤ 25K (รวมชีวิต ≤ 100K) */
-    parentIns: 15000,                                     /* บิดามารดา ≤ 15K */
-    annuity:   Math.min(200000, incomeBased15),           /* บำนาญ ≤ 15% × รายได้, max 200K */
-    pvd:       Math.min(500000, incomeBased15),           /* PVD ≤ 15% × รายได้, max 500K */
-    rmf:       Math.min(500000, incomeBased30),           /* RMF ≤ 30% × รายได้, max 500K */
-    ssf:       Math.min(200000, incomeBased30),           /* SSF ≤ 30% × รายได้, max 200K */
-    thaiesg:   Math.min(300000, incomeBased30),           /* ThaiESG ≤ 30% × รายได้, max 300K */
+  const c = client;
+  const income = _psTaxIncome(c);
+  const cur = _psTaxScope(c, 'cur', 0);
+  const capOf = k => _PS_TAX_CAPS[k](income);
+  const val = k => _psTaxVal(c, 'cur', k);
+  const used = k => Math.min(val(k), capOf(k));
+  /* สิทธิ์ที่ยังใช้เพิ่มได้ในกลุ่มที่วางแผนได้ (ประกัน/กองทุน) หลังคิดเพดานรวมแล้ว
+     ไม่นับ SSF (สิทธิลดหย่อนผูกกับปีที่ซื้อ ต้องตรวจประกาศปีภาษีล่าสุด) และ PVD/กบข. (ขึ้นกับนายจ้าง) */
+  const lhUsed = Math.min(used('lifeIns') + used('healthIns'), 100000);
+  const lhRoom = 100000 - lhUsed;
+  const retUsed = Math.min(_PS_RET_GROUP.reduce((s, k) => s + used(k), 0), 500000);
+  const retRoom = Math.min(500000 - retUsed,
+    Math.max(capOf('rmf') - val('rmf'), 0) + Math.max(capOf('annuity') - val('annuity'), 0));
+  const esgRoom = Math.max(capOf('thaiesg') - val('thaiesg'), 0);
+  const parentRoom = val('parentIns') > 0 ? Math.max(15000 - val('parentIns'), 0) : 0;
+  const room = lhRoom + retRoom + esgRoom + parentRoom;
+  /* ลดหย่อนจนเงินได้สุทธิต่ำกว่า 150,000 ไม่ช่วยลดภาษีแล้ว (ขั้นแรกยกเว้นภาษี) */
+  const usefulRoom = Math.min(room, Math.max(cur.net - 150000, 0));
+  const best = _psTaxScope(c, 'cur', usefulRoom);
+  const imp = c.taxInputs && c.taxInputs.improve;
+  const hasImprove = !!imp && Object.keys(imp).some(k => !(k in _PS_TAX_DEFAULTS) && Number(imp[k]) > 0);
+  const have = lhUsed + retUsed + used('thaiesg') + used('thaiesgx') + used('parentIns');
+  return {
+    target: have + usefulRoom, have, gap: usefulRoom,
+    income, cur, room, usefulRoom,
+    maxSaving: Math.max(cur.tax - best.tax, 0),
+    imp: hasImprove ? _psTaxScope(c, 'imp', 0) : null,
+    groups: { lhUsed, lhRoom, retUsed, retRoom, esgUsed: used('thaiesg'), esgRoom,
+              esgxUsed: used('thaiesgx'), parentUsed: used('parentIns'), parentRoom },
+    items: { ssf: used('ssf'), rmf: used('rmf'), pvd: used('pvd') + used('gpf'), nsf: used('nsf'), annuity: used('annuity') },
   };
-  /* ThaiESG ดึงจาก client.assets (type='thaiesg') — tax.html ยังไม่มี input field
-     ใช้ ti.thaiesg ถ้ามี, ไม่งั้น fallback assets */
-  const thaiesgFromAssets = (client.assets || [])
-    .filter(a => a.type === 'thaiesg')
-    .reduce((s,a) => s + _psAnnualContrib(a), 0);
-  const thaiesgAmt = ti.thaiesg != null ? Number(ti.thaiesg) : thaiesgFromAssets;
-  /* รวมเบี้ยประกันสุขภาพจาก healthInputs.premium ถ้ามี (ที่กรอกในหน้า "ประกันสุขภาพ")
-     ใช้ ti.healthIns ถ้ามี (override จาก tax.html), ไม่งั้น fallback hi.premium */
-  const healthInsAmt = ti.healthIns != null ? Number(ti.healthIns) : Number(hi.premium || 0);
-  /* have = sum ของ deduction จริง (capped) */
-  const have = Math.min(Number(ti.lifeIns||0), caps.lifeIns)
-             + Math.min(healthInsAmt, caps.healthIns)
-             + Math.min(Number(ti.parentIns||0), caps.parentIns)
-             + Math.min(Number(ti.annuity||0), caps.annuity)
-             + Math.min(Number(ti.pvd||0), caps.pvd)
-             + Math.min(Number(ti.rmf||0), caps.rmf)
-             + Math.min(Number(ti.ssf||0), caps.ssf)
-             + Math.min(thaiesgAmt, caps.thaiesg);
-  /* target = available cap ทั้งหมด (ใช้ได้เต็มที่) */
-  const target = Object.values(caps).reduce((s,v) => s + (isFinite(v) ? v : 0), 0);
-  return { target, have, gap: Math.max(target - have, 0) };
+}
+/* แถวภาระในหน้าประกันชีวิตที่ "นับรวม" (included !== false) — ใช้ทั้งยอดรวมและตารางใน PDF */
+function _psLifeRows(client) {
+  const li = client.lifeInputs || {};
+  const pick = (arr, kind) => (arr || [])
+    .filter(r => r && r.included !== false && Number(r.amount || 0) > 0)
+    .map(r => ({ kind, name: r.name || '—', amount: Number(r.amount || 0) }));
+  return [...pick(li.debts, 'หนี้สิน'), ...pick(li.responsibilities, 'ความรับผิดชอบ')];
 }
 
 function computeSummary(client) {
@@ -1992,9 +2177,10 @@ function computeSummary(client) {
   });
   const eduPct = eduTarget > 0 ? Math.min(eduHave / eduTarget * 100, 100) : 0;
 
-  /* 3. LIFE INSURANCE — match life-insurance.html (Simple/DIME) */
+  /* 3. LIFE INSURANCE — match life-insurance.html render()
+     หน้าประกันชีวิตคิดแบบ "หนี้สิน + ความรับผิดชอบ" (บังคับ Simple) และรวมเฉพาะแถวที่เปิดนับรวม
+     (เดิม PDF รวมทุกแถวรวมแถวที่กดปิด และยังคิดแบบ DIME ได้ → ตัวเลขไม่ตรงกับหน้าจอ) */
   const li = client.lifeInputs || {};
-  const method = li.method || 'simple';
   const lifeTypes = ['ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา'];
   const lifeCov = (client.policies||[])
     .filter(p => lifeTypes.includes(p.type))
@@ -2002,40 +2188,25 @@ function computeSummary(client) {
   const liquidAssets = (client.assets || [])
     .filter(a => ['cash','deposit','bond'].includes(a.type))
     .reduce((s,a) => s + Number(a.currentValue||0), 0);
-  let lifeNeed;
-  if (method === 'dime') {
-    /* DIME: D + I + E (replicate life-insurance.html getDIMENeed) */
-    const debt = (client.liabilities || []).reduce((s,l) => s + Number(l.principal||0), 0);
-    const annualIncome = Number(client.income) ||
-      (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
-    const plan = _psRetirePlan(client);
-    const cachedAge = _psAgeNow(client.dob);
-    const ytrRaw = cachedAge != null ? Math.max(plan.retireAge - cachedAge, 1) : 25;
-    const yearsToRetire = Math.round(ytrRaw * 10) / 10;
-    const incomeI = annualIncome * yearsToRetire;
-    let educationE = 0;
-    children.forEach(ch => { educationE += _psChildEdu(ch, client).totalFuture; });
-    lifeNeed = debt + incomeI + educationE;
-  } else {
-    /* Simple: หนี้สิน + ความรับผิดชอบ */
-    lifeNeed = (li.debts||[]).reduce((s,d) => s + Number(d.amount||0), 0)
-             + (li.responsibilities||[]).reduce((s,r) => s + Number(r.amount||0), 0);
-  }
-  const lifeHave = lifeCov + (Number(li.liquidAssets) >= 0 ? Number(li.liquidAssets) : liquidAssets);
+  const lifeNeed = _psLifeRows(client).reduce((s, r) => s + r.amount, 0);
+  /* สินทรัพย์สภาพคล่อง: ค่าที่กรอกในหน้าประกันชีวิต · ถ้าไม่ได้กรอกใช้เงินสด/เงินฝาก/ตราสารหนี้ในสินทรัพย์ */
+  const lifeLiquid = (li.liquidAssets != null && li.liquidAssets !== '') ? (Number(li.liquidAssets) || 0) : liquidAssets;
+  const lifeHave = lifeCov + lifeLiquid;
   const lifePct = lifeNeed > 0 ? Math.min(lifeHave / lifeNeed * 100, 100) : (lifeHave > 0 ? 100 : 0);
 
   /* 4. HEALTH INSURANCE — match policies.html renderHealthGap */
   const health = _psHealthCalc(client);
   const healthPct = health.target > 0 ? Math.min(health.have / health.target * 100, 100) : 0;
 
-  /* 5. TAX — match tax.html caps */
+  /* 5. TAX — คำนวณแบบเดียวกับหน้าลดหย่อนภาษี (ดู _psTaxCalc)
+     ไม่มีภาษีให้ลดเพิ่ม (ภาษีเป็น 0 หรือใช้สิทธิ์ครบ) = 100% · ยังไม่มีรายได้ในหน้าภาษี = 0% */
   const tax = _psTaxCalc(client);
-  const taxPct = tax.target > 0 ? Math.min(tax.have / tax.target * 100, 100) : 0;
+  const taxPct = tax.income <= 0 ? 0 : tax.target > 0 ? Math.min(tax.have / tax.target * 100, 100) : 100;
 
   return {
     retire:    { pct: retirePct,  target: retire.target, have: retire.have,  gap: retire.gap },
     education: { pct: eduPct,     target: eduTarget,     have: eduHave,      gap: Math.max(eduTarget - eduHave, 0) },
-    lifeIns:   { pct: lifePct,    target: lifeNeed,      have: lifeHave,     gap: Math.max(lifeNeed - lifeHave, 0) },
+    lifeIns:   { pct: lifePct,    target: lifeNeed,      have: lifeHave,     gap: Math.max(lifeNeed - lifeHave, 0), cov: lifeCov, liquid: lifeLiquid },
     healthIns: { pct: healthPct,  target: health.target, have: health.have,  gap: health.gap },
     tax:       { pct: taxPct,     target: tax.target,    have: tax.have,     gap: tax.gap },
   };
@@ -2049,9 +2220,75 @@ function statusOf(pct) {
 }
 
 /* ════════════════════════════════════════════
+   ตรวจว่าหัวข้อไหน "มีข้อมูลจริง" — ใช้ตั้งค่าเริ่มต้นตอนเลือกหัวข้อ PDF
+   และตัดหมวดที่ยังไม่ได้วางแผนออกจากสรุป/ปิรามิดใน PDF
+   (เดิมหัวข้อว่างพิมพ์ ฿0 และข้อความขัดกัน เช่น ป้าย "ขาด" คู่กับ "✓ ครบ")
+═══════════════════════════════════════════ */
+function _pfGoals(c) {
+  return (c.lifeGoals && c.lifeGoals.length) ? c.lifeGoals : (c.financialGoals || []);
+}
+function _pfTopicHasData(c, summary) {
+  const cf = c.cashflow || {};
+  const hi = c.healthInputs || {};
+  const prepared = hi.prepared || {};
+  const hasHealthRiders = (c.policies || []).some(p =>
+    (Array.isArray(p.riders) && p.riders.some(r => ['medical', 'income', 'critical'].includes(r.type)))
+    || Number(p.riderHealthCov || 0) > 0);
+  const hasHealthInput = !!hi.hospital || Number(hi.premium || 0) > 0 ||
+    Object.keys(prepared).some(k => k !== 'nursingService' && prepared[k] !== '' && prepared[k] != null);
+  return {
+    cashflow:  Number(cf.income || 0) > 0,
+    networth:  (c.assets || []).length > 0 || (c.liabilities || []).length > 0,
+    retire:    !!_psAgeNow(c.dob) && Number((c.retirementPlan || {}).annualSpend || 0) > 0 && summary.retire.target > 0,
+    education: (c.children || []).length > 0,
+    lifeIns:   !!c.lifeInputs && summary.lifeIns.target > 0,
+    healthIns: hasHealthInput || hasHealthRiders,
+    tax:       _psTaxIncome(c) > 0,   /* รายได้ในหน้าคำนวณภาษี */
+    policies:  (c.policies || []).length > 0,
+    goals:     _pfGoals(c).length > 0,
+  };
+}
+/* key → { avail: ติ๊กได้, def: ติ๊กให้เป็นค่าเริ่มต้น, hint: ข้อความใต้ชื่อหัวข้อ } */
+function _pfAvailability(c) {
+  const has = _pfTopicHasData(c, computeSummary(c));
+  const WHERE = {
+    cashflow:  'กรอกที่ กระแสเงินสด',
+    networth:  'กรอกที่ สินทรัพย์ / งบการเงิน',
+    retire:    'ต้องมีวันเกิด และกรอกที่ วางแผนเกษียณ',
+    education: 'เพิ่มบุตรที่ การศึกษาบุตร',
+    lifeIns:   'กรอกที่ ประกันชีวิต',
+    healthIns: 'กรอกที่ ประกันสุขภาพ',
+    tax:       'กรอกที่ คำนวณภาษี',
+    policies:  'เพิ่มที่ สรุปกรมธรรม์',
+    goals:     'เพิ่มที่ เป้าหมายชีวิต',
+  };
+  const catCount = CATEGORIES.filter(cat => has[cat.key]).length;
+  const pyramidBase = has.cashflow && has.networth;   /* ชั้นฐาน = รายรับรายจ่าย + เงินสำรอง */
+  const broad = pyramidBase && has.lifeIns && has.healthIns && (has.retire || has.education);
+  const out = {};
+  PF_SECTIONS.forEach(s => {
+    if (s.key in has) {
+      out[s.key] = { avail: has[s.key], def: has[s.key], hint: has[s.key] ? '' : 'ยังไม่มีข้อมูล · ' + WHERE[s.key] };
+    } else if (s.key === 'summary') {
+      out[s.key] = { avail: catCount >= 1, def: catCount >= 2,
+        hint: catCount === 0 ? 'ยังไม่มีข้อมูล · ต้องวางแผนอย่างน้อย 1 หมวด'
+            : catCount === 1 ? 'แนะนำเมื่อวางแผนตั้งแต่ 2 หมวด' : '' };
+    } else if (s.key === 'pyramid') {
+      out[s.key] = { avail: pyramidBase, def: broad,
+        hint: !pyramidBase ? 'ยังไม่มีข้อมูล · กรอกที่ กระแสเงินสด และ สินทรัพย์' : broad ? '' : 'แนะนำเมื่อทำครบหลายหัวข้อ' };
+    } else {
+      out[s.key] = { avail: true, def: true, hint: '' };   /* หน้าปก · ข้อมูลลูกค้า · Profile ตัวแทน */
+    }
+  });
+  return out;
+}
+
+/* ════════════════════════════════════════════
    PYRAMID — Phase 4.5
 ═══════════════════════════════════════════ */
-function computePyramid(client, summary) {
+/* has (ไม่บังคับ) = ผลจาก _pfTopicHasData — ส่งมาจาก PDF เพื่อบอกว่าชั้นไหน "ยังไม่ได้ประเมิน"
+   หน้าจอหลักเรียกแบบไม่ส่ง has → assessed เป็น true ทุกชั้น (พฤติกรรมเดิม) */
+function computePyramid(client, summary, has) {
   if (!client) return null;
   /* 5 ชั้น (จากยอด → ฐาน) ตามรูปสามเหลี่ยมการเงิน:
      Layer 5 (top): Wealth Distribution — การส่งมอบความมั่งคั่ง (มรดก)
@@ -2091,6 +2328,7 @@ function computePyramid(client, summary) {
       desc: 'การวางแผนมรดก · ส่งต่อทรัพย์สินให้ผู้รับมรดก',
       icon: '👑',
       ok: wealthDistOk,
+      assessed: has ? hasWill : true,
     },
     {
       layer: 4,
@@ -2099,6 +2337,7 @@ function computePyramid(client, summary) {
       desc: 'Life Style · Investment Planning เพื่อความมั่งคั่งและไลฟ์สไตล์',
       icon: '📈',
       ok: investOk,
+      assessed: has ? has.networth : true,
     },
     {
       layer: 3,
@@ -2106,7 +2345,10 @@ function computePyramid(client, summary) {
       titleTh: 'ออมเพื่อเป้าหมายสำคัญ',
       desc: 'Wealth Accumulation · Retirement + Education Planning',
       icon: '🎯',
-      ok: summary.retire.pct >= 30 || summary.education.pct >= 30,
+      ok: has
+        ? ((has.retire && summary.retire.pct >= 30) || (has.education && summary.education.pct >= 30))
+        : (summary.retire.pct >= 30 || summary.education.pct >= 30),
+      assessed: has ? (has.retire || has.education) : true,
     },
     {
       layer: 2,
@@ -2115,6 +2357,7 @@ function computePyramid(client, summary) {
       desc: 'Transfer Risk · ชีวิต · สุขภาพ · ทรัพย์สิน',
       icon: '🛡️',
       ok: summary.lifeIns.pct >= 50 && summary.healthIns.pct >= 50,
+      assessed: has ? (has.lifeIns && has.healthIns) : true,
     },
     {
       layer: 1,
@@ -2123,6 +2366,7 @@ function computePyramid(client, summary) {
       desc: 'มีเงินสำรอง 3–6 เท่าของรายจ่าย + จัดการหนี้สิน',
       icon: '💰',
       ok: emerOk,
+      assessed: has ? (has.cashflow && has.networth) : true,
     },
   ];
 }
@@ -2387,8 +2631,14 @@ function _pfRenderIcon(section) {
 let _pfSelected = new Set(PF_SECTIONS.map(s => s.key));   /* default: ทั้งหมด */
 let _pfStep = 1;
 
+let _pfAvail = {};   /* key → { avail, def, hint } · คำนวณใหม่ทุกครั้งที่เปิดหน้าต่าง */
+function _pfIsAvail(key) { return !_pfAvail[key] || _pfAvail[key].avail; }
 function openPlanFileModal() {
   if (!selectedClientId) { alert('กรุณาเลือกลูกค้าก่อน'); return; }
+  const client = getCurrent();
+  _pfAvail = client ? _pfAvailability(client) : {};
+  /* ติ๊กให้เฉพาะหัวข้อที่มีข้อมูล — เดิมติ๊กครบ 14 หัวข้อทุกครั้ง ทำให้หัวข้อว่างพิมพ์ ฿0 ลง PDF */
+  _pfSelected = new Set(PF_SECTIONS.filter(s => !_pfAvail[s.key] || _pfAvail[s.key].def).map(s => s.key));
   _pfStep = 1;
   renderPlanFileStep();
   document.getElementById('pf-modal').classList.add('open');
@@ -2403,25 +2653,32 @@ function renderPlanFileStep() {
   const title = document.getElementById('pf-title');
   const sub   = document.getElementById('pf-subtitle');
   if (_pfStep === 1) {
+    const availCount = PF_SECTIONS.filter(s => _pfIsAvail(s.key)).length;
     title.textContent = '📄 สร้างไฟล์สรุปแผน';
-    sub.textContent = 'เลือกหัวข้อที่ต้องการรวมในไฟล์';
+    sub.textContent = 'ระบบติ๊กให้เฉพาะหัวข้อที่มีข้อมูลแล้ว · หัวข้อกรอบเส้นประยังไม่มีข้อมูล';
     body.innerHTML = `
       <div class="pf-toolbar">
         <button onclick="selectAllPlanSections()">☑ เลือกทั้งหมด</button>
         <button onclick="deselectAllPlanSections()">☐ ยกเลิกทั้งหมด</button>
         <span style="margin-left:auto; align-self:center; font-size:.82rem; color:var(--gray-500);">
-          เลือกแล้ว <b id="pf-count">${_pfSelected.size}</b>/${PF_SECTIONS.length} หัวข้อ
+          เลือกแล้ว <b id="pf-count">${_pfSelected.size}</b> หัวข้อ · มีข้อมูล ${availCount}/${PF_SECTIONS.length}
         </span>
       </div>
       <div class="pf-section-list">
-        ${PF_SECTIONS.map(s => `
-          <label class="pf-section-item ${_pfSelected.has(s.key) ? 'pf-checked' : ''}" data-key="${s.key}">
-            <input type="checkbox" ${_pfSelected.has(s.key) ? 'checked' : ''}
+        ${PF_SECTIONS.map(s => {
+          const av = _pfAvail[s.key] || { avail: true, hint: '' };
+          const on = av.avail && _pfSelected.has(s.key);
+          return `
+          <label class="pf-section-item ${on ? 'pf-checked' : ''} ${av.avail ? '' : 'pf-disabled'}" data-key="${s.key}">
+            <input type="checkbox" ${on ? 'checked' : ''} ${av.avail ? '' : 'disabled'}
                    onchange="togglePlanSection('${s.key}', this.checked)">
             <span class="pf-si-icon">${_pfRenderIcon(s)}</span>
-            <span class="pf-si-name">${s.name}</span>
-          </label>
-        `).join('')}
+            <span class="pf-si-text">
+              <span class="pf-si-name">${s.name}</span>
+              ${av.hint ? `<span class="pf-si-hint">${av.hint}</span>` : ''}
+            </span>
+          </label>`;
+        }).join('')}
       </div>
     `;
     foot.innerHTML = `
@@ -2447,6 +2704,7 @@ function renderPlanFileStep() {
 }
 
 function togglePlanSection(key, checked) {
+  if (checked && !_pfIsAvail(key)) return;
   if (checked) _pfSelected.add(key); else _pfSelected.delete(key);
   const item = document.querySelector(`.pf-section-item[data-key="${key}"]`);
   if (item) item.classList.toggle('pf-checked', checked);
@@ -2457,7 +2715,7 @@ function togglePlanSection(key, checked) {
   if (nextBtn) nextBtn.disabled = _pfSelected.size === 0;
 }
 function selectAllPlanSections() {
-  _pfSelected = new Set(PF_SECTIONS.map(s => s.key));
+  _pfSelected = new Set(PF_SECTIONS.filter(s => _pfIsAvail(s.key)).map(s => s.key));
   renderPlanFileStep();
 }
 function deselectAllPlanSections() {
@@ -2487,6 +2745,7 @@ async function goToPlanPreview() {
 function renderPlanPreview(client) {
   if (!client) return '<div class="pf-empty">ไม่มีข้อมูลลูกค้า</div>';
   const summary = computeSummary(client);
+  const has = _pfTopicHasData(client, summary);
   const sel = _pfSelected;
   const today = new Date();
   const dateStr = today.toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
@@ -2496,19 +2755,21 @@ function renderPlanPreview(client) {
 
   const cover = sel.has('cover') ? _pfRenderCover(client, agent, dateStr) : '';
 
+  /* หัวข้อที่ยังไม่มีข้อมูลไม่ถูกพิมพ์ (ติ๊กไม่ได้ในหน้าต่างเลือกอยู่แล้ว — กันไว้อีกชั้น) */
+  const on = k => sel.has(k) && _pfIsAvail(k);
   let sections = '';
-  if (sel.has('client'))    sections += _pfRenderClient(client);
-  if (sel.has('summary'))   sections += _pfRenderSummary(summary);
-  if (sel.has('pyramid'))   sections += _pfRenderPyramid(client, summary);
-  if (sel.has('cashflow'))  sections += _pfRenderCashflow(client);
-  if (sel.has('networth'))  sections += _pfRenderNetworth(client);
-  if (sel.has('retire'))    sections += _pfRenderRetire(client);
-  if (sel.has('education')) sections += _pfRenderEducation(client);
-  if (sel.has('lifeIns'))   sections += _pfRenderLifeIns(client, summary);
-  if (sel.has('healthIns')) sections += _pfRenderHealthIns(client, summary);
-  if (sel.has('tax'))       sections += _pfRenderTax(client, summary);
-  if (sel.has('policies'))  sections += _pfRenderPolicies(client);
-  if (sel.has('goals'))     sections += _pfRenderGoals(client);
+  if (on('client'))    sections += _pfRenderClient(client);
+  if (on('summary'))   sections += _pfRenderSummary(summary, has);
+  if (on('pyramid'))   sections += _pfRenderPyramid(client, summary, has);
+  if (on('cashflow'))  sections += _pfRenderCashflow(client);
+  if (on('networth'))  sections += _pfRenderNetworth(client);
+  if (on('retire'))    sections += _pfRenderRetire(client);
+  if (on('education')) sections += _pfRenderEducation(client);
+  if (on('lifeIns'))   sections += _pfRenderLifeIns(client, summary);
+  if (on('healthIns')) sections += _pfRenderHealthIns(client, summary);
+  if (on('tax'))       sections += _pfRenderTax(client, summary);
+  if (on('policies'))  sections += _pfRenderPolicies(client);
+  if (on('goals'))     sections += _pfRenderGoals(client);
 
   const agentPage = sel.has('agent') ? _pfRenderAgent(agent, clientName) : '';
 
@@ -2543,6 +2804,7 @@ function renderPlanPreview(client) {
           <span class="pf-doc-client">${clientName}</span>
         </div>
         ${sections}
+        ${_pfDisclaimerHTML()}
       </div>
       <div class="pf-doc-foot">
         เอกสารฉบับนี้สรุปจากข้อมูลที่บันทึกในระบบ ณ วันที่ ${dateStr}<br>
@@ -2557,6 +2819,22 @@ function renderPlanPreview(client) {
   }
 
   return cover + bodyHtml + agentPage;
+}
+
+/* ข้อควรทราบ — ต้องมีทุกครั้งที่ส่งเอกสารที่มีตัวเลขให้ลูกค้า
+   บรรทัด "ไม่ใช่เอกสารทางการของ AIA" และคำเตือนผู้ซื้อ (คปภ.) ห้ามตัดออก */
+function _pfDisclaimerHTML() {
+  return `
+    <div class="pf-disclaimer">
+      <div class="pf-disclaimer-title">ข้อควรทราบ</div>
+      <p>เอกสารนี้จัดทำโดยตัวแทนในหน่วย MONEY MATCH ภายใต้ 448 Wealth Group เพื่อประกอบการวางแผนการเงินส่วนบุคคล <b>ไม่ใช่เอกสารทางการของบริษัท เอไอเอ จำกัด</b></p>
+      <p>ตัวเลขทั้งหมดเป็นประมาณการจากข้อมูลที่ได้รับและสมมติฐาน ณ วันที่จัดทำ เช่น อัตราเงินเฟ้อ ผลตอบแทน และอายุขัย <b>ไม่ใช่การรับประกันผลตอบแทน</b> ผลลัพธ์จริงอาจแตกต่างจากที่แสดง</p>
+      <p><b>ผู้ซื้อควรทำความเข้าใจรายละเอียดความคุ้มครองและเงื่อนไขก่อนตัดสินใจทำประกันภัยทุกครั้ง</b></p>
+    </div>`;
+}
+
+function _pfEsc(s) {
+  return String(s).replace(/[&<>"]/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[ch]));
 }
 
 /* —— Section helpers —— */
@@ -2777,6 +3055,9 @@ function _pfRenderClient(c) {
   const children = c.children || [];
   const marital = c.maritalStatus || c.marital || '—';
   const dependents = children.length + (c.dependents ? Number(c.dependents) : 0);
+  const hiC = c.healthInputs || {};
+  const hospLabel = hiC.hospital && hiC.hospital.name
+    ? hiC.hospital.name + ' (' + (hiC.tier === 'vip' ? 'VIP' : 'STD') + ')' : '—';
 
   /* Life stage interpretation (Thai CFP common framework) */
   let stage = '—';
@@ -2807,7 +3088,7 @@ function _pfRenderClient(c) {
         <div class="pf-row"><span>อีเมล</span><span>${c.email||'—'}</span></div>
         <div class="pf-row"><span>รายได้/เดือน</span><span>${fmt(monthlyIncome)}</span></div>
         <div class="pf-row"><span>ที่อยู่</span><span>${c.address || '—'}</span></div>
-        <div class="pf-row"><span>โรงพยาบาลที่ใช้ (Tier)</span><span>Tier ${c.trustedHospitalTier||2}</span></div>
+        <div class="pf-row"><span>โรงพยาบาลที่ไว้วางใจ</span><span>${hospLabel}</span></div>
       </div>
 
       <div class="pf-insight">
@@ -2826,11 +3107,15 @@ function _psLifeStageStrategy(age) {
   return 'รักษาเงินต้น + รับ income stream + วางแผนการส่งมอบมรดก';
 }
 
-function _pfRenderSummary(summary) {
+function _pfRenderSummary(summary, has) {
   if (!summary) return '';
-  const validPcts = CATEGORIES.map(c => summary[c.key].pct).filter(p => isFinite(p));
+  /* แสดงเฉพาะหมวดที่วางแผนแล้ว — หมวดที่ยังไม่มีข้อมูลเคยขึ้น ฿0 + ป้าย "ขาด" คู่กับ "✓ ครบ" */
+  const cats = has ? CATEGORIES.filter(cat => has[cat.key]) : CATEGORIES;
+  if (!cats.length) return '';
+  const skipped = has ? CATEGORIES.filter(cat => !has[cat.key]) : [];
+  const validPcts = cats.map(c => summary[c.key].pct).filter(p => isFinite(p));
   const avg = validPcts.length ? validPcts.reduce((s,p)=>s+p,0)/validPcts.length : 0;
-  const rows = CATEGORIES.map(cat => {
+  const rows = cats.map(cat => {
     const d = summary[cat.key];
     const status = statusOf(d.pct);
     const pctText = isFinite(d.pct) ? d.pct.toFixed(1)+'%' : '—';
@@ -2850,13 +3135,13 @@ function _pfRenderSummary(summary) {
   else if (avg >= 20) interp = 'แผนการเงิน <b>ยังขาด</b> · มีหลายช่องโหว่ที่ต้องเร่งจัดการ';
   else interp = 'แผนการเงิน <b>ต้องปรับปรุงด่วน</b> · กรุณาดูคำแนะนำในส่วน Recommendations';
 
-  const totalGap = CATEGORIES.reduce((s,c) => s + Math.max(summary[c.key].gap, 0), 0);
-  const totalHave = CATEGORIES.reduce((s,c) => s + Number(summary[c.key].have || 0), 0);
-  const totalTarget = CATEGORIES.reduce((s,c) => s + Number(summary[c.key].target || 0), 0);
+  const totalGap = cats.reduce((s,c) => s + Math.max(summary[c.key].gap, 0), 0);
+  const totalHave = cats.reduce((s,c) => s + Number(summary[c.key].have || 0), 0);
+  const totalTarget = cats.reduce((s,c) => s + Number(summary[c.key].target || 0), 0);
 
   return `
     <div class="pf-doc-section">
-      <h4>${_pfIcon('clipboard')} สรุปแผน 5 หมวด · Plan Summary ${_pfStatusBadge(avg)}</h4>
+      <h4>${_pfIcon('clipboard')} สรุปแผน ${cats.length} หมวด · Plan Summary ${_pfStatusBadge(avg)}</h4>
 
       <div class="pf-kpi-grid">
         ${_pfKpi('คะแนนรวม', avg.toFixed(0) + '/100', { status: avg>=60?'good':avg>=40?'med':'bad' })}
@@ -2865,12 +3150,12 @@ function _pfRenderSummary(summary) {
         ${_pfKpi('ยังขาดรวม', fmt(totalGap), { status: totalGap>0?'bad':'good' })}
       </div>
 
-      ${_pfRenderRadarSVG(summary)}
+      ${cats.length >= 3 ? _pfRenderRadarSVG(summary, cats) : ''}
       <div style="margin-top:14px;">${rows}</div>
       <table class="pf-doc-table" style="margin-top:14px;">
         <thead><tr><th>หมวด</th><th class="num">มี</th><th class="num">ต้องการ</th><th class="num">ขาดอีก</th><th>สถานะ</th></tr></thead>
         <tbody>
-          ${CATEGORIES.map(cat => {
+          ${cats.map(cat => {
             const d = summary[cat.key];
             const gapCls = d.gap > 0 ? 'neg' : 'pos';
             const gapTxt = d.gap > 0 ? fmt(d.gap) : '✓ ครบ';
@@ -2885,12 +3170,16 @@ function _pfRenderSummary(summary) {
         </tbody>
       </table>
 
+      ${skipped.length ? `<div class="pf-skip-note">หมวดที่ยังไม่ได้วางแผนในเอกสารนี้: ${skipped.map(cat => cat.name).join(' · ')}</div>` : ''}
       <div class="pf-insight">${interp}</div>
     </div>
   `;
 }
 
-function _pfRenderRadarSVG(summary) {
+function _pfRenderRadarSVG(summary, cats) {
+  /* cats = หมวดที่มีข้อมูล (3–5 หมวด) · มุมกระจายเท่ากัน — 5 หมวดได้มุมเดิมทุกจุด */
+  cats = cats || CATEGORIES;
+  const angleOf = i => (-90 + i * 360 / cats.length) * Math.PI / 180;
   /* simplified radar suitable for print + PDF
      Wrapped in a div with page-break-inside:avoid so html2pdf doesn't split it.
      Uses Thai text labels (not emoji) — emoji often render incorrectly in html2canvas */
@@ -2898,14 +3187,14 @@ function _pfRenderRadarSVG(summary) {
   let grid = '', axes = '', labels = '';
   for (let i = 1; i <= 5; i++) {
     const r = R*(i/5);
-    const pts = CATEGORIES.map(cat => {
-      const rad = cat.angle*Math.PI/180;
+    const pts = cats.map((cat, i) => {
+      const rad = angleOf(i);
       return [cx + r*Math.cos(rad), cy + r*Math.sin(rad)].join(',');
     }).join(' ');
     grid += `<polygon points="${pts}" fill="none" stroke="#D0D7E2" stroke-width="1"/>`;
   }
-  CATEGORIES.forEach(cat => {
-    const rad = cat.angle*Math.PI/180;
+  cats.forEach((cat, i) => {
+    const rad = angleOf(i);
     axes += `<line x1="${cx}" y1="${cy}" x2="${cx+R*Math.cos(rad)}" y2="${cy+R*Math.sin(rad)}" stroke="#D0D7E2" stroke-width="1"/>`;
     const lr = R+24, lx = cx+lr*Math.cos(rad), ly = cy+lr*Math.sin(rad);
     /* Text label (Thai) instead of emoji — renders reliably in PDF */
@@ -2913,10 +3202,10 @@ function _pfRenderRadarSVG(summary) {
                 font-size="12" font-weight="700" fill="#1B2A5E"
                 font-family="Sarabun, sans-serif">${cat.name}</text>`;
   });
-  const dataPts = CATEGORIES.map(cat => {
+  const dataPts = cats.map((cat, i) => {
     const pct = summary[cat.key].pct || 0;
     const r = R*Math.min(pct,100)/100;
-    const rad = cat.angle*Math.PI/180;
+    const rad = angleOf(i);
     return [cx+r*Math.cos(rad), cy+r*Math.sin(rad)].join(',');
   }).join(' ');
   return `<div class="pf-radar-wrap" style="page-break-inside:avoid;break-inside:avoid;text-align:center;padding:8px 0;">
@@ -2929,15 +3218,21 @@ function _pfRenderRadarSVG(summary) {
   </div>`;
 }
 
-function _pfRenderPyramid(client, summary) {
+function _pfRenderPyramid(client, summary, has) {
   if (!summary) return '';
-  const layers = computePyramid(client, summary);
-  const passedCount = layers.filter(l => l.ok).length;
+  const layers = computePyramid(client, summary, has);
+  /* ชั้นที่ไม่มีข้อมูลให้ประเมิน → "ยังไม่ได้ประเมิน" (เดิมขึ้น "✗ ยังไม่ผ่าน" ทั้งที่ไม่ได้วางแผนเรื่องนั้น) */
+  const assessed = layers.filter(l => l.assessed !== false);
+  const passedCount = assessed.filter(l => l.ok).length;
+  const ratio = assessed.length ? passedCount / assessed.length : 0;
+  const badgeTxt = !assessed.length ? 'ยังไม่ได้ประเมิน'
+    : assessed.length === layers.length ? `ผ่าน ${passedCount}/${layers.length} ชั้น`
+    : `ผ่าน ${passedCount}/${assessed.length} ชั้นที่ประเมิน`;
   return `
     <div class="pf-doc-section">
       <h4>${_pfIcon('pyramid')} Financial Pyramid · สามเหลี่ยมการเงิน 5 ชั้น
-        <span class="pf-status-badge ${passedCount>=4?'s-good':passedCount>=2?'s-med':'s-bad'}">
-          ผ่าน ${passedCount}/5 ชั้น
+        <span class="pf-status-badge ${ratio>=0.8?'s-good':ratio>=0.4?'s-med':'s-bad'}">
+          ${badgeTxt}
         </span>
       </h4>
       <table class="pf-doc-table">
@@ -2948,7 +3243,9 @@ function _pfRenderPyramid(client, summary) {
               <td>${l.icon} L${l.layer}</td>
               <td><b>${l.title}</b>${l.titleTh ? `<br><span style="font-size:.82em;color:#888;">${l.titleTh}</span>` : ''}</td>
               <td>${l.desc}</td>
-              <td class="${l.ok?'pos':'neg'}">${l.ok?'✓ ผ่าน':'✗ ยังไม่ผ่าน'}</td>
+              ${l.assessed === false
+                ? '<td class="muted">— ยังไม่ได้ประเมิน</td>'
+                : `<td class="${l.ok?'pos':'neg'}">${l.ok?'✓ ผ่าน':'✗ ยังไม่ผ่าน'}</td>`}
             </tr>
           `).join('')}
           <tr style="background:linear-gradient(135deg,#FFF8E7,#FFFFFF);">
@@ -2982,17 +3279,18 @@ function _pfRenderCashflow(c) {
   const liquidAssets = (c.assets||[])
     .filter(a => ['cash','deposit','bond'].includes(a.type))
     .reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const emerMonths = totalExp > 0 ? liquidAssets / totalExp : 0;
+  /* ยังไม่ได้กรอกสินทรัพย์หรือรายจ่าย → ยังประเมินเงินสำรองไม่ได้ (เดิมขึ้น 0 เดือน + "ต้องเร่งสร้าง") */
+  const emerMonths = (totalExp > 0 && (c.assets || []).length > 0) ? liquidAssets / totalExp : null;
 
   /* Status interpretations */
   const srStatus = savingsRate >= 20 ? 'good' : savingsRate >= 10 ? 'med' : 'bad';
   const dtiStatus = dti < 30 ? 'good' : dti < 40 ? 'med' : 'bad';
-  const emerStatus = emerMonths >= 6 ? 'good' : emerMonths >= 3 ? 'med' : 'bad';
+  const emerStatus = emerMonths == null ? '' : emerMonths >= 6 ? 'good' : emerMonths >= 3 ? 'med' : 'bad';
 
   let insight = '';
   if (savingsRate < 10)  insight += '• อัตราการออม <b>ต่ำกว่า 10%</b> — ควรเพิ่มเป็นอย่างน้อย 20%<br>';
   if (dti >= 40)         insight += '• ภาระหนี้เกิน 40% ของรายได้ — เสี่ยงต่อสภาพคล่อง<br>';
-  if (emerMonths < 3)    insight += '• เงินสำรองยังไม่ถึง 3 เดือน — เป็นเป้าหมายแรกที่ต้องเร่งสร้าง<br>';
+  if (emerMonths != null && emerMonths < 3) insight += '• เงินสำรองยังไม่ถึง 3 เดือน — เป็นเป้าหมายแรกที่ต้องเร่งสร้าง<br>';
   if (!insight) insight = 'โครงสร้างกระแสเงินสด <b>อยู่ในเกณฑ์ดี</b> · ควรรักษาวินัยการออมและบริหารหนี้สิน';
 
   return `
@@ -3003,7 +3301,7 @@ function _pfRenderCashflow(c) {
         ${_pfKpi('Savings Rate', savingsRate.toFixed(1) + '%', { status: srStatus, sub: 'แนะนำ ≥ 20%' })}
         ${_pfKpi('Debt-to-Income', dti.toFixed(1) + '%', { status: dtiStatus, sub: 'แนะนำ < 40%' })}
         ${_pfKpi('Expense Ratio', expRatio.toFixed(1) + '%', { sub: 'รายจ่าย/รายได้' })}
-        ${_pfKpi('Emergency Fund', emerMonths.toFixed(1) + ' เดือน', { status: emerStatus, sub: 'เป้า 3-6 เดือน' })}
+        ${_pfKpi('Emergency Fund', emerMonths == null ? '—' : emerMonths.toFixed(1) + ' เดือน', { status: emerStatus, sub: emerMonths == null ? 'ใส่สินทรัพย์และรายจ่ายเพื่อคำนวณ' : 'เป้า 3-6 เดือน' })}
       </div>
 
       <table class="pf-doc-table">
@@ -3044,10 +3342,11 @@ function _pfRenderNetworth(c) {
   const equityRatio = totalAssets > 0 ? (networth / totalAssets) * 100 : 0;
   const cf = c.cashflow || {};
   const monthlyExp = (Number(cf.expFixed||0) + Number(cf.expVariable||0) + Number(cf.expDebt||0));
-  const liquidityRatio = monthlyExp > 0 ? liquid / monthlyExp : 0;
+  /* ไม่มีข้อมูลรายจ่าย → คำนวณสภาพคล่องไม่ได้ (เดิมขึ้น 0.0x + "สภาพคล่องไม่พอ" แม้มีเงินฝากมาก) */
+  const liquidityRatio = monthlyExp > 0 ? liquid / monthlyExp : null;
 
   const debtStatus = debtRatio < 40 ? 'good' : debtRatio < 60 ? 'med' : 'bad';
-  const liqStatus = liquidityRatio >= 6 ? 'good' : liquidityRatio >= 3 ? 'med' : 'bad';
+  const liqStatus = liquidityRatio == null ? '' : liquidityRatio >= 6 ? 'good' : liquidityRatio >= 3 ? 'med' : 'bad';
   const eqStatus = equityRatio >= 50 ? 'good' : equityRatio >= 25 ? 'med' : 'bad';
 
   const assetRows = assets.length ? assets.slice(0,12).map(a => `
@@ -3059,7 +3358,7 @@ function _pfRenderNetworth(c) {
 
   let insight = '';
   if (debtRatio >= 60) insight += '• Debt Ratio เกิน 60% — เสี่ยงสูง ควรลดหนี้สิน<br>';
-  if (liquidityRatio < 3) insight += '• สภาพคล่องไม่พอ 3 เดือน — เร่งสะสมเงินสำรองก่อน<br>';
+  if (liquidityRatio != null && liquidityRatio < 3) insight += '• สภาพคล่องไม่พอ 3 เดือน — เร่งสะสมเงินสำรองก่อน<br>';
   if (networth < 0) insight += '• <b>Net Worth ติดลบ</b> — หนี้สินมากกว่าทรัพย์สิน ต้องปรับโครงสร้างหนี้ด่วน<br>';
   if (!insight) insight = 'โครงสร้างทางการเงินอยู่ในเกณฑ์ที่เหมาะสม · ควรรักษาสัดส่วนสินทรัพย์ให้สมดุล';
 
@@ -3071,7 +3370,7 @@ function _pfRenderNetworth(c) {
         ${_pfKpi('Net Worth', fmt(networth), { status: networth>=0?'good':'bad' })}
         ${_pfKpi('Debt Ratio', debtRatio.toFixed(1) + '%', { status: debtStatus, sub: 'แนะนำ < 40%' })}
         ${_pfKpi('Equity Ratio', equityRatio.toFixed(1) + '%', { status: eqStatus, sub: 'ทรัพย์สินสุทธิ/รวม' })}
-        ${_pfKpi('Liquidity Ratio', liquidityRatio.toFixed(1) + 'x', { status: liqStatus, sub: 'เดือนของรายจ่าย' })}
+        ${_pfKpi('Liquidity Ratio', liquidityRatio == null ? '—' : liquidityRatio.toFixed(1) + 'x', { status: liqStatus, sub: liquidityRatio == null ? 'ต้องมีข้อมูลรายจ่าย' : 'เดือนของรายจ่าย' })}
       </div>
 
       <div class="pf-doc-grid" style="margin-bottom:12px;">
@@ -3126,6 +3425,7 @@ function _pfRenderRetire(c) {
 
   let insight = '';
   if (progressPct >= 80) insight = 'แผนเกษียณ <b>แข็งแกร่ง</b> · คาดว่าจะมีเงินเพียงพอตามเป้าหมาย';
+  else if (yearsToRetire <= 0) insight = `ถึงอายุเกษียณที่ตั้งไว้แล้ว ยังขาดอีก <b>${fmt(calc.gap)}</b> · พิจารณาปรับค่าใช้จ่ายหลังเกษียณ หรือหาแหล่งรายได้เพิ่ม`;
   else if (progressPct >= 50) insight = `ควรเพิ่มเงินออมต่อเดือนอีก <b>${fmt(monthlySavings)}</b> เพื่อปิด gap`;
   else insight = `เร่งสะสม + ลงทุนอีก <b>${fmt(monthlySavings)}</b>/เดือน · เพิ่ม PVD/RMF/SSF/บำนาญ`;
 
@@ -3156,7 +3456,7 @@ function _pfRenderRetire(c) {
         <div class="pf-row"><span>เป้าหมายเงินก้อน</span><span style="color:#B91C1C;">${fmt(calc.target)}</span></div>
         <div class="pf-row"><span>คาดว่าจะมี (FV รวม)</span><span style="color:#15803D;">${fmt(calc.have)}</span></div>
         <div class="pf-row"><span><b>ยังขาด (Gap)</b></span><span><b style="color:#B91C1C;">${fmt(calc.gap)}</b></span></div>
-        <div class="pf-row"><span><b>ต้องออมเพิ่ม/เดือน</b></span><span><b style="color:#A88A4F;">${fmt(monthlySavings)}</b></span></div>
+        <div class="pf-row"><span><b>ต้องออมเพิ่ม/เดือน</b></span><span><b style="color:#A88A4F;">${yearsToRetire > 0 ? fmt(monthlySavings) : '—'}</b></span></div>
       </div>
 
       <div class="pf-insight">${insight}</div>
@@ -3268,17 +3568,15 @@ function _pfRenderEducation(c) {
 
 function _pfRenderLifeIns(c, summary) {
   const d = summary ? summary.lifeIns : null;
-  const li = c.lifeInputs || {};
-  const method = li.method === 'dime' ? 'DIME Method' : 'Simple Method';
+  const method = 'หนี้สิน + ความรับผิดชอบ';   /* = วิธีเดียวที่หน้าประกันชีวิตใช้ */
   if (!d) return '';
-  const annualIncome = Number(c.income) || (Number((c.cashflow||{}).income||0) * 12);
-  const coverageMultiple = annualIncome > 0 ? d.target / annualIncome : 0;
+  const rows = _psLifeRows(c);
 
   let insight = '';
   if (d.gap > 0) {
     insight = `ขาดความคุ้มครอง <b>${fmt(d.gap)}</b> — ควรเพิ่มประกันชีวิต/ทุนเอาประกันให้เพียงพอปกป้องครอบครัว/หนี้สิน`;
   } else {
-    insight = 'ความคุ้มครองครบตามเกณฑ์ DIME/Income Multiple · ทบทวนทุก 3-5 ปี หรือเมื่อมีเหตุการณ์ชีวิตเปลี่ยน';
+    insight = `ความคุ้มครองครบตามภาระที่ประเมินไว้ (${method}) · ทบทวนทุก 3-5 ปี หรือเมื่อมีเหตุการณ์ชีวิตเปลี่ยน`;
   }
 
   return `
@@ -3288,16 +3586,22 @@ function _pfRenderLifeIns(c, summary) {
       <div class="pf-kpi-grid">
         ${_pfKpi('ทุนต้องการ', fmt(d.target), { sub: 'Sum Insured' })}
         ${_pfKpi('ทุนที่มี', fmt(d.have))}
-        ${_pfKpi('Income Multiple', coverageMultiple.toFixed(1) + 'x', { sub: 'แนะนำ 10x' })}
+        ${_pfKpi('ยังขาด', d.gap > 0 ? fmt(d.gap) : '✓ ครบ', { status: d.gap > 0 ? 'bad' : 'good' })}
         ${_pfKpi('Coverage Ratio', d.pct.toFixed(1) + '%', { status: d.pct>=80?'good':d.pct>=50?'med':'bad' })}
       </div>
 
       <div class="pf-doc-grid">
-        <div class="pf-row"><span>ความคุ้มครองที่ต้องการ</span><span>${fmt(d.target)}</span></div>
-        <div class="pf-row"><span>ความคุ้มครอง + สินทรัพย์สภาพคล่อง</span><span>${fmt(d.have)}</span></div>
-        <div class="pf-row"><span>วิธีคำนวณ</span><span>${method}</span></div>
+        <div class="pf-row"><span>ความคุ้มครองที่ต้องการ (หนี้สิน + ความรับผิดชอบ)</span><span>${fmt(d.target)}</span></div>
+        <div class="pf-row"><span>ทุนประกันชีวิตที่มี</span><span>${fmt(d.cov || 0)}</span></div>
+        <div class="pf-row"><span>สินทรัพย์สภาพคล่อง</span><span>${fmt(d.liquid || 0)}</span></div>
         <div class="pf-row"><span><b>ยังขาด (Gap)</b></span><span><b style="color:${d.gap>0?'#B91C1C':'#15803D'};">${d.gap>0?fmt(d.gap):'✓ ครบ'}</b></span></div>
       </div>
+
+      ${rows.length ? `<table class="pf-doc-table" style="margin-top:12px;">
+        <thead><tr><th>ภาระที่นับรวม</th><th>ประเภท</th><th class="num">จำนวน</th></tr></thead>
+        <tbody>${rows.map(r => `<tr><td>${_pfEsc(r.name)}</td><td>${r.kind}</td><td class="num">${fmt(r.amount)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr style="background:#F4F6FA;font-weight:800;"><td colspan="2">รวมภาระ</td><td class="num">${fmt(d.target)}</td></tr></tfoot>
+      </table>` : ''}
 
       <div class="pf-insight">${insight}</div>
     </div>
@@ -3307,37 +3611,57 @@ function _pfRenderLifeIns(c, summary) {
 function _pfRenderHealthIns(c, summary) {
   const d = summary ? summary.healthIns : null;
   if (!d) return '';
-  const tier = c.trustedHospitalTier || 2;
+  /* ตัวเลขชุดเดียวกับหน้า "ประกันสุขภาพ" — ดู _psHealthCalc */
+  const h = _psHealthCalc(c);
   const hi = c.healthInputs || {};
-  const age = _psAgeNow(c.dob);
   const annualIncome = Number(c.income) || (Number((c.cashflow||{}).income||0) * 12);
-  const premiumPct = annualIncome > 0 ? (Number(hi.premium||0) / annualIncome) * 100 : 0;
+  const premium = Number(hi.premium || 0);
+  const premiumPct = annualIncome > 0 ? (premium / annualIncome) * 100 : 0;
+  const hospLabel = h.hospital && h.hospital.name
+    ? `${h.hospital.name} (${h.roomType}) · ค่าห้อง ${fmt(h.rate)}/วัน`
+    : `ยังไม่ได้เลือกโรงพยาบาล · ใช้ค่าห้องอ้างอิง ${fmt(h.rate)}/วัน`;
+  const shortOther = h.rows.filter(r => r.key !== 'perVisit' && r.need > 0 && r.have < r.need).length;
 
-  let insight = '';
-  if (d.gap > 0) {
-    insight = `วงเงินคุ้มครอง IPD ยังไม่ถึงเกณฑ์ที่แนะนำสำหรับ Tier ${tier} — ขาด ${fmt(d.gap)} ควรเพิ่ม rider หรือสัญญาเพิ่มเติม`;
-  } else {
-    insight = `วงเงินคุ้มครองครบตาม Tier ${tier} · เบี้ยจะปรับขึ้นตามอายุ — เตรียมงบรองรับการขึ้นเบี้ยในอนาคต`;
-  }
+  let insight = d.gap > 0
+    ? `วงเงินค่ารักษาต่อครั้งยังต่ำกว่าที่แนะนำ ขาดอีก <b>${fmt(d.gap)}</b> · ควรเพิ่มสัญญาเพิ่มเติมค่ารักษาให้เหมาะกับโรงพยาบาลที่ใช้`
+    : 'วงเงินค่ารักษาต่อครั้ง <b>ครบตามที่แนะนำ</b> · เบี้ยจะปรับขึ้นตามอายุ เตรียมงบรองรับการขึ้นเบี้ยในอนาคต';
+  if (shortOther > 0) insight += ` · ยังมีอีก ${shortOther} รายการที่ต่ำกว่าเกณฑ์ (ดูตาราง)`;
+
+  const rowsHtml = h.rows.map(r => {
+    const status = r.need <= 0 ? '<td class="muted">—</td>'
+      : r.ok ? '<td class="pos">✓ ครบ</td>'
+      : r.have > 0 ? `<td class="neg">ขาด ${fmt(r.need - r.have)}</td>`
+      : '<td class="neg">ยังไม่มี</td>';
+    return `<tr>
+      <td>${r.label}</td>
+      <td class="num">${r.have > 0 ? fmt(r.have) : '—'}</td>
+      <td class="num">${r.need > 0 ? fmt(r.need) : '—'}</td>
+      ${status}
+    </tr>`;
+  }).join('');
 
   return `
     <div class="pf-doc-section">
-      <h4>${_pfIcon('medical')} แผนประกันสุขภาพ · Health Insurance — Tier ${tier} ${_pfStatusBadge(d.pct)}</h4>
+      <h4>${_pfIcon('medical')} แผนประกันสุขภาพ · Health Insurance ${_pfStatusBadge(d.pct)}</h4>
 
       <div class="pf-kpi-grid">
-        ${_pfKpi('วงเงิน IPD ต้องการ', fmt(d.target))}
-        ${_pfKpi('วงเงินที่มี', fmt(d.have))}
-        ${_pfKpi('Coverage Ratio', d.pct.toFixed(1) + '%', { status: d.pct>=80?'good':d.pct>=50?'med':'bad' })}
+        ${_pfKpi('วงเงินค่ารักษา/ครั้ง แนะนำ', fmt(d.target))}
+        ${_pfKpi('มีแล้ว', fmt(d.have), { status: d.gap > 0 ? 'bad' : 'good' })}
+        ${_pfKpi('ครบตามเกณฑ์', h.okCount + '/' + h.rows.length + ' รายการ', { status: h.okCount >= 8 ? 'good' : h.okCount >= 5 ? 'med' : 'bad' })}
         ${_pfKpi('เบี้ย/รายได้', premiumPct.toFixed(1) + '%', { sub: 'แนะนำ < 5%' })}
       </div>
 
-      <div class="pf-doc-grid">
-        <div class="pf-row"><span>วงเงินที่ต้องการ (IPD)</span><span>${fmt(d.target)}</span></div>
-        <div class="pf-row"><span>วงเงินที่มี</span><span>${fmt(d.have)}</span></div>
-        <div class="pf-row"><span>เบี้ยประกันสุขภาพ/ปี</span><span>${fmt(Number(hi.premium||0))}</span></div>
-        <div class="pf-row"><span>อายุปัจจุบัน</span><span>${age?Math.floor(age):'—'} ปี</span></div>
-        <div class="pf-row"><span><b>ยังขาด (Gap)</b></span><span><b style="color:${d.gap>0?'#B91C1C':'#15803D'};">${d.gap>0?fmt(d.gap):'✓ ครบ'}</b></span></div>
+      <div class="pf-doc-grid" style="margin-bottom:12px;">
+        <div class="pf-row"><span>โรงพยาบาลที่ใช้อ้างอิง</span><span>${hospLabel}</span></div>
+        <div class="pf-row"><span>เบี้ยประกันสุขภาพ/ปี</span><span>${premium > 0 ? fmt(premium) : '—'}</span></div>
+        <div class="pf-row"><span><b>วงเงินค่ารักษา/ครั้ง ยังขาด</b></span><span><b style="color:${d.gap>0?'#B91C1C':'#15803D'};">${d.gap>0?fmt(d.gap):'✓ ครบ'}</b></span></div>
       </div>
+
+      <table class="pf-doc-table">
+        <thead><tr><th>ความคุ้มครอง</th><th class="num">มีแล้ว</th><th class="num">แนะนำ</th><th>สถานะ</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="pf-basis-note">มีแล้ว = ค่าที่บันทึกในหน้าประกันสุขภาพ หรือรวมจากสัญญาเพิ่มเติมในสรุปกรมธรรม์ · แนะนำ = คำนวณจากโรงพยาบาลที่เลือก อายุ และรายได้ของลูกค้า</div>
 
       <div class="pf-insight">${insight}</div>
     </div>
@@ -3347,61 +3671,56 @@ function _pfRenderHealthIns(c, summary) {
 function _pfRenderTax(c, summary) {
   const d = summary ? summary.tax : null;
   if (!d) return '';
-  const ti = c.taxInputs || {};
-  const hi = c.healthInputs || {};
-  const healthAmt = ti.healthIns != null ? Number(ti.healthIns) : Number(hi.premium||0);
-  const annualIncome = Number(c.income) || (Number((c.cashflow||{}).income||0) * 12);
-
-  /* Estimate marginal tax bracket (Thai progressive rates simplified) */
-  let marginalRate = 0;
-  if (annualIncome > 5000000) marginalRate = 35;
-  else if (annualIncome > 2000000) marginalRate = 30;
-  else if (annualIncome > 1000000) marginalRate = 25;
-  else if (annualIncome > 750000) marginalRate = 20;
-  else if (annualIncome > 500000) marginalRate = 15;
-  else if (annualIncome > 300000) marginalRate = 10;
-  else if (annualIncome > 150000) marginalRate = 5;
-  /* Potential savings from remaining cap */
-  const potentialSavings = d.gap > 0 ? d.gap * marginalRate / 100 : 0;
-  const utilization = d.target > 0 ? (d.have / d.target) * 100 : 0;
+  /* ตัวเลขชุดเดียวกับหน้าลดหย่อนภาษี — ดู _psTaxCalc */
+  const t = _psTaxCalc(c);
+  const cur = t.cur, g = t.groups;
+  const ratePct = Math.round(cur.rate * 100);
+  let insight;
+  if (cur.tax <= 0) insight = 'ปัจจุบัน<b>ไม่มีภาษีต้องเสีย</b> · ไม่จำเป็นต้องซื้อประกันหรือกองทุนเพิ่มเพื่อลดหย่อน';
+  else if (t.maxSaving > 0) insight = `ใช้สิทธิ์ลดหย่อนเพิ่มอีก <b>${fmt(t.usefulRoom)}</b> จะลดภาษีได้สูงสุด <b>${fmt(t.maxSaving)}</b>/ปี · เลือก RMF · Thai ESG · ประกันบำนาญ ให้เหมาะกับความเสี่ยงที่รับได้และสภาพคล่อง`;
+  else insight = 'ใช้สิทธิ์ลดหย่อนกลุ่มประกันและกองทุนครบแล้ว · ทบทวนแผนทุกปีเมื่อรายได้เปลี่ยน';
+  const trow = (label, cap, used, room, sub) =>
+    `<tr${sub ? ' class="pf-tax-sub"' : ''}><td>${label}</td><td>${cap}</td><td class="num">${used > 0 ? fmt(used) : '—'}</td>` +
+    `<td class="num">${room == null ? '' : room > 0 ? fmt(room) : '—'}</td></tr>`;
 
   return `
     <div class="pf-doc-section">
-      <h4>${_pfIcon('tax')} แผนภาษี · Tax Planning ${_pfStatusBadge(utilization)}</h4>
+      <h4>${_pfIcon('tax')} แผนภาษี · Tax Planning ${_pfStatusBadge(d.pct)}</h4>
 
       <div class="pf-kpi-grid">
-        ${_pfKpi('Marginal Rate', marginalRate + '%', { sub: 'อัตราภาษีขั้นสูง' })}
-        ${_pfKpi('Cap Utilization', utilization.toFixed(1) + '%', { status: utilization>=80?'good':utilization>=50?'med':'bad' })}
-        ${_pfKpi('เหลือใช้สิทธิ์', fmt(d.gap), { status: d.gap>0?'med':'good' })}
-        ${_pfKpi('ประหยัดภาษีได้อีก', fmt(potentialSavings), { status: 'good', sub: 'ถ้าใช้ cap ครบ' })}
+        ${_pfKpi('ภาษีที่ต้องเสีย (ประมาณ)', fmt(cur.tax))}
+        ${_pfKpi('อัตราภาษีขั้นสูงสุด', ratePct + '%', { sub: 'คิดจากเงินได้สุทธิ' })}
+        ${_pfKpi('ลดหย่อนเพิ่มที่ยังช่วยได้', fmt(t.usefulRoom), { status: t.usefulRoom > 0 ? 'med' : 'good' })}
+        ${_pfKpi('ภาษีลดได้สูงสุด', fmt(t.maxSaving), { status: t.maxSaving > 0 ? 'good' : '', sub: 'ถ้าใช้สิทธิ์เพิ่มครบ' })}
       </div>
 
       <div class="pf-doc-grid" style="margin-bottom:10px;">
-        <div class="pf-row"><span>เพดานรวม (สูงสุดที่ใช้ได้)</span><span>${fmt(d.target)}</span></div>
-        <div class="pf-row"><span>ใช้ลดหย่อนแล้ว</span><span style="color:#15803D;">${fmt(d.have)}</span></div>
-        <div class="pf-row"><span>เหลือ Cap ใช้ได้</span><span style="color:${d.gap>0?'#A16207':'#15803D'};">${fmt(d.gap)}</span></div>
-        <div class="pf-row"><span><b>ประหยัดภาษีเพิ่มได้</b></span><span><b style="color:#15803D;">${fmt(potentialSavings)}</b></span></div>
+        <div class="pf-row"><span>เงินได้ทั้งปี</span><span>${fmt(cur.income)}</span></div>
+        <div class="pf-row"><span>หักค่าใช้จ่าย</span><span>${fmt(cur.expense)}</span></div>
+        <div class="pf-row"><span>ค่าลดหย่อนรวม</span><span>${fmt(cur.totalDeduct)}</span></div>
+        <div class="pf-row"><span>เงินได้สุทธิ</span><span>${fmt(Math.max(cur.net, 0))}</span></div>
+        <div class="pf-row"><span><b>ภาษีที่ต้องเสีย (ปัจจุบัน)</b></span><span><b>${fmt(cur.tax)}</b></span></div>
+        ${t.imp ? `<div class="pf-row"><span><b>ภาษีตามแผนที่แนะนำ</b></span><span><b style="color:#15803D;">${fmt(t.imp.tax)}</b> · ประหยัด ${fmt(Math.max(cur.tax - t.imp.tax, 0))}</span></div>` : ''}
       </div>
 
       <table class="pf-doc-table">
-        <thead><tr><th>รายการลดหย่อน</th><th class="num">ใช้แล้ว</th></tr></thead>
+        <thead><tr><th>สิทธิ์ลดหย่อนเพื่อการวางแผน</th><th>เพดาน</th><th class="num">ใช้แล้ว</th><th class="num">ใช้เพิ่มได้</th></tr></thead>
         <tbody>
-          <tr><td>ประกันชีวิต (≤100K)</td><td class="num">${fmt(ti.lifeIns||0)}</td></tr>
-          <tr><td>ประกันสุขภาพ (≤25K)</td><td class="num">${fmt(healthAmt)}</td></tr>
-          <tr><td>ประกันบิดามารดา (≤15K)</td><td class="num">${fmt(ti.parentIns||0)}</td></tr>
-          <tr><td>เบี้ยบำนาญ (≤200K)</td><td class="num">${fmt(ti.annuity||0)}</td></tr>
-          <tr><td>PVD / กบข. (≤500K)</td><td class="num">${fmt(ti.pvd||0)}</td></tr>
-          <tr><td>RMF (≤500K)</td><td class="num">${fmt(ti.rmf||0)}</td></tr>
-          <tr><td>SSF (≤200K)</td><td class="num">${fmt(ti.ssf||0)}</td></tr>
-          <tr><td>ThaiESG (≤100K)</td><td class="num">${fmt(ti.thaiesg||0)}</td></tr>
+          ${trow('ประกันชีวิต + ประกันสุขภาพตนเอง', 'รวมไม่เกิน 100,000 (สุขภาพ ≤ 25,000)', g.lhUsed, g.lhRoom)}
+          ${g.parentUsed > 0 ? trow('ประกันสุขภาพบิดามารดา', 'ไม่เกิน 15,000', g.parentUsed, g.parentRoom) : ''}
+          ${trow('กลุ่มออมเพื่อเกษียณ', 'รวมไม่เกิน 500,000', g.retUsed, g.retRoom)}
+          ${trow('RMF', '30% ของเงินได้ ≤ 500,000', t.items.rmf, null, true)}
+          ${trow('ประกันบำนาญ', '15% ของเงินได้ ≤ 200,000', t.items.annuity, null, true)}
+          ${trow('PVD / กบข.', '15% / 30% ของเงินได้', t.items.pvd, null, true)}
+          ${t.items.ssf > 0 ? trow('SSF', '30% ของเงินได้ ≤ 200,000', t.items.ssf, null, true) : ''}
+          ${t.items.nsf > 0 ? trow('กอช.', 'ไม่เกิน 30,000', t.items.nsf, null, true) : ''}
+          ${trow('Thai ESG', '30% ของเงินได้ ≤ 300,000', g.esgUsed, g.esgRoom)}
+          ${g.esgxUsed > 0 ? trow('Thai ESGX', 'ไม่เกิน 500,000', g.esgxUsed, null) : ''}
         </tbody>
       </table>
+      <div class="pf-basis-note">ใช้เพิ่มได้ = สิทธิ์ตามกฎหมายที่ยังเหลือ${t.room > t.usefulRoom ? ` · ช่วยลดภาษีได้จริงไม่เกิน ${fmt(t.usefulRoom)} เพราะเมื่อเงินได้สุทธิเหลือไม่เกิน 150,000 จะไม่ต้องเสียภาษีแล้ว` : ''} · คำนวณแบบเดียวกับหน้าลดหย่อนภาษีในแอป</div>
 
-      <div class="pf-insight">
-        ${d.gap > 0
-          ? `ยังมีสิทธิ์ลดหย่อนเหลือ <b>${fmt(d.gap)}</b> — ใช้ครบจะประหยัดภาษีได้อีก <b>${fmt(potentialSavings)}</b>/ปี · พิจารณา RMF/SSF/ประกันบำนาญตามความเสี่ยงที่รับได้`
-          : 'ใช้สิทธิ์ลดหย่อนภาษีได้ครบเพดาน · ทบทวนแผนทุกปีตามรายได้ที่เปลี่ยน'}
-      </div>
+      <div class="pf-insight">${insight}</div>
     </div>
   `;
 }
@@ -3468,7 +3787,7 @@ function _pfRenderPolicies(c) {
 }
 
 function _pfRenderGoals(c) {
-  const goals = c.lifeGoals || c.financialGoals || [];
+  const goals = _pfGoals(c);
   if (goals.length === 0) {
     return `<div class="pf-doc-section"><h4>${_pfIcon('goals')} เป้าหมายชีวิต · Life Goals</h4><div class="pf-empty">ยังไม่มีเป้าหมาย</div></div>`;
   }
