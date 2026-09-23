@@ -2125,7 +2125,9 @@ function _psTaxIncome(c) {      /* = getAnnualIncome() ใน tax2.html */
 function _psTaxExpense(c) {     /* = computeExpense() ใน tax2.html */
   const ti = c.taxInputs || {};
   const n = k => Number(ti[k] || 0);
-  return Math.min((n('salary') + n('bonus') + n('inc402') + n('inc403')) * 0.5, 100000)
+  /* 40(1)+(2) รวมเพดาน 100,000 · 40(3) เพดาน 100,000 ของตัวเอง (หรือตามจริงถ้าสูงกว่า) */
+  return Math.min((n('salary') + n('bonus') + n('inc402')) * 0.5, 100000)
+    + Math.max(n('act403'), Math.min(n('inc403') * 0.5, 100000))
     + Math.max(n('act405'), n('inc405') * 0.30)
     + Math.max(n('act406'), n('inc406') * (ti.isMedical ? 0.60 : 0.30))
     + Math.max(n('act407'), n('inc407') * 0.60)
@@ -2133,7 +2135,9 @@ function _psTaxExpense(c) {     /* = computeExpense() ใน tax2.html */
 }
 function _psTaxVal(c, scope, key) {   /* = getValue() ใน tax2.html */
   const ti = c.taxInputs || {};
-  const v = (scope === 'imp' ? (ti.improve || {}) : ti)[key];
+  let v = (scope === 'imp' ? (ti.improve || {}) : ti)[key];
+  /* คอลัมน์ปรับปรุงที่ยังไม่แก้ → ใช้ค่าปัจจุบัน (= tax2.html) */
+  if (scope === 'imp' && (v == null || v === '')) v = ti[key];
   if (v == null || v === '') return _PS_TAX_DEFAULTS[key] || 0;
   return Number(v) || 0;
 }
@@ -2148,12 +2152,18 @@ function _psTaxScope(c, scope, extra) {
   if (retGroup > 500000) total -= retGroup - 500000;
   total += extra || 0;
   const ti = c.taxInputs || {};
-  const eduDonate = Number((scope === 'imp' ? (ti.improve || {}).eduDonate : ti.eduDonate) || 0);
+  const impEdu = (ti.improve || {}).eduDonate;
+  const eduDonate = Number((scope === 'imp' && impEdu != null && impEdu !== '') ? impEdu : (ti.eduDonate || 0));
   const expense = _psTaxExpense(c);
   const afterDeduct = Math.max(income - expense, 0) - total;
   const net = afterDeduct - Math.min(eduDonate * 2, Math.max(afterDeduct, 0) * 0.10);
-  const { tax, rate } = _psTaxBracket(Math.max(net, 0));
-  return { income, expense, totalDeduct: total, net, tax, rate };
+  const { tax: progressiveTax, rate } = _psTaxBracket(Math.max(net, 0));
+  /* วิธีเหมา 0.5% ของเงินได้ที่ไม่ใช่เงินเดือน (≥ 120,000 และภาษี > 5,000) → เสียตามวิธีที่สูงกว่า (= tax2.html) */
+  const otherInc = ['inc402','inc403','inc404','inc405','inc406','inc407','inc408','other'].reduce((s, k) => s + (Number(ti[k]) || 0), 0);
+  const flatTax = otherInc >= 120000 ? otherInc * 0.005 : 0;
+  const flatApplies = flatTax > 5000;
+  const tax = flatApplies ? Math.max(progressiveTax, flatTax) : progressiveTax;
+  return { income, expense, totalDeduct: total, net, tax, rate, progressiveTax, flatTax, flatApplies };
 }
 function _psTaxCalc(client) {
   const c = client;

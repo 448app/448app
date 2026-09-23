@@ -553,7 +553,7 @@
               <!-- 40(1) เงินเดือน -->
               <tr>
                 <td class="col-name">40 (1) เงินเดือน</td>
-                <td class="t2-cell"><div class="t2-pill"><input id="i-salary" class="money-fmt" inputmode="decimal" value="0" min="0" placeholder="0" oninput="calculate()"></div></td>
+                <td class="t2-cell"><div class="t2-pill"><input id="i-salary" class="money-fmt" inputmode="decimal" value="0" min="0" placeholder="0" oninput="_autoKeys.delete('salary'); calculate()"></div></td>
                 <td class="t2-cell"><div class="t2-pill readonly"><span id="t2-exp-1">0</span></div></td>
                 <td class="t2-cell"><div class="t2-pill empty"><span>—</span></div></td>
               </tr>
@@ -630,6 +630,12 @@
             <div class="t2-final-unit">บาท</div>
           </div>
 
+          <!-- ขั้นถัดไป: ค่าลดหย่อน + ผลภาษี อยู่ที่หน้า "ลดหย่อนภาษี" (บันทึกอัตโนมัติก่อนเปลี่ยนหน้า) -->
+          <div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;">
+            <span style="font-size:.8rem;color:var(--gray-500);">ขั้นถัดไป: กรอกค่าลดหย่อน แล้วดูภาษีที่ต้องชำระ</span>
+            <a class="btn btn-primary" href="tax2.html" style="text-decoration:none;">ลดหย่อนภาษี &amp; ผลภาษี →</a>
+          </div>
+
           <!-- Legacy inputs (hidden) — keep for calculate() compat -->
           <input type="hidden" id="i-bonus" value="0">
           <input type="hidden" id="i-other" value="0">
@@ -647,7 +653,7 @@
             <input id="d-personal" class="money-fmt" inputmode="decimal" value="60000" min="0" oninput="calculate()">
           </div>
           <div class="input-row">
-            <label>คู่สมรส (ไม่มีรายได้) <span>30,000 บาท/คน</span></label>
+            <label>คู่สมรส (ไม่มีรายได้) <span>60,000 บาท</span></label>
             <input id="d-spouse" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="calculate()">
           </div>
           <div class="input-row">
@@ -1043,45 +1049,46 @@
     const act8 = val('i-40-8-actual');
 
     // ─── Expense by section ───
-    // 40(1)+(2)+(3): combined cap 50% not exceeding 100,000
+    // 40(1)+(2): 50% รวมกันไม่เกิน 100,000 · 40(3): 50% ไม่เกิน 100,000 แยกเพดานของตัวเอง
+    // (เดิมรวม 40(3) ในเพดานเดียวกับ 40(1)+(2) → ค่าใช้จ่ายต่ำกว่าสิทธิ์ · สูตรเดียวกับหน้าลดหย่อนภาษีและ PDF)
     const incSalaryGroup = inc1 + inc2 + inc3;
-    const expSalaryGroup = Math.min(incSalaryGroup * 0.5, 100000);
+    const expSalaryGroup = Math.min((inc1 + inc2) * 0.5, 100000);
+    const exp3Rate = Math.min(inc3 * 0.5, 100000);
 
     // 40(4): no expense deduction
     const exp4 = 0;
 
-    // 40(5)-(8): rate-based, with per-row "ตามจริง" override if higher
+    // 40(5)-(8): rate-based, with per-row "ตามจริง"
     const exp5Rate = inc5 * 0.30;                             // ค่าเช่า 30%
     const exp6Rate = inc6 * (isMedical ? 0.60 : 0.30);        // วิชาชีพอิสระ 30% (แพทย์ 60%)
     const exp7Rate = inc7 * 0.60;                             // รับเหมา 60%
     const exp8Rate = inc8 * 0.60;                             // ขายของ 60%
-    /* ใช้ "ตามจริง" ถ้าใส่ค่า > 0, ไม่งั้น default เป็น "เหมา" — ผู้ใช้เลือกที่สูงกว่าได้ */
-    const exp5 = act5 > 0 ? act5 : exp5Rate;
-    const exp6 = act6 > 0 ? act6 : exp6Rate;
-    const exp7 = act7 > 0 ? act7 : exp7Rate;
-    const exp8 = act8 > 0 ? act8 : exp8Rate;
+    /* ใช้ค่าที่สูงกว่าระหว่าง "เหมา" กับ "ตามจริง" ตามที่คำอธิบายบอกและตามกฎ
+       (เดิม "ตามจริง" แทนที่เหมาแม้ต่ำกว่า → รายได้หลังหักค่าใช้จ่ายไม่ตรงกับหน้าลดหย่อนภาษี) */
+    const exp3 = Math.max(act3, exp3Rate);
+    const exp5 = Math.max(act5, exp5Rate);
+    const exp6 = Math.max(act6, exp6Rate);
+    const exp7 = Math.max(act7, exp7Rate);
+    const exp8 = Math.max(act8, exp8Rate);
     /* useActual stays for backward-compat metadata only */
     const useActual = (act3 + act5 + act6 + act7 + act8) > 0;
 
     // Update readonly "เหมา" cells in the new pill table
     const setIfExists = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = Math.round(v).toLocaleString('th-TH'); };
     setIfExists('t2-exp-1', expSalaryGroup);
-    /* 40(2)/40(3) share the same cap pool — just display the same group cap rounded for ref */
-    /* 40(3) has its own "เหมา" display equal to its 50% capped portion (UI hint, true allocation handled by group) */
-    const exp3Rate = Math.min(inc3 * 0.5, Math.max(100000 - Math.min((inc1+inc2)*0.5, 100000), 0));
     setIfExists('t2-exp-3', exp3Rate);
     setIfExists('t2-exp-5', exp5Rate);
     setIfExists('t2-exp-6', exp6Rate);
     setIfExists('t2-exp-7', exp7Rate);
     setIfExists('t2-exp-8', exp8Rate);
 
-    const expense = expSalaryGroup + exp4 + exp5 + exp6 + exp7 + exp8;
+    const expense = expSalaryGroup + exp3 + exp4 + exp5 + exp6 + exp7 + exp8;
 
     const income = incSalaryGroup + inc4 + inc5 + inc6 + inc7 + inc8 + incOther;
 
-    /* Update new pill-table totals + final summary */
-    const sumExpRate = expSalaryGroup + exp4 + exp5Rate + exp6Rate + exp7Rate + exp8Rate;
-    const sumExpActual = act3 + act5 + act6 + act7 + act8;
+    /* Update new pill-table totals + final summary — "รวมตามจริง" แสดงยอดที่ใช้จริง (สูงกว่าระหว่างเหมา/ตามจริง) */
+    const sumExpRate = expSalaryGroup + exp3Rate + exp4 + exp5Rate + exp6Rate + exp7Rate + exp8Rate;
+    const sumExpActual = expense;
     setIfExists('t2-sum-income', income);
     setIfExists('t2-sum-exp-rate', sumExpRate);
     setIfExists('t2-sum-exp-actual', sumExpActual);
@@ -1099,7 +1106,7 @@
     const ssf       = Math.min(val('d-ssf'), income * 0.30, 200000);
     const sso       = Math.min(val('d-sso'),           9000);
     const personal  = Math.min(val('d-personal'),    60000);
-    const spouse    = Math.min(val('d-spouse'),      30000);
+    const spouse    = Math.min(val('d-spouse'),      60000);   /* คู่สมรสไม่มีเงินได้ 60,000 (เดิม 30,000) */
     const child     = val('d-child');
 
     /* บริจาค: cap = 10% ของรายได้สุทธิ "หลังหักลดหย่อนอื่น"
@@ -1110,7 +1117,11 @@
 
     const totalDeduct = otherDeductsBeforeDonate + donate;
     const netIncome   = Math.max(income - expense - totalDeduct, 0);
-    const { tax, breakdown } = calcTax(netIncome);
+    const { tax: progressiveTax, breakdown } = calcTax(netIncome);
+    /* วิธีเหมา 0.5% ของเงินได้ที่ไม่ใช่เงินเดือน (40(2)–(8)) เมื่อ ≥ 120,000 และภาษีวิธีนี้ > 5,000 → เสียตามวิธีที่สูงกว่า (= tax2.html/PDF) */
+    const otherInc = inc2 + inc3 + inc4 + inc5 + inc6 + inc7 + inc8 + incOther;
+    const flatTax  = otherInc >= 120000 ? otherInc * 0.005 : 0;
+    const tax      = flatTax > 5000 ? Math.max(progressiveTax, flatTax) : progressiveTax;
     const effRate = income > 0 ? (tax / income * 100).toFixed(2) : 0;
 
     document.getElementById('res-income').textContent  = fmt(income);
@@ -1189,7 +1200,7 @@
                          lifeIns, healthIns, parentIns, annuity, pvd, rmf, ssf, donate });
     }
 
-    return { income, expense, totalDeduct, netIncome, tax, effRate };
+    return { income, expense, totalDeduct, netIncome, tax, effRate, progressiveTax, flatTax };
   }
 
   /* ════════════════════════════════════════════
@@ -1496,6 +1507,8 @@
       cmpAddRmf:     v('cmp-add-rmf'),
       cmpAddSsf:     v('cmp-add-ssf'),
       cmpAddDonate:  v('cmp-add-donate'),
+      /* คีย์ที่ค่าถูกดึงอัตโนมัติ (ดู _autoKeys) */
+      _auto: Object.fromEntries([..._autoKeys].map(k => [k, true])),
     };
   }
 
@@ -1552,7 +1565,7 @@
       if (!c.taxHistory) c.taxHistory = [];
       c.taxHistory.unshift({
         id:      'tx' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
-        year, income: r.income, deduct: r.totalDeduct, tax: r.tax,
+        year, income: r.income, expense: r.expense, deduct: r.totalDeduct, net: r.netIncome, tax: r.tax,
         savedAt: new Date().toISOString()
       });
       // Limit to last 10 entries
@@ -1648,10 +1661,26 @@
      CLIENT-LINKED TAX TOOL
   ═══════════════════════════════════════════ */
   let selectedClientId = null;
+  /* คีย์ที่ค่าในฟอร์ม "ดึงอัตโนมัติ" จากโปรไฟล์/กรมธรรม์/สินทรัพย์ (ไม่ใช่ผู้ใช้กรอก)
+     บันทึกลง taxInputs._auto → ครั้งถัดไป prefill ดึงค่าล่าสุดจากต้นทางแทนค่าเก่าที่ค้าง
+     (เดิม auto-save ทุกครั้งที่คำนวณทำให้ค่าที่ดึงมาถูกบันทึกเหมือนผู้ใช้กรอก → กรมธรรม์เปลี่ยนแล้วภาษีไม่อัปเดต) */
+  const _autoKeys = new Set();
 
   function getClients() { return (getCurrentUser().data || {}).clients || []; }
   function getCurrentClient() {
     return getClients().find(c => c.id === selectedClientId) || null;
+  }
+
+  /* Toast — หน้านี้เรียก showToast() หลายจุด (🔄 ดึงข้อมูล / ย้ายค่าเพิ่ม / ลบประวัติ) แต่ไม่เคยนิยามไว้ → error หลังทำงาน */
+  function showToast(msg) {
+    let t = document.getElementById('tx-toast');
+    if (!t) {
+      t = document.createElement('div'); t.id = 'tx-toast';
+      t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1B2A5E;color:#fff;padding:10px 18px;border-radius:10px;font-size:.85rem;font-family:var(--font);z-index:9999;max-width:90vw;box-shadow:0 6px 20px rgba(0,0,0,.2);opacity:0;transition:opacity .25s;pointer-events:none;';
+      document.body.appendChild(t);
+    }
+    t.textContent = msg; t.style.opacity = '1';
+    clearTimeout(t._timer); t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2800);
   }
 
   /* ════════════════════════════════════════════
@@ -1722,20 +1751,28 @@
     const hiPremium      = Number(client.healthInputs && client.healthInputs.premium || 0);
     const totalHealthPrem = ins.healthPrem + hiPremium;
 
-    document.getElementById('d-life-ins').value   = Math.min(ins.lifePrem, 100000);
-    document.getElementById('d-health-ins').value = Math.min(totalHealthPrem, 25000);
-    document.getElementById('d-annuity').value    = Math.min(ins.annuityPrem, 200000);
+    /* ถามก่อนทับค่าที่ผู้ใช้กรอกเองไว้ (ในหน้าลดหย่อนภาษี) */
+    const tiNow = client.taxInputs || {};
+    const autoNow = tiNow._auto || {};
+    const manualKeys = ['lifeIns','healthIns','annuity','pvd','rmf','ssf'].filter(k => tiNow[k] != null && !autoNow[k]);
+    if (manualKeys.length && !confirm('มีค่าที่กรอกเองไว้ในหน้าลดหย่อนภาษี (ประกัน/กองทุน) — ดึงข้อมูลจากกรมธรรม์/สินทรัพย์มาทับหรือไม่?')) return;
+
+    /* เก็บ "เบี้ยจริง" ไม่ตัดตามเพดาน — เพดานคิดตอนคำนวณ (เดิมบันทึกค่าที่ถูกตัดแล้ว ยอดจริงหาย) */
+    document.getElementById('d-life-ins').value   = ins.lifePrem;
+    document.getElementById('d-health-ins').value = totalHealthPrem;
+    document.getElementById('d-annuity').value    = ins.annuityPrem;
     document.getElementById('d-pvd').value        = pvdContrib;
     document.getElementById('d-rmf').value        = rmfContrib;
     document.getElementById('d-ssf').value        = ssfContrib;
+    ['lifeIns','healthIns','annuity','pvd','rmf','ssf'].forEach(k => _autoKeys.add(k));
 
     if (window.refreshAllMoneyInputs) refreshAllMoneyInputs();
     calculate();
 
     const breakdown = [];
-    if (ins.lifePrem > 0)    breakdown.push(`ชีวิต ฿${Math.min(ins.lifePrem,100000).toLocaleString('th-TH')}`);
-    if (ins.healthPrem > 0)  breakdown.push(`สุขภาพ ฿${Math.min(ins.healthPrem,25000).toLocaleString('th-TH')}`);
-    if (ins.annuityPrem > 0) breakdown.push(`บำนาญ ฿${Math.min(ins.annuityPrem,200000).toLocaleString('th-TH')}`);
+    if (ins.lifePrem > 0)    breakdown.push(`ชีวิต ฿${ins.lifePrem.toLocaleString('th-TH')}`);
+    if (ins.healthPrem > 0)  breakdown.push(`สุขภาพ ฿${ins.healthPrem.toLocaleString('th-TH')}`);
+    if (ins.annuityPrem > 0) breakdown.push(`บำนาญ ฿${ins.annuityPrem.toLocaleString('th-TH')}`);
     if (pvdContrib > 0)      breakdown.push(`PVD ฿${pvdContrib.toLocaleString('th-TH')}`);
     if (rmfContrib > 0)      breakdown.push(`RMF ฿${rmfContrib.toLocaleString('th-TH')}`);
     if (ssfContrib > 0)      breakdown.push(`SSF ฿${ssfContrib.toLocaleString('th-TH')}`);
@@ -1787,7 +1824,15 @@
     // 1) Income — from saved input, OR client.income (annual), OR client.cashflow.income * 12
     const annualIncomeFromCF = client.cashflow && client.cashflow.income ? Number(client.cashflow.income) * 12 : 0;
     const annualIncome = Number(client.income) || annualIncomeFromCF || 0;
-    document.getElementById('i-salary').value = ti.salary != null ? ti.salary : annualIncome;
+    /* ค่าที่เคยดึงอัตโนมัติ (ti._auto[key]) → ดึงใหม่จากต้นทางทุกครั้ง · ค่าที่ผู้ใช้กรอกเอง → ใช้ค่าที่บันทึกไว้ */
+    const auto = ti._auto || {};
+    _autoKeys.clear();
+    const pick = (key, saved, derived) => {
+      if (saved != null && !auto[key]) return saved;
+      _autoKeys.add(key);
+      return derived;
+    };
+    document.getElementById('i-salary').value = pick('salary', ti.salary, annualIncome);
     document.getElementById('i-bonus').value  = ti.bonus  != null ? ti.bonus  : 0;
     document.getElementById('i-other').value  = ti.other  != null ? ti.other  : 0;
     // 40(2)-(8) restore (only if saved before)
@@ -1824,19 +1869,20 @@
     const { lifePrem, healthPrem, annuityPrem } = insBreakdown;
     const hiPremium = Number(client.healthInputs && client.healthInputs.premium || 0);
     const totalHealthPrem = healthPrem + hiPremium;
-    document.getElementById('d-life-ins').value   = ti.lifeIns   != null ? ti.lifeIns   : Math.min(lifePrem, 100000);
-    document.getElementById('d-health-ins').value = ti.healthIns != null ? ti.healthIns : Math.min(totalHealthPrem, 25000);
+    /* เก็บเบี้ยจริงไม่ตัดเพดาน — เพดานคิดใน calculate()/tax2.html */
+    document.getElementById('d-life-ins').value   = pick('lifeIns',   ti.lifeIns,   lifePrem);
+    document.getElementById('d-health-ins').value = pick('healthIns', ti.healthIns, totalHealthPrem);
     document.getElementById('d-parent-ins').value = ti.parentIns != null ? ti.parentIns : 0;
-    document.getElementById('d-annuity').value    = ti.annuity   != null ? ti.annuity   : Math.min(annuityPrem, 200000);
+    document.getElementById('d-annuity').value    = pick('annuity',   ti.annuity,   annuityPrem);
 
     // 4) Investment deductions — auto-fill from this client's assets (normalize contribFreq)
     const pvdContrib     = assets.filter(a => a.type==='pvd').reduce((s,a)=>s+annualContrib(a),0);
     const rmfContrib     = assets.filter(a => a.type==='rmf').reduce((s,a)=>s+annualContrib(a),0);
     const ssfContrib     = assets.filter(a => a.type==='ssf').reduce((s,a)=>s+annualContrib(a),0);
     const thaiesgContrib = assets.filter(a => a.type==='thaiesg').reduce((s,a)=>s+annualContrib(a),0);
-    document.getElementById('d-pvd').value = ti.pvd != null ? ti.pvd : pvdContrib;
-    document.getElementById('d-rmf').value = ti.rmf != null ? ti.rmf : rmfContrib;
-    document.getElementById('d-ssf').value = ti.ssf != null ? ti.ssf : ssfContrib;
+    document.getElementById('d-pvd').value = pick('pvd', ti.pvd, pvdContrib);
+    document.getElementById('d-rmf').value = pick('rmf', ti.rmf, rmfContrib);
+    document.getElementById('d-ssf').value = pick('ssf', ti.ssf, ssfContrib);
 
     // 5) Other
     document.getElementById('d-sso').value    = ti.sso    != null ? ti.sso    : 9000;
@@ -1858,19 +1904,19 @@
     // Banner
     const fullName = ((client.firstName||'')+' '+(client.lastName||'')).trim();
     const autoFilled = [];
-    if (annualIncome > 0 && ti.salary == null) autoFilled.push(`รายได้ ฿${annualIncome.toLocaleString('th-TH')}/ปี`);
-    if (lifePrem > 0    && ti.lifeIns == null) autoFilled.push(`เบี้ยประกันชีวิต ฿${lifePrem.toLocaleString('th-TH')}`);
-    if (healthPrem > 0  && ti.healthIns == null) autoFilled.push(`เบี้ยสุขภาพ ฿${healthPrem.toLocaleString('th-TH')}`);
-    if (annuityPrem > 0 && ti.annuity == null) autoFilled.push(`เบี้ยบำนาญ ฿${annuityPrem.toLocaleString('th-TH')}`);
-    if ((pvdContrib + rmfContrib + ssfContrib + thaiesgContrib) > 0 && (ti.pvd == null && ti.rmf == null && ti.ssf == null))
+    if (annualIncome > 0 && _autoKeys.has('salary')) autoFilled.push(`รายได้ ฿${annualIncome.toLocaleString('th-TH')}/ปี`);
+    if (lifePrem > 0    && _autoKeys.has('lifeIns')) autoFilled.push(`เบี้ยประกันชีวิต ฿${lifePrem.toLocaleString('th-TH')}`);
+    if (healthPrem > 0  && _autoKeys.has('healthIns')) autoFilled.push(`เบี้ยสุขภาพ ฿${healthPrem.toLocaleString('th-TH')}`);
+    if (annuityPrem > 0 && _autoKeys.has('annuity')) autoFilled.push(`เบี้ยบำนาญ ฿${annuityPrem.toLocaleString('th-TH')}`);
+    if ((pvdContrib + rmfContrib + ssfContrib + thaiesgContrib) > 0 && (_autoKeys.has('pvd') || _autoKeys.has('rmf') || _autoKeys.has('ssf')))
       autoFilled.push(`PVD/RMF/SSF จากสินทรัพย์`);
 
     // Refresh button — always show when client is selected
     const refreshBtn = `<button onclick="refreshInsuranceFromPolicies()" style="margin-left:10px;background:var(--red-primary);color:white;border:none;border-radius:6px;padding:6px 12px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:var(--font);white-space:nowrap;" title="ดึงข้อมูลล่าสุดจากสรุปกรมธรรม์/สินทรัพย์">🔄 ดึงข้อมูลล่าสุด</button>`;
 
-    if (Object.keys(ti).length > 0) {
+    if (Object.keys(ti).some(k => k !== '_auto' && k !== 'improve')) {
       banner.innerHTML = `<div class="auto-fill-banner" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-        <div>💾 <b>ข้อมูลที่บันทึกไว้ของ "${fullName}"</b> — แก้ไขแล้วกด 💾 บันทึกใหม่ได้</div>
+        <div>💾 <b>ข้อมูลที่บันทึกไว้ของ "${fullName}"</b>${autoFilled.length ? ` · ดึงล่าสุด: ${autoFilled.join(' · ')}` : ''} — แก้ไขแล้วกด 💾 บันทึกใหม่ได้</div>
         ${refreshBtn}
       </div>`;
     } else if (autoFilled.length > 0) {

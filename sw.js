@@ -4,7 +4,7 @@
    - ใช้ cache เฉพาะตอน offline (fallback)
    ผลคือ: page reload ปกติ = ได้ของใหม่จาก server ทุกครั้ง
    ไม่ต้องกด Ctrl+Shift+R เอง */
-const SW_VERSION = 'v206-2026-09-23-audit-batch2';
+const SW_VERSION = 'v207-2026-09-23-audit-batch3';
 const CACHE_NAME = 'aia-runtime-' + SW_VERSION;
 
 self.addEventListener('install', (event) => {

@@ -467,6 +467,8 @@ function saveField(scope, key, value) {
       c.taxInputs.improve[key] = n;
     } else {
       c.taxInputs[key] = n;
+      /* ค่าที่ผู้ใช้กรอกเอง → เลิกให้หน้าคำนวณภาษีดึงจากกรมธรรม์/สินทรัพย์มาทับ (ดู _auto ใน tax.html) */
+      if (c.taxInputs._auto) delete c.taxInputs._auto[key];
     }
   });
 }
@@ -569,7 +571,9 @@ function calcBracketBreakdown(netIncome) {
 ═══════════════════════════════════════════ */
 function getValue(ti, scope, key, defaultVal) {
   const obj = (scope === 'imp') ? (ti.improve || {}) : ti;
-  const v = obj[key];
+  let v = obj[key];
+  /* คอลัมน์ "ปรับปรุง" ที่ยังไม่ได้แก้ → ใช้ค่าปัจจุบันของแถวนั้น (เดิมเริ่มที่ 0 ทุกแถว → ภาษีหลังปรับปรุงสูงกว่าปัจจุบัน) */
+  if (scope === 'imp' && (v == null || v === '')) v = ti[key];
   if (v == null || v === '') return defaultVal != null ? defaultVal : 0;
   return Number(v) || 0;
 }
@@ -610,8 +614,10 @@ function computeScope(client, scope) {
   const retExcess = Math.max(retGroup - 500000, 0);
   total -= retExcess;
 
+  /* คอลัมน์ปรับปรุงที่ยังไม่แก้ → ใช้ค่าปัจจุบัน (เหมือน getValue) */
+  const impEdu = (ti.improve||{}).eduDonate;
   const eduDonate = scope === 'imp'
-    ? Number((ti.improve||{}).eduDonate || 0)
+    ? Number((impEdu == null || impEdu === '') ? (ti.eduDonate || 0) : impEdu)
     : Number(ti.eduDonate || 0);
 
   /* รายได้หลังหักค่าใช้จ่ายและค่าลดหย่อน
@@ -623,7 +629,16 @@ function computeScope(client, scope) {
   const donateCap = Math.max(afterDeduct, 0) * 0.10;
   const eduDeduct = Math.min(eduDonate * 2, donateCap);
   const net = afterDeduct - eduDeduct;
-  const { tax } = calcTax(Math.max(net, 0));
+  const { tax: progressiveTax } = calcTax(Math.max(net, 0));
+
+  /* วิธีเหมา 0.5%: ถ้ามีเงินได้ที่ไม่ใช่เงินเดือน (40(2)–(8)) ตั้งแต่ 120,000 บาท ต้องเทียบภาษี 0.5% ของเงินได้ส่วนนั้น
+     กับภาษีอัตราก้าวหน้า แล้วเสียตามวิธีที่สูงกว่า — ยกเว้นถ้าภาษีตามวิธี 0.5% ไม่เกิน 5,000 บาท ไม่ต้องใช้วิธีนี้
+     (เดิมกล่องแสดงอย่างเดียว ใช้เกณฑ์ > 5,000 ของรายได้ ไม่รวม 40(2) และไม่เอามาเทียบกับภาษีจริง) */
+  const otherInc = Number(ti.inc402||0) + Number(ti.inc403||0) + Number(ti.inc404||0) + Number(ti.inc405||0)
+                 + Number(ti.inc406||0) + Number(ti.inc407||0) + Number(ti.inc408||0) + Number(ti.other||0);
+  const flatTax = otherInc >= 120000 ? otherInc * 0.005 : 0;
+  const flatApplies = flatTax > 5000;
+  const tax = flatApplies ? Math.max(progressiveTax, flatTax) : progressiveTax;
 
   return {
     annualIncome, expense,
@@ -631,7 +646,7 @@ function computeScope(client, scope) {
     afterDeduct,
     eduDeduct, eduDonate,
     net,
-    tax,
+    tax, progressiveTax, flatTax, flatApplies, otherInc,
   };
 }
 
@@ -645,8 +660,9 @@ function computeExpense(client) {
   const inc7 = Number(ti.inc407||0);
   const inc8 = Number(ti.inc408||0);
   const isMedical = !!ti.isMedical;
-  /* 40(1)+(2)+(3): cap 100K */
-  const expGrp = Math.min((inc1+inc2+inc3)*0.5, 100000);
+  /* 40(1)+(2): 50% รวมกันไม่เกิน 100,000 · 40(3): 50% ไม่เกิน 100,000 แยกเพดานของตัวเอง (หรือตามจริงถ้าสูงกว่า)
+     เดิมเอา 40(3) มารวมเพดานเดียวกับ 40(1)+(2) → ค่าใช้จ่ายต่ำกว่าสิทธิ์ */
+  const expGrp = Math.min((inc1+inc2)*0.5, 100000) + Math.max(Number(ti.act403||0), Math.min(inc3*0.5, 100000));
   const exp5 = Math.max(Number(ti.act405||0), inc5*0.30);
   const exp6 = Math.max(Number(ti.act406||0), inc6*(isMedical?0.60:0.30));
   const exp7 = Math.max(Number(ti.act407||0), inc7*0.60);
@@ -843,27 +859,24 @@ function buildTaxHTML() {
         <span class="em">เสียภาษี จำนวนแบบที่มากกว่า</span> ระหว่าง <span class="em">อัตราก้าวหน้า</span> หรือ <span class="em">อัตราคงที่</span>
       </div>
       ${(() => {
-        /* รายได้อื่นนอกจากเงินเดือน — 40(3)…40(8) + อื่น ๆ */
-        const otherInc = Number(ti.inc403||0) + Number(ti.inc404||0) + Number(ti.inc405||0)
-                      + Number(ti.inc406||0) + Number(ti.inc407||0) + Number(ti.inc408||0)
-                      + Number(ti.other||0);
-        /* ใช้ net (ก่อนปรับปรุง) เป็น fallback เพื่อให้ผู้ใช้เห็น "ภาษีที่จะจ่ายถ้าใช้วิธี 0.5%"
-           กรณีไม่มี otherInc แยก → คำนวณบน annualIncome */
-        const baseIncome = otherInc > 0 ? otherInc : Math.max(cur.annualIncome || 0, 0);
-        const flatTax = baseIncome * 0.005;
-        /* แบบเหมา 0.5% applicable เมื่อ otherInc > 5,000 (ตามกฎหมายภาษี) */
-        const applicable = otherInc > 5000;
+        /* ใช้ค่าจาก computeScope (ปัจจุบัน): เงินได้ที่ไม่ใช่เงินเดือน 40(2)–(8) · ใช้วิธีนี้เมื่อ ≥ 120,000 และภาษี 0.5% > 5,000 */
+        const applicable = cur.flatApplies;
+        const note = cur.otherInc <= 0 ? 'ไม่มีเงินได้นอกจากเงินเดือน — ไม่ใช้วิธีนี้'
+          : cur.otherInc < 120000 ? 'เงินได้นอกจากเงินเดือนไม่ถึง 120,000 — ไม่ใช้วิธีนี้'
+          : !applicable ? 'ภาษีตามวิธี 0.5% ไม่เกิน 5,000 — ไม่ต้องใช้วิธีนี้'
+          : (cur.flatTax > cur.progressiveTax ? 'สูงกว่าอัตราก้าวหน้า → เสียภาษีตามวิธีนี้' : 'ต่ำกว่าอัตราก้าวหน้า → เสียภาษีตามอัตราก้าวหน้า');
         return `
           <div class="t3-flat-row${applicable ? ' applicable' : ''}">
             <div class="t3-flat-h">
-              <div>เงินได้พึงประเมิน</div>
+              <div>เงินได้ที่ไม่ใช่เงินเดือน (40(2)–(8))</div>
               <div>อัตราคงที่</div>
-              <div>ภาษีที่ต้องจ่าย</div>
+              <div>ภาษีตามวิธีนี้</div>
             </div>
-            <div class="t3-flat-cell-income">${fmt(baseIncome)}</div>
+            <div class="t3-flat-cell-income">${cur.otherInc > 0 ? fmt(cur.otherInc) : '—'}</div>
             <div class="t3-flat-cell-rate">0.5%</div>
-            <div class="t3-flat-cell-tax">${flatTax > 0 ? fmt(flatTax) : '—'}</div>
+            <div class="t3-flat-cell-tax">${cur.otherInc >= 120000 ? fmt(cur.flatTax) : '—'}</div>
           </div>
+          <div style="font-size:.78rem;color:var(--gray-500);margin-top:6px;">${note}</div>
         `;
       })()}
       </div><!-- /#t3-after -->

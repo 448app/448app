@@ -2225,8 +2225,11 @@ function renderPolicyDetailSummary() {
   const riderPrem = policies.reduce((s, p) => s + ((p.riders || []).reduce((rs, r) => rs + Number(r.premium || 0), 0)), 0);
 
   const clientName = (client && (client.firstName + ' ' + (client.lastName || ''))).trim() || 'ลูกค้า';
-  const agentName  = (client && client.agentName) || 'ตัวแทนบริการ';
-  const agentRole  = (client && client.agentRole) || '—';
+  /* ชื่อตัวแทนจากโปรไฟล์ผู้ใช้ที่ล็อกอิน (เดิมอ่าน client.agentName ซึ่งไม่มีที่ไหนบันทึก → "ตัวแทนบริการ" เสมอ) */
+  const _agent     = getCurrentUser() || {};
+  const _agentProf = _agent.profile || {};
+  const agentName  = ((_agent.firstName||'') + ' ' + (_agent.lastName||'')).trim() || 'ตัวแทนบริการ';
+  const agentRole  = [_agentProf.unit || 'AIA', _agentProf.aiaCode ? 'รหัส ' + _agentProf.aiaCode : 'ตัวแทน'].join(' · ');
 
   const left = `
     <div>
@@ -2805,10 +2808,10 @@ function getBracketRate(netIncome) {
 }
 
 function getClientMarginalTax(client) {
-  // Priority 1: ใช้ taxHistory ล่าสุด (ลูกค้าเคยกดบันทึกใน tax.html)
-  if (client && client.taxHistory && client.taxHistory.length > 0) {
-    const latest = client.taxHistory[0];
-    const netIncome = Math.max((latest.income || 0) - (latest.deduct || 0), 0);
+  // Priority 1: ใช้ taxHistory ล่าสุด (ลูกค้าเคยกดบันทึกใน tax.html) — ใช้เงินได้สุทธิที่บันทึก
+  // (เดิมคิด income − deduct โดยไม่หักค่าใช้จ่าย → ขั้นภาษีสูงเกินจริง) — ถ้าไม่มี net ให้ข้ามไปคิดจาก taxInputs
+  if (client && client.taxHistory && client.taxHistory.length > 0 && client.taxHistory[0].net != null) {
+    const netIncome = Math.max(Number(client.taxHistory[0].net) || 0, 0);
     return { ...getBracketRate(netIncome), source: 'history' };
   }
 
@@ -2825,12 +2828,21 @@ function getClientMarginalTax(client) {
     const inc8 = Number(ti.inc408||0);
     const totalIncome = inc1 + inc2 + inc3 + inc4 + inc5 + inc6 + inc7 + inc8 + Number(ti.other||0);
     if (totalIncome > 0) {
-      // Approx expense: 50%(แต่ไม่เกิน 100k) สำหรับ 40(1-3)
-      const salaryGroupExpense = Math.min((inc1 + inc2 + inc3) * 0.5, 100000);
-      const expense = salaryGroupExpense + inc5 * 0.30 + inc6 * (ti.isMedical ? 0.60 : 0.30) + inc7 * 0.60 + inc8 * 0.60;
-      const totalDeduct = Number(ti.personal||60000) + Number(ti.spouse||0) + Number(ti.child||0)
-                        + Number(ti.lifeIns||0) + Number(ti.healthIns||0) + Number(ti.parentIns||0) + Number(ti.annuity||0)
-                        + Number(ti.pvd||0) + Number(ti.rmf||0) + Number(ti.ssf||0) + Number(ti.sso||0) + Number(ti.donate||0);
+      // ค่าใช้จ่าย: 40(1)+(2) 50% ไม่เกิน 100k · 40(3) 50% ไม่เกิน 100k แยกเพดาน · 40(5)-(8) ใช้ค่าที่สูงกว่าระหว่างเหมา/ตามจริง (= tax.html/tax2.html)
+      const expense = Math.min((inc1 + inc2) * 0.5, 100000)
+                    + Math.max(Number(ti.act403||0), Math.min(inc3 * 0.5, 100000))
+                    + Math.max(Number(ti.act405||0), inc5 * 0.30)
+                    + Math.max(Number(ti.act406||0), inc6 * (ti.isMedical ? 0.60 : 0.30))
+                    + Math.max(Number(ti.act407||0), inc7 * 0.60)
+                    + Math.max(Number(ti.act408||0), inc8 * 0.60);
+      /* ค่าลดหย่อนตัดเพดานตามกฎ (taxInputs เก็บเบี้ย/ยอดจริง ไม่ตัดเพดาน) */
+      const healthIns = Math.min(Number(ti.healthIns||0), 25000);
+      const lifeIns   = Math.min(Number(ti.lifeIns||0), Math.max(100000 - healthIns, 0));
+      const retGroup  = Math.min(Number(ti.annuity||0), 200000) + Math.min(Number(ti.pvd||0), totalIncome * 0.15, 500000)
+                      + Math.min(Number(ti.rmf||0), totalIncome * 0.30, 500000) + Math.min(Number(ti.ssf||0), totalIncome * 0.30, 200000);
+      const totalDeduct = Math.min(Number(ti.personal||60000), 60000) + Math.min(Number(ti.spouse||0), 60000) + Number(ti.child||0)
+                        + lifeIns + healthIns + Math.min(Number(ti.parentIns||0), 15000)
+                        + Math.min(retGroup, 500000) + Math.min(Number(ti.sso||0), 9000) + Number(ti.donate||0);
       const netIncome = Math.max(totalIncome - expense - totalDeduct, 0);
       return { ...getBracketRate(netIncome), source: 'inputs' };
     }
@@ -3020,24 +3032,42 @@ function renderCostSummary(policies) {
 function renderExpiryAlerts(policies) {
   const today   = new Date(); today.setHours(0,0,0,0);
   const soon    = new Date(today); soon.setDate(soon.getDate() + 90);
-  const alerts  = policies.filter(p => p.end && new Date(p.end) <= soon);
   const section = document.getElementById('expiry-section');
   const alertEl = document.getElementById('alert-list');
 
-  if (alerts.length === 0) { section.style.display = 'none'; return; }
+  /* 2 เหตุการณ์ต่อกรมธรรม์: วันสิ้นสุดความคุ้มครอง และวันครบกำหนดชำระเบี้ย (เริ่ม + ปีที่ชำระเบี้ยสัญญาหลัก)
+     เดิมเตือนเฉพาะวันสิ้นสุด → กรมธรรม์ที่ชำระเบี้ยครบ (เช่น ตลอดชีพจ่าย 20 ปี) ไม่มีการแจ้ง */
+  const events = [];
+  policies.forEach(p => {
+    if (p.end && new Date(p.end) <= soon) events.push({ p, kind: 'end', date: new Date(p.end) });
+    const payYears = Number(p.payYearsMain) || 0;
+    if (p.start && payYears > 0) {
+      const payEnd = new Date(p.start); payEnd.setFullYear(payEnd.getFullYear() + payYears);
+      /* ไม่ซ้ำกับวันสิ้นสุด (แบบชำระเบี้ยตลอดสัญญา) และไม่เตือนย้อนหลังเกิน 1 ปี */
+      const sameAsEnd = p.end && Math.abs(payEnd - new Date(p.end)) < 86400000 * 31;
+      const yearAgo = new Date(today); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+      if (!sameAsEnd && payEnd <= soon && payEnd >= yearAgo) events.push({ p, kind: 'pay', date: payEnd });
+    }
+  });
+  events.sort((a, b) => a.date - b.date);
+
+  if (events.length === 0) { section.style.display = 'none'; return; }
   section.style.display = 'block';
 
-  alertEl.innerHTML = alerts.map(p => {
-    const endDate  = new Date(p.end);
-    const diffDays = Math.round((endDate - today) / 86400000);
-    const expired  = diffDays < 0;
-    const daysText = expired ? `หมดอายุแล้ว ${Math.abs(diffDays)} วัน` : `อีก ${diffDays} วัน`;
+  alertEl.innerHTML = events.map(({ p, kind, date }) => {
+    const diffDays = Math.round((date - today) / 86400000);
+    const passed   = diffDays < 0;
+    const isPay    = kind === 'pay';
+    const daysText = passed
+      ? (isPay ? `ครบแล้ว ${Math.abs(diffDays)} วัน` : `หมดอายุแล้ว ${Math.abs(diffDays)} วัน`)
+      : `อีก ${diffDays} วัน`;
+    const label = isPay ? `ครบกำหนดชำระเบี้ย ${fmtDate(date)} (ชำระ ${Number(p.payYearsMain)} ปี)` : `วันสิ้นสุด ${fmtDate(p.end)}`;
     return `
-      <div class="alert-row ${expired ? 'expired' : ''}">
-        <div class="alert-ico">${expired ? '🚨' : '⚠️'}</div>
+      <div class="alert-row ${passed && !isPay ? 'expired' : ''}">
+        <div class="alert-ico">${isPay ? '💳' : (passed ? '🚨' : '⚠️')}</div>
         <div class="alert-info">
           <div class="alert-name">${p.name}</div>
-          <div class="alert-date">${p.company} · วันสิ้นสุด ${fmtDate(p.end)}</div>
+          <div class="alert-date">${p.company} · ${label}</div>
         </div>
         <div class="alert-days">${daysText}</div>
       </div>`;
