@@ -2412,6 +2412,9 @@ function computePyramid(client, summary, has) {
         ? ((has.retire && summary.retire.pct >= 30) || (has.education && summary.education.pct >= 30))
         : (summary.retire.pct >= 30 || summary.education.pct >= 30),
       assessed: has ? (has.retire || has.education) : true,
+      note: has && (has.retire !== has.education)
+        ? (has.retire ? 'ประเมินเฉพาะเกษียณ · การศึกษาบุตรยังไม่ได้ประเมิน' : 'ประเมินเฉพาะการศึกษาบุตร · เกษียณยังไม่ได้ประเมิน')
+        : '',
     },
     {
       layer: 2,
@@ -2419,8 +2422,15 @@ function computePyramid(client, summary, has) {
       titleTh: 'การบริหารความเสี่ยง',
       desc: 'Transfer Risk · ชีวิต · สุขภาพ · ทรัพย์สิน',
       icon: '🛡️',
-      ok: summary.lifeIns.pct >= 50 && summary.healthIns.pct >= 50,
-      assessed: has ? (has.lifeIns && has.healthIns) : true,
+      /* ประเมินจากส่วนที่มีข้อมูล — มีสุขภาพอย่างเดียวก็ประเมินได้ (เดิมต้องมีทั้งชีวิตและสุขภาพ
+         → ลูกค้าที่กรอกประกันสุขภาพแล้วยังขึ้น "ยังไม่ประเมิน") · ผ่านเมื่อทุกส่วนที่ประเมินได้ ≥ 50% */
+      ok: has
+        ? ((!has.lifeIns || summary.lifeIns.pct >= 50) && (!has.healthIns || summary.healthIns.pct >= 50))
+        : (summary.lifeIns.pct >= 50 && summary.healthIns.pct >= 50),
+      assessed: has ? (has.lifeIns || has.healthIns) : true,
+      note: has && (has.lifeIns !== has.healthIns)
+        ? (has.lifeIns ? 'ประเมินเฉพาะประกันชีวิต · สุขภาพยังไม่ได้ประเมิน (กรอกที่ ประกันสุขภาพ)' : 'ประเมินเฉพาะประกันสุขภาพ · ชีวิตยังไม่ได้ประเมิน (กรอกภาระที่ ประกันชีวิต)')
+        : '',
     },
     {
       layer: 1,
@@ -2667,6 +2677,7 @@ function openPyramid() {
       <div class="ph-sum-lvl">L${l.layer}</div>
       <div class="ph-sum-label">${l.titleTh || l.title}</div>
       <div class="ph-sum-status">${l.assessed === false ? '– ยังไม่ประเมิน' : (l.ok ? '✓ ผ่าน' : '⚠ ยัง')}</div>
+      ${l.note ? `<div style="font-size:.6rem;color:#6C7490;margin-top:2px;line-height:1.3;">${l.note}</div>` : ''}
     </div>
   `).join('');
 
@@ -3328,7 +3339,7 @@ function _pfRenderPyramid(client, summary, has) {
             <tr>
               <td>${l.icon} L${l.layer}</td>
               <td><b>${l.title}</b>${l.titleTh ? `<br><span style="font-size:.82em;color:#888;">${l.titleTh}</span>` : ''}</td>
-              <td>${l.desc}</td>
+              <td>${l.desc}${l.note ? `<br><span style="font-size:.82em;color:#888;">${l.note}</span>` : ''}</td>
               ${l.assessed === false
                 ? '<td class="muted">— ยังไม่ได้ประเมิน</td>'
                 : `<td class="${l.ok?'pos':'neg'}">${l.ok?'✓ ผ่าน':'✗ ยังไม่ผ่าน'}</td>`}
