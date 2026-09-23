@@ -695,10 +695,19 @@ function computeMedicalCoverageFromPolicies(client) {
       } else if (r.type === 'critical') {
         add('ciEarly', r.ciEarly);
         add('ciSevere', r.ciSevere);
+      } else if (r.type === 'accident') {
+        /* ชดเชยอุบัติเหตุต่อสัปดาห์ — จากทุพพลภาพสิ้นเชิง/บางส่วนที่กรอกเป็น "ต่อสัปดาห์" */
+        const weekly = ['disComplete','disPartial'].filter(k => (r[k + 'Freq'] || 'ต่อสัปดาห์') === 'ต่อสัปดาห์').map(k => Number(r[k] || 0));
+        add('accidentWeekly', Math.max(0, ...weekly));
+      } else if (r.type === 'disability') {
+        add('disability', r.disabilityAmt);
       }
     });
-    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — riderHealthCov = วงเงินค่ารักษาต่อครั้ง */
-    if (!riders.some(r => r.type === 'medical')) add('perVisit', p.riderHealthCov);
+    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — ช่องเดี่ยว
+       (coverage ของกรมธรรม์ประเภทสุขภาพเท่านั้น — ไม่เอาทุนชีวิตมานับเป็นวงเงินค่ารักษา) */
+    if (!riders.some(r => r.type === 'medical'))    add('perVisit', p.type === 'สุขภาพ' ? (p.coverage || p.riderHealthCov) : p.riderHealthCov);
+    if (!riders.some(r => r.type === 'critical'))   add('ciSevere', p.riderCriticalCov);
+    if (!riders.some(r => r.type === 'disability')) add('disability', p.riderDisabilityMonthly);
   });
   return out;
 }
@@ -724,7 +733,13 @@ function getClientMonthlyIncome(client) {
   return 0;
 }
 
+/* ราคาห้องที่ใช้อ้างอิง — ถ้าเลือก VIP แต่โรงพยาบาลไม่มีราคา VIP ให้ใช้ห้องมาตรฐาน
+   (เดิมได้ 0 → ตกไปใช้ 3,000 ทั้งตาราง เช่น รพ.กรุงเทพ VIP แนะนำค่าห้อง 3,000) */
+function effectiveTier(hospital, tier) {
+  return (tier === 'vip' && hospital && Number(hospital.vip) > 0) ? 'vip' : 'std';
+}
 function computeRecommendations(client, hospital, tier) {
+  tier = effectiveTier(hospital, tier);
   const hospitalRate = hospital ? (tier === 'vip' ? hospital.vip : hospital.std) : 0;
   const tierKey = getHospitalTier(hospitalRate || 3000);
 
@@ -833,7 +848,7 @@ function render() {
 
   const hi = getHealthInputs();
   const hospital = hi.hospital || null;
-  const tier = hi.tier || 'std';
+  const tier = effectiveTier(hospital, hi.tier || 'std');
   const hospitalRate = hospital ? (tier === 'vip' ? hospital.vip : hospital.std) : 0;
   const client = getCurrent();
   const customRec = hi.customRecommendations || {};
@@ -849,19 +864,20 @@ function render() {
      ใช้เป็น default ถ้า user ยังไม่ override ใน hi.prepared */
   const autoPreparedFromPolicies = computeMedicalCoverageFromPolicies(client);
 
-  // Compute coverage status
-  let okCount = 0;
+  // Compute coverage status — นับเฉพาะแถวที่มีเกณฑ์แนะนำ (recommend > 0)
+  let okCount = 0, targetCount = 0;
   COVERAGE_ROWS.forEach(r => {
     if (r.selectOptions) return;
     const recommend = Number(finalRec[r.key] || 0);
+    if (recommend <= 0) return;
+    targetCount++;
     /* ใช้ค่าจาก policies ถ้า user ยังไม่กรอก (hi.prepared[k] == null) */
     const prepared = (hi.prepared[r.key] != null && hi.prepared[r.key] !== '')
       ? Number(hi.prepared[r.key])
       : Number(autoPreparedFromPolicies[r.key] || 0);
-    if (prepared >= recommend && recommend > 0) okCount++;
+    if (prepared >= recommend) okCount++;
   });
-  const targetCount = COVERAGE_ROWS.filter(r => !r.selectOptions).length;
-  const coverPct = Math.round(okCount / targetCount * 100);
+  const coverPct = targetCount > 0 ? Math.round(okCount / targetCount * 100) : 0;
 
   // Has custom overrides?
   const hasCustomRec = Object.keys(customRec).length > 0;
@@ -898,7 +914,7 @@ function render() {
               onclick="openInfoPopup('วงเงินค่ารักษาที่แนะนำ','แต่ละรายการคำนวณตามโรงพยาบาลที่เลือก + อายุ + รายได้ของลูกค้า — เพื่อให้ครอบคลุมค่ารักษากรณีเจ็บป่วยหนักหรือต้องนอนโรงพยาบาล','⚕️')">i</button></th>
             <th>เตรียมไว้แล้ว <button class="hi2-th-icon" type="button" aria-label="ดูรายละเอียด"
               onclick="openInfoPopup('ความคุ้มครองที่มี','ดึงค่าจากกรมธรรม์ที่มีอยู่ (medical riders) อัตโนมัติ — ดูรายละเอียดเพิ่มเติมที่หน้าสรุปกรมธรรม์','⚕️')">📊</button></th>
-            <th>แนะนำ</th>
+            <th>แนะนำ ${hasCustomRec ? `<button class="hi2-th-icon" type="button" aria-label="คืนค่าแนะนำอัตโนมัติ" title="มีค่าที่พิมพ์ทับอยู่ — กดเพื่อคืนค่าแนะนำอัตโนมัติทั้งหมด" onclick="resetRecommendations()">↺</button>` : ''}</th>
           </tr>
         </thead>
         <tbody>
@@ -1158,12 +1174,9 @@ function saveCustomHospital() {
   const std = parseMoney(document.getElementById('ah-std'));
   const vip = parseMoney(document.getElementById('ah-vip'));
 
-  /* ตรวจชื่อซ้ำ — case-insensitive, รวม database โรงพยาบาลและ custom ที่เพิ่มก่อนหน้า */
-  const u = getCurrentUser();
-  const allHospitals = [...(u.data.customHospitals || [])];
-  if (typeof HOSPITAL_DB !== 'undefined' && Array.isArray(HOSPITAL_DB)) {
-    allHospitals.push(...HOSPITAL_DB);
-  }
+  /* ตรวจชื่อซ้ำ — case-insensitive, รวม database โรงพยาบาลและ custom ที่เพิ่มก่อนหน้า
+     (เดิมเรียก getCurrentUser()/HOSPITAL_DB ที่ไม่มีในหน้านี้ → กดบันทึกแล้ว throw หน้าต่างค้าง) */
+  const allHospitals = getAllHospitals();
   const dup = allHospitals.find(h => (h.name || '').trim().toLowerCase() === name.toLowerCase());
   if (dup) {
     showToast('⚠️ มี รพ. ชื่อนี้อยู่แล้ว');

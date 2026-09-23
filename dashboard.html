@@ -849,37 +849,61 @@ function recommendCoverage(client) {
     calcAge(client.dob || client.birthdate) ||
     0;
 
-  /* รวมหนี้สิน */
-  const totalDebt = ((client.liabilities || [])
-    .reduce((s, l) => s + Number(l.principal || l.amount || 0), 0)) || 0;
-
-  /* ── ประกันชีวิต ──
-     DIME-light: 10× รายได้ + หนี้สิน
-     กรณีไม่มีรายได้ → ใช้ค่า default 1M */
-  let recLife = (annualIncome * 10) + totalDebt;
-  if (recLife < 1000000) recLife = 1000000;
-
-  /* ── ประกันสุขภาพ ── ตามอายุ
-     < 30: 500K, 30-44: 1M, 45-59: 2M, 60+: 3M */
-  let recHealth = 500000;
-  if (age >= 60)      recHealth = 3000000;
-  else if (age >= 45) recHealth = 2000000;
-  else if (age >= 30) recHealth = 1000000;
-
-  /* ── โรคร้ายแรง (CI) ── 3× รายได้ ขั้นต่ำ 1M */
-  let recCI = Math.max(annualIncome * 3, 1000000);
-
-  /* ── อุบัติเหตุ (PA) ── 2× รายได้ ขั้นต่ำ 500K */
-  let recPA = Math.max(annualIncome * 2, 500000);
-
+  /* เกณฑ์แนะนำชุดเดียวกับหน้าสรุปกรมธรรม์ (computeRecommendedCoverage ด้านล่าง)
+     เดิมหน้านี้ใช้ 10× รายได้ + หนี้ / สุขภาพตามช่วงอายุ / CI 3× ขณะที่หน้าสรุปกรมธรรม์ใช้ 7× / tier / 3×
+     และตารางช่องโหว่ใช้ 5M คงที่ → ลูกค้าคนเดียวเห็น "แนะนำ" 3 ค่า */
+  const rec = computeRecommendedCoverage(client);
   return {
-    'ชีวิต':       Math.round(recLife),
-    'สุขภาพ':      Math.round(recHealth),
-    'โรคร้ายแรง': Math.round(recCI),
-    'อุบัติเหตุ':   Math.round(recPA),
+    'ชีวิต':       Math.round(rec.life.value),
+    'สุขภาพ':      Math.round(rec.health.value),
+    'โรคร้ายแรง': Math.round(rec.ci.value),
+    'อุบัติเหตุ':   Math.round(rec.pa.value),
     /* meta — ใช้แสดงในรายละเอียดได้ */
-    _meta: { annualIncome, age, totalDebt }
+    _meta: { annualIncome, age, totalDebt: rec.totalDebt,
+             basis: { 'ชีวิต': rec.life.basis, 'สุขภาพ': rec.health.basis, 'โรคร้ายแรง': rec.ci.basis, 'อุบัติเหตุ': rec.pa.basis } }
   };
+}
+
+/* ══ เกณฑ์ "แนะนำ" — สำเนาเดียวกับ policies.html → computeRecommendedCoverage แก้ที่หนึ่งต้องแก้อีกที่ด้วย
+   · ชีวิต: ภาระที่นับรวมในหน้าประกันชีวิต (หนี้สิน + ความรับผิดชอบ) ถ้ากรอกแล้ว · ไม่มี → 10× รายได้/ปี + หนี้สิน (ขั้นต่ำ 1M)
+   · สุขภาพ (วงเงินค่ารักษาต่อครั้ง) / โรคร้ายแรง / ชดเชยรายได้: สูตรเดียวกับหน้าประกันสุขภาพ (โรงพยาบาลที่เลือก · อายุ · รายได้)
+     และเคารพค่าที่ตัวแทนพิมพ์ทับในหน้านั้น
+   · อุบัติเหตุ: 2× รายได้/ปี ขั้นต่ำ 500K · ทุพพลภาพ: 65% ของรายได้/เดือน ขั้นต่ำ 30,000 */
+function computeRecommendedCoverage(client) {
+  client = client || {};
+  const cf = client.cashflow || {};
+  const annualIncome = Number(client.income) || (Number(cf.income) || 0) * 12 || 0;
+  const monthlyIncome = annualIncome / 12, dailyIncome = monthlyIncome / 30;
+  let age = null;
+  const dob = client.dob || client.birthdate;
+  if (dob) { const bd = new Date(dob); if (!isNaN(bd)) { const t = new Date(); age = t.getFullYear() - bd.getFullYear(); const m = t.getMonth() - bd.getMonth(); if (m < 0 || (m === 0 && t.getDate() < bd.getDate())) age--; } }
+  const totalDebt = (client.liabilities || []).reduce((s, l) => s + Number(l.principal || l.amount || 0), 0);
+  const roundTo = (v, step) => Math.round(v / step) * step;
+  /* ชีวิต */
+  const li = client.lifeInputs || {};
+  const need = [...(li.debts || []), ...(li.responsibilities || [])]
+    .filter(r => r && r.included !== false).reduce((s, r) => s + Number(r.amount || 0), 0);
+  const life = need > 0
+    ? { value: need, basis: 'ภาระที่นับรวมในหน้าประกันชีวิต' }
+    : { value: Math.max(annualIncome * 10 + totalDebt, 1000000), basis: annualIncome > 0 ? '10× รายได้/ปี + หนี้สิน' : 'ค่าเริ่มต้น' };
+  /* สุขภาพ / โรคร้ายแรง / ชดเชยรายได้ — = computeRecommendations() ใน health-insurance.html */
+  const hi = client.healthInputs || {};
+  const custom = hi.customRecommendations || {};
+  const hosp = hi.hospital || null;
+  const vip = hi.tier === 'vip' && hosp && Number(hosp.vip) > 0;
+  const rate = (hosp ? (Number(vip ? hosp.vip : hosp.std) || 0) : 0) || 3000;
+  const ageN = age == null ? 35 : age;
+  const ageMult = ageN < 30 ? 0.85 : ageN < 45 ? 1.0 : ageN < 60 ? 1.2 : 1.4;
+  const mult = rate < 3000 ? 100 : rate < 6000 ? 130 : rate < 10000 ? 150 : 200;
+  const pick = (key, auto, autoBasis) => (custom[key] != null && Number(custom[key]) > 0)
+    ? { value: Number(custom[key]), basis: 'ค่าที่กำหนดในหน้าประกันสุขภาพ' } : { value: auto, basis: autoBasis };
+  const health = pick('perVisit', Math.max(roundTo(rate * mult * ageMult, 100000), 100000),
+    hosp ? `ตาม ${hosp.name} (${vip ? 'VIP' : 'STD'}) ในหน้าประกันสุขภาพ` : 'ค่าห้องอ้างอิง 3,000/วัน — ยังไม่เลือกโรงพยาบาล');
+  const ci = pick('ciSevere', Math.max(roundTo(annualIncome * 5, 100000), 2000000), annualIncome > 0 ? '5× รายได้/ปี' : 'ค่าเริ่มต้น');
+  const incomeRep = pick('incomeReplace', Math.max(roundTo(dailyIncome * 0.7, 500), 1500), dailyIncome > 0 ? '70% ของรายได้/วัน' : 'ค่าเริ่มต้น');
+  const pa = { value: Math.max(annualIncome * 2, 500000), basis: annualIncome > 0 ? '2× รายได้/ปี' : 'ค่าเริ่มต้น' };
+  const disability = { value: Math.max(Math.round(monthlyIncome * 0.65), 30000), basis: monthlyIncome > 0 ? '65% ของรายได้/เดือน' : 'ค่าเริ่มต้น' };
+  return { annualIncome, age, totalDebt, life, health, ci, pa, incomeRep, disability };
 }
 
 const TYPE_ICONS = {
@@ -1004,6 +1028,8 @@ function renderGapBars(policies, client) {
   if (meta.annualIncome > 0) basisParts.push(`รายได้ ฿${fmtK(meta.annualIncome)}/ปี`);
   if (meta.age > 0)          basisParts.push(`อายุ ${meta.age} ปี`);
   if (meta.totalDebt > 0)    basisParts.push(`หนี้สิน ฿${fmtK(meta.totalDebt)}`);
+  /* ที่มาของเป้าชีวิต/สุขภาพ (เกณฑ์เดียวกับหน้าสรุปกรมธรรม์) */
+  if (meta.basis) basisParts.push(`ชีวิต: ${meta.basis['ชีวิต']}`, `สุขภาพ: ${meta.basis['สุขภาพ']}`);
   const basisLine = basisParts.length
     ? `<div style="font-size:.74rem;color:var(--gray-500);margin-bottom:10px;padding:6px 10px;background:var(--gray-50);border-radius:6px;border-left:3px solid var(--red-primary);">
          📐 คำนวณจาก: ${basisParts.join(' · ')}

@@ -743,7 +743,7 @@ const EDUCATION_STAGES = [
   { key:'high',     label:'มัธยมปลาย',     icon:'🏫', startAge:15, years:3 },
   { key:'bachelor', label:'ปริญญาตรี',     icon:'🎓', startAge:18, years:4 },
   { key:'master',   label:'ปริญญาโท',      icon:'📜', startAge:22, years:2, optional:'master' },
-  { key:'phd',      label:'ปริญญาเอก',     icon:'👨‍🎓', startAge:24, years:4, optional:'phd' },
+  { key:'phd',      label:'ปริญญาเอก',     icon:'👨‍🎓', startAge:24, years:3, optional:'phd' },   /* 3 ปี — ตรงกับหน้าค่าเล่าเรียนและ PDF */
 ];
 
 const COST_TABLE = {
@@ -839,6 +839,24 @@ function _maxCostAge() {
   return COST_KEYS.reduce((m, k) => Math.max(m, k.ageMax), 0);
 }
 
+/* ค่าเทอมตั้งต้นต่อปีของแต่ละช่วงชั้น — อ่านจากตารางค่าใช้จ่าย (⚙ รายการค่าใช้จ่าย) ชุดเดียวกับยอดรวม
+   · อนุบาล/ประถม → ค่าเทอม อนุบาล-ประถม · มัธยมต้น/ปลาย → ค่าเทอม มัธยม · ป.ตรี → ค่าเทอม ป.ตรี
+   · ป.โท/ป.เอก → ตารางค่าเทอมมหาวิทยาลัย (ชุดเดียวกับหน้าค่าเล่าเรียนและ PDF)
+   เดิมการ์ดใช้ COST_TABLE คนละชุดกับยอดรวม → ผลบวกของการ์ดไม่เท่ายอดรวมที่แสดง */
+const HIGHER_ED_FALLBACK = { tuition_master:[50000,500000,4750000], tuition_doctoral:[71000,600000,5000000] };
+function _stageDefaultCost(stageKey, level) {
+  const lvIdx = LEVEL_INDEX[level] != null ? LEVEL_INDEX[level] : 1;
+  const k12 = { kinder:'tuition_kp', primary:'tuition_kp', mid:'tuition_mid', high:'tuition_mid', bachelor:'tuition_bachelor' };
+  if (k12[stageKey]) {
+    const row = getCostTable()[k12[stageKey]] || DEFAULT_COST_TABLE[k12[stageKey]] || [0,0,0];
+    return Number(row[lvIdx] || 0);
+  }
+  const uniKey = { master:'tuition_master', phd:'tuition_doctoral' }[stageKey];
+  const custom = ((getCurrent() || {}).eduCostTable) || {};
+  const row = (uniKey && (custom[uniKey] || HIGHER_ED_FALLBACK[uniKey])) || (COST_TABLE[stageKey] || [0,0,0]);
+  return Number(row[lvIdx] || 0);
+}
+
 /* คำนวณค่าเลี้ยงดูจนถึงอายุที่กำหนด (รวม inflation)
    — ใช้ค่าจาก cost table (categories: living + care) — sync กับ modal "รายการค่าใช้จ่าย" */
 function computeRearingCost(child) {
@@ -931,7 +949,7 @@ function computeChildPlan(child) {
       const custKey = `${s.key}_${level}`;
       const baseAnnualCost = customCosts[custKey] != null
         ? Number(customCosts[custKey])
-        : COST_TABLE[s.key][lvIdx];
+        : _stageDefaultCost(s.key, level);
       const startAge = s.startAge;
       const endAge = s.startAge + s.years;
 
@@ -970,19 +988,10 @@ function computeChildPlan(child) {
       };
     });
 
-  /* totalFuture (ค่าเทอม) — ใช้จาก cost table (category=tuition) — sync กับ modal "รายการค่าใช้จ่าย"
-     fallback: ถ้า cost table ทั้งหมดเป็น default → ใช้ค่าเดิมจาก stages (backward compat) */
-  let totalFuture = 0;
-  const _level = level;
-  const maxAge = _maxCostAge();
-  for (let a = Math.floor(age); a < maxAge; a++) {
-    if (a < age) continue;
-    const yearCost = _sumYearlyCostByCategory(a, _level, ['tuition']);
-    const yearOffset = a - age;
-    if (yearCost > 0 && yearOffset >= 0) {
-      totalFuture += yearCost * Math.pow(1 + INFLATION, yearOffset);
-    }
-  }
+  /* totalFuture (ค่าเทอม) = ผลรวมของการ์ดรายช่วงชั้น (ตารางค่าใช้จ่ายชุดเดียวกัน รวม ป.โท/ป.เอก ที่ติ๊ก)
+     เดิมคิดแยกอีกสูตรจากตารางตามอายุถึง 22 ปี → ไม่เท่าผลบวกการ์ด และติ๊ก ป.โท/ป.เอก ไม่เพิ่มค่าใช้จ่าย
+     ทั้งที่ระยะเวลาออมถูกยืดออก (ยอดขาดจึงลดลง — ผิดทาง) */
+  const totalFuture = stages.reduce((s, st) => s + Number(st.futureCost || 0), 0);
   /* รวมเงินที่มาจาก asset ที่ tag "นำไปใช้กับ การศึกษาบุตร" — แบ่งเท่าๆ ต่อบุตร */
   const _eduSplit = _eduAssetPerChild();
   const eduSavings = Number(child.eduSavings || 0) + _eduSplit.lump;
@@ -1370,7 +1379,7 @@ function renderChildCard(child, plan) {
   const lvl = plan.level;
   const stagesHtml = plan.stages.map(s => {
     const custKey = `${s.key}_${lvl}`;
-    const defaultCost = COST_TABLE[s.key][LEVEL_INDEX[lvl]];
+    const defaultCost = _stageDefaultCost(s.key, lvl);
     const isCustom = (child.customCosts || {})[custKey] != null;
     return `
     <tr class="${s.status}">

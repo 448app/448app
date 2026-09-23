@@ -658,10 +658,6 @@ function computeBachelor(child) {
   const age = ageNow(getChildDob(child));
   if (age == null) return null;
 
-  const yearsToBachelor = Math.max(BACHELOR_START_AGE - age, 0);
-  const yearsToSave = Math.max(yearsToBachelor, 1);   /* กัน div by 0 */
-  const startYear = new Date().getFullYear() + Math.round(yearsToBachelor);
-
   const inflPct = child.bachelorInfl != null
     ? Number(child.bachelorInfl)
     : (child.inflationRate != null ? Number(child.inflationRate) : DEFAULT_BACHELOR_INFL);
@@ -669,33 +665,46 @@ function computeBachelor(child) {
 
   /* รวมค่าเทอมของทุก degree ที่ผู้ใช้เลือก (ตรี/โท/เอก) ปรับ inflation รายปี
      - แต่ละ degree ใช้ startAge + years + tuition ของตัวเอง
-     - degree ที่ level === null → ข้าม ไม่นับ */
+     - degree ที่ level === null → ข้าม ไม่นับ
+     - ปีที่เรียนผ่านไปแล้วไม่นับ (เดิมบุตรอายุ 19 ยังถูกคิด ป.ตรี เต็ม 4 ปี) */
   const tuitionTable = getHigherEdTable();
   let totalTuition = 0;
   const degreesSelected = [];
+  let firstStartAge = null;   /* อายุเริ่มเรียนของระดับแรกที่เลือก → ใช้กำหนดระยะเวลาเก็บเงิน */
   DEGREE_CONFIG.forEach(deg => {
     const lvl = getChildDegreeLevel(child, deg.key);
     if (!lvl) return;   /* null = ข้าม */
     const lvIdx = LEVEL_INDEX[lvl] != null ? LEVEL_INDEX[lvl] : 1;
     const baseAnnualCost = Number((tuitionTable[deg.tuitionKey] || [])[lvIdx] || 0);
-    const yearsToStart = Math.max(deg.startAge - age, 0);
-    for (let y = 0; y < deg.years; y++) {
-      totalTuition += baseAnnualCost * Math.pow(1 + INFL, yearsToStart + y);
+    const endAge = deg.startAge + deg.years;
+    if (age >= endAge) return;   /* เรียนจบระดับนี้แล้ว */
+    if (firstStartAge == null || deg.startAge < firstStartAge) firstStartAge = deg.startAge;
+    const firstYear = Math.max(Math.floor(age - deg.startAge), 0);   /* ปีที่กำลังเรียนอยู่ (0 = ยังไม่เริ่ม) */
+    for (let y = firstYear; y < deg.years; y++) {
+      const yearsFromNow = Math.max(deg.startAge + y - age, 0);
+      totalTuition += baseAnnualCost * Math.pow(1 + INFL, yearsFromNow);
     }
     degreesSelected.push(deg.key);
   });
+  /* ระยะเวลาเก็บเงิน = จนถึงปีเริ่มเรียนของระดับแรกที่เลือก (อย่างน้อย 1 ปี)
+     เดิมใช้ 18 − อายุ เสมอ ไม่ดูว่าเลือกระดับไหน */
+  const yearsToBachelor = Math.max((firstStartAge != null ? firstStartAge : BACHELOR_START_AGE) - age, 0);
+  const yearsToSave = Math.max(yearsToBachelor, 1);   /* กัน div by 0 */
+  const startYear = new Date().getFullYear() + Math.round(yearsToBachelor);
   /* เก็บ "ป.ตรี" เป็น level ตัวแทน (legacy field สำหรับโค้ดเก่าที่อ่าน calc.level) */
   const level = getChildDegreeLevel(child, 'bachelor') || 'medium';
-
-  const _split = _eduAssetPerChild();
-  const eduSavings = Number(child.eduSavings || 0) + _split.lump;
-  const gap = Math.max(totalTuition - eduSavings, 0);
-  const overage = Math.max(eduSavings - totalTuition, 0);
 
   /* เก็บเงินเพิ่ม/ปี (FV annuity ปกติ ไม่ใช่ annuity-due) */
   const returnPct = child.bachelorReturn != null
     ? Number(child.bachelorReturn) : DEFAULT_BACHELOR_RETURN;
   const r = returnPct / 100;
+
+  /* เงินที่เตรียมไว้โตด้วยผลตอบแทนจนถึงปีเริ่มเรียน (เดิมไม่โต — คนละผลกับหน้าการศึกษาบุตร) */
+  const _split = _eduAssetPerChild();
+  const eduSavings = Number(child.eduSavings || 0) + _split.lump;
+  const fvSavings = eduSavings * Math.pow(1 + r, yearsToBachelor);
+  const gap = Math.max(totalTuition - fvSavings, 0);
+  const overage = Math.max(fvSavings - totalTuition, 0);
   let reqAnnual = 0;
   if (gap > 0 && yearsToSave > 0) {
     if (Math.abs(r) < 0.0001) {
@@ -707,13 +716,13 @@ function computeBachelor(child) {
   }
 
   const progressPct = totalTuition > 0
-    ? Math.min(100, (eduSavings / totalTuition) * 100)
+    ? Math.min(100, (fvSavings / totalTuition) * 100)
     : 0;
 
   return {
     age, level, startYear,
     yearsToSave: Math.round(yearsToSave),
-    totalTuition, eduSavings, gap, overage,
+    totalTuition, eduSavings, fvSavings, gap, overage,
     inflPct, returnPct, reqAnnual,
     progressPct,
     degreesSelected,   /* รายการ degree ที่ผู้ใช้เลือก (สำหรับ footer + tooltip) */
@@ -930,13 +939,17 @@ function renderChildBlock(child, calc, idx) {
             }).join('')}
           </div>
           <div class="e3-row-lbl">เตรียมไว้แล้ว</div>
+          <!-- ช่องนี้ผูกกับเงินที่กรอกเองเท่านั้น — ส่วนแบ่งจากสินทรัพย์ที่ติ๊ก "การศึกษา" แสดงแยกอ่านอย่างเดียว
+               (เดิมช่องแสดงยอดรวมแล้วบันทึกกลับทั้งก้อน → เงินจากสินทรัพย์ถูกนับซ้ำทุกครั้งที่แตะช่อง) -->
           <div class="e3-pill">
             <input type="text" inputmode="decimal" class="money-fmt e3-pill-num-input"
               style="width:110px; text-align:right;"
-              value="${(calc.eduSavings || 0).toLocaleString('th-TH')}"
+              value="${(Number(child.eduSavings) || 0).toLocaleString('th-TH')}"
               onchange="updateChildField('${child.id}','eduSavings',parseMoney(this))">
           </div>
-          <div class="e3-row-lbl">บาท</div>
+          <div class="e3-row-lbl">บาท${(calc.eduSavings - (Number(child.eduSavings) || 0)) > 0
+            ? ` <span style="font-size:.8em;color:var(--gray-500);">+ จากสินทรัพย์ที่ติ๊กการศึกษา ${Math.round(calc.eduSavings - (Number(child.eduSavings) || 0)).toLocaleString('th-TH')} = รวม ${Math.round(calc.eduSavings).toLocaleString('th-TH')}</span>`
+            : ''}</div>
           <div class="e3-row-lbl">ขาดอีก</div>
           <div class="e3-pill value-red">
             <span class="e3-pill-num">${fmtMoney(calc.gap)}</span>

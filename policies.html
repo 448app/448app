@@ -1167,12 +1167,21 @@
             <!-- 3. ประเภท -->
             <div class="pf-row">
               <label>ประเภท</label>
+              <!-- รายการประเภทชุดเดียวกับหน้าต่างแก้ไข (เดิมคนละชุด → แก้ไขกรมธรรม์แล้วช่องประเภทว่าง บันทึกไม่ได้) -->
               <select id="p-type" onchange="onPolicyTypeChange()">
                 <option value="ตลอดชีพ">ตลอดชีพ</option>
                 <option value="สะสมทรัพย์">สะสมทรัพย์</option>
+                <option value="ทุนชีวิต">ทุนชีวิต (ชั่วระยะเวลา)</option>
                 <option value="บำนาญ">บำนาญ</option>
                 <option value="Unit Linked">Unit Linked</option>
-                <option value="PA">PA</option>
+                <option value="เกษียณ">เกษียณ</option>
+                <option value="ลดหย่อนภาษี">ลดหย่อนภาษี</option>
+                <option value="ลงทุน">ลงทุน</option>
+                <option value="การศึกษา">การศึกษา</option>
+                <option value="ส่งมอบ">ส่งมอบ (มรดก)</option>
+                <option value="สุขภาพ">สุขภาพ</option>
+                <option value="โรคร้ายแรง">โรคร้ายแรง</option>
+                <option value="PA">PA / อุบัติเหตุ</option>
               </select>
             </div>
             <!-- 4. บริษัท -->
@@ -1520,18 +1529,24 @@
           <div class="fg"><label>บริษัทประกัน *</label><input id="ep-company" type="text" placeholder="เช่น AIA Thailand"></div>
           <div class="fg">
             <label>ประเภทประกัน *</label>
+            <!-- รายการประเภทชุดเดียวกับฟอร์มเพิ่ม (เดิมคนละชุด → กรมธรรม์ตลอดชีพ/สะสมทรัพย์/Unit Linked/PA
+                 เปิดแก้ไขแล้วช่องประเภทว่าง บันทึกไม่ได้) -->
             <select id="ep-type">
               <option value="">— เลือกประเภท —</option>
-              <option value="ทุนชีวิต">ทุนชีวิต</option>
-              <option value="สุขภาพ">สุขภาพ</option>
-              <option value="โรคร้ายแรง">โรคร้ายแรง</option>
+              <option value="ตลอดชีพ">ตลอดชีพ</option>
+              <option value="สะสมทรัพย์">สะสมทรัพย์</option>
+              <option value="ทุนชีวิต">ทุนชีวิต (ชั่วระยะเวลา)</option>
               <option value="บำนาญ">บำนาญ</option>
+              <option value="Unit Linked">Unit Linked</option>
               <option value="เกษียณ">เกษียณ</option>
               <option value="ลดหย่อนภาษี">ลดหย่อนภาษี</option>
               <option value="ลงทุน">ลงทุน</option>
               <option value="การศึกษา">การศึกษา</option>
-              <option value="ส่งมอบ">ส่งมอบ</option>
-              <option value="อุบัติเหตุ">อุบัติเหตุ</option>
+              <option value="ส่งมอบ">ส่งมอบ (มรดก)</option>
+              <option value="สุขภาพ">สุขภาพ</option>
+              <option value="โรคร้ายแรง">โรคร้ายแรง</option>
+              <option value="PA">PA / อุบัติเหตุ</option>
+              <option value="อุบัติเหตุ">อุบัติเหตุ (แบบเก่า)</option>
             </select>
           </div>
           <div class="fg"><label>ชื่อแบบประกัน</label><input id="ep-name" type="text" placeholder="เช่น AIA Health Saver"></div>
@@ -2058,10 +2073,9 @@ function render() {
   const policies         = client.policies || [];
   const totalCoverage    = policies.reduce((s,p) => s + primaryCovOf(p), 0);
   const totalPremium     = policies.reduce((s,p) => s + (p.premium||0),  0);
-  const annuityTypes     = ['บำนาญ','เกษียณ','ลดหย่อนภาษี'];
-  const annuityPremium   = policies.filter(p => annuityTypes.includes(p.type)).reduce((s,p) => s + (p.premium||0), 0);
-  const otherPremium     = policies.filter(p => !annuityTypes.includes(p.type)).reduce((s,p) => s + (p.premium||0), 0);
-  const taxDeduct        = Math.min(otherPremium, 100000) + Math.min(annuityPremium, 200000);
+  /* ลดหย่อนภาษี (เบี้ยประกัน) — ใช้สูตรเดียวกับ "สรุปต้นทุนประกัน" (สุขภาพ ≤ 25,000 รวมชีวิต ≤ 100,000 · บำนาญ ≤ 200,000
+     · ไม่นับ PA/อุบัติเหตุ) เดิมกล่องนี้ให้เบี้ยทุกประเภทที่ไม่ใช่บำนาญใช้เพดาน 100,000 รวมกัน */
+  const taxDeduct        = computePolicyTaxBreakdown(policies, client).insuranceDeduct;
 
   const fullName = client.firstName + (client.lastName ? ' ' + client.lastName : '');
 
@@ -2142,12 +2156,18 @@ function getRiderCoverageByCategory(p, category) {
     if (category === 'income'     && r.type === 'income')      total += Number(r.dailyComp || 0);
     if (category === 'disability' && r.type === 'disability')  total += Number(r.disabilityAmt || 0);
   });
-  // Fallback to legacy single-field schema
-  if (category === 'health'     && (p.coverage || p.riderHealthCov)) total += Number(p.coverage || p.riderHealthCov || 0);
-  if (category === 'critical'   && p.riderCriticalCov)               total += Number(p.riderCriticalCov || 0);
-  if (category === 'accident'   && p.riderAccidentCov)               total += Number(p.riderAccidentCov || 0);
-  if (category === 'income'     && p.riderIncomeDaily)               total += Number(p.riderIncomeDaily || 0);
-  if (category === 'disability' && p.riderDisabilityMonthly)         total += Number(p.riderDisabilityMonthly || 0);
+  // Fallback to legacy single-field schema — ใช้เฉพาะเมื่อไม่มี riders[] ประเภทนั้น
+  // (เดิมบวกซ้ำกับ riders[] และช่อง health ใช้ p.coverage ของกรมธรรม์ทุกประเภท
+  //  → ทุนชีวิตของกรมธรรม์ชีวิตรั่วเข้าแกน "สุขภาพ")
+  const riderTypeOf = { health:'medical', critical:'critical', accident:'accident', income:'income', disability:'disability' };
+  const hasRider = (p.riders || []).some(r => r.type === riderTypeOf[category]);
+  if (!hasRider) {
+    if (category === 'health')     total += Number((p.type === 'สุขภาพ' ? p.coverage : 0) || p.riderHealthCov || 0);
+    if (category === 'critical')   total += Number(p.riderCriticalCov || 0);
+    if (category === 'accident')   total += Number(p.riderAccidentCov || 0);
+    if (category === 'income')     total += Number(p.riderIncomeDaily || 0);
+    if (category === 'disability') total += Number(p.riderDisabilityMonthly || 0);
+  }
   return total;
 }
 
@@ -2503,44 +2523,60 @@ function renderTable(policies) {
     <td class="col-action"></td>`;
 }
 
+/* ══ เกณฑ์ "แนะนำ" — ชุดเดียวกับหน้าแรก (dashboard.html → computeRecommendedCoverage) แก้ที่หนึ่งต้องแก้อีกที่ด้วย
+   · ชีวิต: ภาระที่นับรวมในหน้าประกันชีวิต (หนี้สิน + ความรับผิดชอบ) ถ้ากรอกแล้ว · ไม่มี → 10× รายได้/ปี + หนี้สิน (ขั้นต่ำ 1M)
+   · สุขภาพ (วงเงินค่ารักษาต่อครั้ง) / โรคร้ายแรง / ชดเชยรายได้: สูตรเดียวกับหน้าประกันสุขภาพ (โรงพยาบาลที่เลือก · อายุ · รายได้)
+     และเคารพค่าที่ตัวแทนพิมพ์ทับในหน้านั้น
+   · อุบัติเหตุ: 2× รายได้/ปี ขั้นต่ำ 500K · ทุพพลภาพ: 65% ของรายได้/เดือน ขั้นต่ำ 30,000
+   เดิมหน้าแรก / กราฟใยแมงมุม / ตารางช่องโหว่ ใช้เกณฑ์คนละชุด (10×+หนี้ / 7× / 5M คงที่) → ลูกค้าคนเดียวเห็น "แนะนำ" 3 ค่า */
+function computeRecommendedCoverage(client) {
+  client = client || {};
+  const cf = client.cashflow || {};
+  const annualIncome = Number(client.income) || (Number(cf.income) || 0) * 12 || 0;
+  const monthlyIncome = annualIncome / 12, dailyIncome = monthlyIncome / 30;
+  let age = null;
+  const dob = client.dob || client.birthdate;
+  if (dob) { const bd = new Date(dob); if (!isNaN(bd)) { const t = new Date(); age = t.getFullYear() - bd.getFullYear(); const m = t.getMonth() - bd.getMonth(); if (m < 0 || (m === 0 && t.getDate() < bd.getDate())) age--; } }
+  const totalDebt = (client.liabilities || []).reduce((s, l) => s + Number(l.principal || l.amount || 0), 0);
+  const roundTo = (v, step) => Math.round(v / step) * step;
+  /* ชีวิต */
+  const li = client.lifeInputs || {};
+  const need = [...(li.debts || []), ...(li.responsibilities || [])]
+    .filter(r => r && r.included !== false).reduce((s, r) => s + Number(r.amount || 0), 0);
+  const life = need > 0
+    ? { value: need, basis: 'ภาระที่นับรวมในหน้าประกันชีวิต' }
+    : { value: Math.max(annualIncome * 10 + totalDebt, 1000000), basis: annualIncome > 0 ? '10× รายได้/ปี + หนี้สิน' : 'ค่าเริ่มต้น' };
+  /* สุขภาพ / โรคร้ายแรง / ชดเชยรายได้ — = computeRecommendations() ใน health-insurance.html */
+  const hi = client.healthInputs || {};
+  const custom = hi.customRecommendations || {};
+  const hosp = hi.hospital || null;
+  const vip = hi.tier === 'vip' && hosp && Number(hosp.vip) > 0;
+  const rate = (hosp ? (Number(vip ? hosp.vip : hosp.std) || 0) : 0) || 3000;
+  const ageN = age == null ? 35 : age;
+  const ageMult = ageN < 30 ? 0.85 : ageN < 45 ? 1.0 : ageN < 60 ? 1.2 : 1.4;
+  const mult = rate < 3000 ? 100 : rate < 6000 ? 130 : rate < 10000 ? 150 : 200;
+  const pick = (key, auto, autoBasis) => (custom[key] != null && Number(custom[key]) > 0)
+    ? { value: Number(custom[key]), basis: 'ค่าที่กำหนดในหน้าประกันสุขภาพ' } : { value: auto, basis: autoBasis };
+  const health = pick('perVisit', Math.max(roundTo(rate * mult * ageMult, 100000), 100000),
+    hosp ? `ตาม ${hosp.name} (${vip ? 'VIP' : 'STD'}) ในหน้าประกันสุขภาพ` : 'ค่าห้องอ้างอิง 3,000/วัน — ยังไม่เลือกโรงพยาบาล');
+  const ci = pick('ciSevere', Math.max(roundTo(annualIncome * 5, 100000), 2000000), annualIncome > 0 ? '5× รายได้/ปี' : 'ค่าเริ่มต้น');
+  const incomeRep = pick('incomeReplace', Math.max(roundTo(dailyIncome * 0.7, 500), 1500), dailyIncome > 0 ? '70% ของรายได้/วัน' : 'ค่าเริ่มต้น');
+  const pa = { value: Math.max(annualIncome * 2, 500000), basis: annualIncome > 0 ? '2× รายได้/ปี' : 'ค่าเริ่มต้น' };
+  const disability = { value: Math.max(Math.round(monthlyIncome * 0.65), 30000), basis: monthlyIncome > 0 ? '65% ของรายได้/เดือน' : 'ค่าเริ่มต้น' };
+  return { annualIncome, age, totalDebt, life, health, ci, pa, incomeRep, disability };
+}
+
 // ─── SPIDER CHART ───
 function renderSpiderChart(policies) {
-  /* Dynamic recommend ตามรายได้ × multiplier (มาตรฐานอุตสาหกรรมประกัน):
-     - ทุนชีวิต: 7× รายได้/ปี (DIME guideline 5-10×)
-     - สุขภาพ: IPD/ครั้ง × 5 ครั้ง/ปี (ตาม trustedHospitalTier — buffer admission)
-     - โรคร้ายแรง: 3× รายได้/ปี (รักษา + รายได้หาย)
-     - อุบัติเหตุ: 5× รายได้/ปี (สูญเสียอวัยวะถาวร)
-     - ค่าชดเชย: 50% × รายได้/วัน
-     - ทุพพลภาพ: 65% × รายได้/เดือน
-     ไม่มีรายได้ → ใช้ค่าคงที่เป็น fallback */
   const client = getCurrentClient();
-  const annualIncome = client ? (Number(client.income) ||
-    (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0)) : 0;
-  const monthlyIncome = annualIncome / 12;
-  const dailyIncome   = annualIncome / 365;
-  const tier = (client && client.trustedHospitalTier) || 2;
-  const tierData = HOSPITAL_TIERS[tier - 1] || HOSPITAL_TIERS[1];
-  const tierIPD = tierData.ipdAvg;
-
+  const rec = computeRecommendedCoverage(client);
   const checks = [
-    { type:'ชีวิต',       label:'ชีวิต',          icon:'🛡️',
-      recommend: annualIncome > 0 ? Math.round(annualIncome * 7) : 5000000,
-      formula:   annualIncome > 0 ? '7× รายได้/ปี' : 'ค่าเริ่มต้น' },
-    { type:'สุขภาพ',      label:'สุขภาพ',         icon:'❤️',
-      recommend: tierIPD * 5,
-      formula:   `IPD รพ.tier ${tier} × 5 ครั้ง/ปี` },
-    { type:'โรคร้ายแรง', label:'โรคร้ายแรง',    icon:'🏥',
-      recommend: annualIncome > 0 ? Math.round(annualIncome * 3) : 2000000,
-      formula:   annualIncome > 0 ? '3× รายได้/ปี' : 'ค่าเริ่มต้น' },
-    { type:'อุบัติเหตุ', label:'อุบัติเหตุ',    icon:'🚑',
-      recommend: annualIncome > 0 ? Math.round(annualIncome * 5) : 500000,
-      formula:   annualIncome > 0 ? '5× รายได้/ปี' : 'ค่าเริ่มต้น' },
-    { type:'ค่าชดเชย',   label:'ค่าชดเชย (฿/วัน)', icon:'💵',
-      recommend: dailyIncome > 0 ? Math.round(dailyIncome * 0.5) : 2000,
-      formula:   dailyIncome > 0 ? '50% × รายได้/วัน' : 'ค่าเริ่มต้น' },
-    { type:'ทุพพลภาพ',   label:'ทุพพลภาพ (฿/เดือน)', icon:'♿',
-      recommend: monthlyIncome > 0 ? Math.round(monthlyIncome * 0.65) : 30000,
-      formula:   monthlyIncome > 0 ? '65% × รายได้/เดือน' : 'ค่าเริ่มต้น' },
+    { type:'ชีวิต',       label:'ชีวิต',               icon:'🛡️', recommend: rec.life.value,       formula: rec.life.basis },
+    { type:'สุขภาพ',      label:'สุขภาพ (ต่อครั้ง)',   icon:'❤️', recommend: rec.health.value,     formula: rec.health.basis },
+    { type:'โรคร้ายแรง', label:'โรคร้ายแรง',         icon:'🏥', recommend: rec.ci.value,         formula: rec.ci.basis },
+    { type:'อุบัติเหตุ', label:'อุบัติเหตุ',         icon:'🚑', recommend: rec.pa.value,         formula: rec.pa.basis },
+    { type:'ค่าชดเชย',   label:'ค่าชดเชย (฿/วัน)',    icon:'💵', recommend: rec.incomeRep.value,  formula: rec.incomeRep.basis },
+    { type:'ทุพพลภาพ',   label:'ทุพพลภาพ (฿/เดือน)', icon:'♿', recommend: rec.disability.value, formula: rec.disability.basis },
   ];
 
   // Compute coverage by type (รวม rider ทุกประเภทด้วย)
@@ -2685,13 +2721,16 @@ function renderSpiderChart(policies) {
 
 // ─── GAP ANALYSIS ───
 function renderGapAnalysis(policies) {
+  /* เป้า "แนะนำ" ชุดเดียวกับกราฟใยแมงมุม (computeRecommendedCoverage) — เดิมใช้ค่าคงที่ 5M/1M/2M/500K
+     ทำให้ตารางนี้กับกราฟด้านบนบอกคนละเป้า และอาจขึ้น "เพียงพอ" ทั้งที่กราฟบอกว่าขาด */
+  const rec = computeRecommendedCoverage(getCurrentClient());
   const checks = [
-    { type:'ชีวิต',       label:'ประกันชีวิต',              recommend:5000000, tip:'แนะนำคุ้มครองอย่างน้อย 5 เท่าของรายได้ต่อปี (~฿5,000,000)' },
-    { type:'สุขภาพ',      label:'ประกันสุขภาพ',             recommend:1000000, tip:'แนะนำผลประโยชน์ต่อครั้งอย่างน้อย ฿1,000,000' },
-    { type:'โรคร้ายแรง', label:'ประกันโรคร้ายแรง (CI)',     recommend:2000000, tip:'แนะนำอย่างน้อย 2 ปีของค่าใช้จ่าย (~฿2,000,000)' },
-    { type:'อุบัติเหตุ', label:'ประกันอุบัติเหตุ (PA)',     recommend:500000,  tip:'แนะนำคุ้มครองอุบัติเหตุอย่างน้อย ฿500,000' },
-    { type:'ค่าชดเชย',   label:'ค่าชดเชยรายวัน (฿/วัน)',       recommend:2000,  unit:'/วัน',   tip:'แนะนำค่าชดเชยรายวันอย่างน้อย ฿2,000/วัน' },
-    { type:'ทุพพลภาพ',   label:'เงินทดแทนทุพพลภาพ (฿/เดือน)', recommend:30000, unit:'/เดือน', tip:'แนะนำเงินทดแทนอย่างน้อย ฿30,000/เดือน' },
+    { type:'ชีวิต',       label:'ประกันชีวิต',                 recommend: rec.life.value,       tip:`แนะนำทุนชีวิตอย่างน้อย ${fmt(rec.life.value)} (${rec.life.basis})` },
+    { type:'สุขภาพ',      label:'ประกันสุขภาพ (ต่อครั้ง)',      recommend: rec.health.value,     tip:`แนะนำวงเงินค่ารักษาต่อครั้งอย่างน้อย ${fmt(rec.health.value)} (${rec.health.basis})` },
+    { type:'โรคร้ายแรง', label:'ประกันโรคร้ายแรง (CI)',       recommend: rec.ci.value,         tip:`แนะนำอย่างน้อย ${fmt(rec.ci.value)} (${rec.ci.basis})` },
+    { type:'อุบัติเหตุ', label:'ประกันอุบัติเหตุ (PA)',       recommend: rec.pa.value,         tip:`แนะนำคุ้มครองอุบัติเหตุอย่างน้อย ${fmt(rec.pa.value)} (${rec.pa.basis})` },
+    { type:'ค่าชดเชย',   label:'ค่าชดเชยรายวัน (฿/วัน)',        recommend: rec.incomeRep.value,  unit:'/วัน',   tip:`แนะนำค่าชดเชยรายวันอย่างน้อย ${fmt(rec.incomeRep.value)}/วัน (${rec.incomeRep.basis})` },
+    { type:'ทุพพลภาพ',   label:'เงินทดแทนทุพพลภาพ (฿/เดือน)',  recommend: rec.disability.value, unit:'/เดือน', tip:`แนะนำเงินทดแทนอย่างน้อย ${fmt(rec.disability.value)}/เดือน (${rec.disability.basis})` },
   ];
 
   const byType = {};
@@ -3154,9 +3193,9 @@ function saveEditedPolicy() {
     pol.riderDisabilityName  = riderDisabilityName;
     pol.riderDisabilityEnd   = riderDisabilityEnd;
     pol.editedAt             = new Date().toISOString();
-    /* ── Phase 3.3 sync: อัปเดต riders[] จาก legacy fields หลัง save
-       กัน data inconsistency (modern code อ่านจาก riders[]) ── */
-    if (typeof legacyRidersToArray === 'function') {
+    /* ── Phase 3.3 sync: สร้าง riders[] จาก legacy fields เฉพาะกรมธรรม์ที่ยังไม่มี riders[]
+       (เดิมสร้างใหม่ทับทุกครั้ง → สัญญาเพิ่มเติมที่กรอกละเอียดไว้ (ค่าห้อง OPD ระยะต้น ฯลฯ) หายหลังกดบันทึก) ── */
+    if (typeof legacyRidersToArray === 'function' && !(Array.isArray(pol.riders) && pol.riders.length)) {
       try {
         const newRiders = legacyRidersToArray(pol);
         if (Array.isArray(newRiders)) pol.riders = newRiders;
@@ -3199,8 +3238,10 @@ function openDetail(i) {
   if (expired)       badges.push(`<span class="detail-badge red">⚠ หมดอายุแล้ว</span>`);
   else if (expiring) badges.push(`<span class="detail-badge yellow">⏰ ใกล้หมดอายุ</span>`);
   else if (endDt)    badges.push(`<span class="detail-badge green">✓ ยังมีผลบังคับ</span>`);
-  const taxCap = p.type === 'บำนาญ' ? 200000 : 100000;
-  if (p.premium <= taxCap) badges.push(`<span class="detail-badge gray">✂️ ลดหย่อนภาษีได้</span>`);
+  /* ป้ายลดหย่อน: เฉพาะประเภทที่กฎหมายให้ลดหย่อน (ชีวิต ≥10 ปี / สุขภาพ / โรคร้ายแรง / บำนาญ)
+     เดิมติดป้ายให้ทุกประเภทที่เบี้ยไม่เกิน 100,000 รวม PA/อุบัติเหตุ ซึ่งลดหย่อนไม่ได้ */
+  const taxEligibleTypes = ['ชีวิต','ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','Unit Linked','การศึกษา','ลงทุน','ส่งมอบ','บำนาญ','เกษียณ','ลดหย่อนภาษี','สุขภาพ','โรคร้ายแรง'];
+  if (taxEligibleTypes.includes(p.type) && Number(p.premium) > 0) badges.push(`<span class="detail-badge gray" title="ตามเพดานรวม: ชีวิต+สุขภาพ ≤ 100,000 · บำนาญ ≤ 200,000">✂️ ลดหย่อนภาษีได้ (ในเพดาน)</span>`);
   document.getElementById('md-badges').innerHTML = badges.join('');
 
   const isHealth   = p.type === 'สุขภาพ';

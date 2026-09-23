@@ -696,7 +696,7 @@ function getLifeInputs() {
     { id:'r-parents', name:'👴 บิดา มารดา', amount:0, fixed:true },
     { id:'r-children', name:'👶 บุตร', amount:0, fixed:true }
   ];
-  if (c.lifeInputs.liquidAssets == null) c.lifeInputs.liquidAssets = 0;
+  /* liquidAssets ไม่ตั้งค่า 0 ล่วงหน้า — null/'' = ดึงจากสินทรัพย์อัตโนมัติ (เดิมตั้ง 0 ทำให้ไม่เคยดึง) */
   return c.lifeInputs;
 }
 
@@ -713,7 +713,7 @@ function ensureLifeDefaults(li) {
       { id:'r-children', name:'👶 บุตร', amount:0, fixed:true }
     ];
   }
-  if (li.liquidAssets == null) li.liquidAssets = 0;
+  /* liquidAssets: null/'' = ใช้ค่าอัตโนมัติจากสินทรัพย์ — ไม่ตั้ง 0 ล่วงหน้า */
 }
 
 function saveLifeInputs(modify) {
@@ -731,8 +731,10 @@ function saveLifeInputs(modify) {
 function getCurrentLifeCoverage() {
   const c = getCurrent();
   if (!c || !c.policies) return 0;
-  /* เฉพาะกรมธรรม์ที่จ่ายทุนชีวิตจริง (ไม่นับ CI/PA/อุบัติเหตุ ที่จ่ายเฉพาะกรณี) */
-  const lifeTypes = ['ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา'];
+  /* เฉพาะกรมธรรม์ที่จ่ายทุนชีวิตจริง (ไม่นับ สุขภาพ/CI/PA/อุบัติเหตุ ที่จ่ายเฉพาะกรณี)
+     รายการต้องครบทุกประเภทที่ฟอร์มกรมธรรม์ให้เลือก — เดิมขาด เกษียณ/ลดหย่อนภาษี/ลงทุน/ส่งมอบ
+     ทำให้ทุนชีวิตของกรมธรรม์ประเภทนั้นถูกนับเป็น 0 */
+  const lifeTypes = ['ชีวิต','ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา','เกษียณ','ลดหย่อนภาษี','ลงทุน','ส่งมอบ'];
   return c.policies.reduce((s,p) => {
     if (lifeTypes.includes(p.type)) {
       return s + Number(p.lifeCoverage || p.coverage || 0);
@@ -915,6 +917,21 @@ function getChildTotalCost(child) {
     }
   }
 
+  /* ป.โท/ป.เอก ที่ติ๊กไว้ในหน้าการศึกษาบุตร — ตารางค่าเทอมมหาวิทยาลัยชุดเดียวกับหน้าการศึกษา/ค่าเล่าเรียน/PDF */
+  const eduCustom = ((getCurrent() || {}).eduCostTable) || {};
+  [ { on: child.masterLevel !== undefined ? !!child.masterLevel : !!child.includeMaster, lvl: child.masterLevel || level, key:'tuition_master',   start:22, years:2, def:[50000,500000,4750000] },
+    { on: child.doctoralLevel !== undefined ? !!child.doctoralLevel : !!child.includePhd, lvl: child.doctoralLevel || level, key:'tuition_doctoral', start:24, years:3, def:[71000,600000,5000000] } ]
+  .forEach(u => {
+    if (!u.on) return;
+    const li = EDU_LEVEL_IDX[u.lvl] != null ? EDU_LEVEL_IDX[u.lvl] : 1;
+    const base = Number((eduCustom[u.key] || u.def)[li] || 0);
+    for (let y = 0; y < u.years; y++) {
+      const a = u.start + y;
+      if (a < age) continue;
+      eduTotal += base * Math.pow(1 + INFL, a - age);
+    }
+  });
+
   /* rearCost (category=living + care) — วิ่งถึง REARING_END_AGE (21) */
   let rearTotal = 0;
   for (let a = Math.floor(age); a < REARING_END_AGE; a++) {
@@ -1020,8 +1037,9 @@ function render() {
   const totalNeed = method === 'dime' ? dime.total : (totalDebt + totalResp);
 
   const currentLifeCov = getCurrentLifeCoverage();
-  /* ใช้ != null check — ให้ผู้ใช้ override เป็น 0 ได้ */
-  const currentLiquid  = (li.liquidAssets != null && li.liquidAssets !== '')
+  /* ใช้ != null check — ให้ผู้ใช้ override เป็น 0 ได้ · null/'' = ดึงจากหน้าสินทรัพย์อัตโนมัติ */
+  const liquidIsManual = (li.liquidAssets != null && li.liquidAssets !== '');
+  const currentLiquid  = liquidIsManual
     ? Number(li.liquidAssets)
     : getCurrentLiquidAssets();
   const totalHave = currentLifeCov + currentLiquid;
@@ -1096,10 +1114,12 @@ function render() {
           <div class="li2-sum-pill-input">
             <input class="money-fmt" type="text" inputmode="decimal"
               value="${currentLiquid}"
-              onchange="updateLiquid(parseMoney(this))"
-              title="ดึงจากเงินฝาก+ตราสารหนี้อัตโนมัติ — แก้เองได้">
+              onchange="updateLiquid(this.value.trim() === '' ? null : parseMoney(this))"
+              title="${liquidIsManual ? 'ค่าที่กรอกเอง — ลบให้ว่างหรือกด ↺ เพื่อกลับไปใช้ค่าจากหน้าสินทรัพย์' : 'ดึงจากเงินสด+เงินฝาก+ตราสารหนี้ในหน้าสินทรัพย์อัตโนมัติ — แก้เองได้'}">
           </div>
-          <div class="li2-sum-unit">บาท</div>
+          <div class="li2-sum-unit">บาท ${liquidIsManual
+            ? '<button class="li2-row-icon-btn" type="button" onclick="updateLiquid(null)" title="กลับไปใช้ค่าอัตโนมัติจากหน้าสินทรัพย์">↺</button>'
+            : '<span style="font-size:.72em;color:var(--gray-500);">อัตโนมัติ</span>'}</div>
         </div>
         <div class="li2-sum-row">
           <div class="li2-sum-lbl">${gap > 0 ? 'ควรจัดสรรเพิ่มอีก' : '✓ คุ้มครองพอแล้ว — ส่วนเกิน'}</div>
@@ -1535,8 +1555,9 @@ function getValidations() {
   const issues = [];
   if (!li || !c) return issues;
 
-  const totalDebt = li.debts.reduce((s,d) => s + Number(d.amount||0), 0);
-  const totalResp = li.responsibilities.reduce((s,r) => s + Number(r.amount||0), 0);
+  /* นับเฉพาะแถวที่เปิด "นับรวม" — ให้ตรงกับการ์ด (เดิมแถบคำแนะนำรวมทุกแถวรวมที่กดปิด) */
+  const totalDebt = li.debts.filter(d => d.included !== false).reduce((s,d) => s + Number(d.amount||0), 0);
+  const totalResp = li.responsibilities.filter(r => r.included !== false).reduce((s,r) => s + Number(r.amount||0), 0);
   const method    = li.method || 'simple';
   const dime      = getDIMENeed();
   const totalNeed = method === 'dime' ? dime.total : (totalDebt + totalResp);
@@ -1642,7 +1663,8 @@ function updateItemAmount(kind, id, amount) {
 }
 
 function updateLiquid(amount) {
-  saveLifeInputs(li => { li.liquidAssets = clampAmount(amount, 'สินทรัพย์สภาพคล่อง'); });
+  /* null = ลบค่าที่กรอกเอง → กลับไปดึงจากหน้าสินทรัพย์อัตโนมัติ (ก่อนหน้านี้ระบบตั้ง 0 ไว้เสมอ จึงไม่เคยดึง) */
+  saveLifeInputs(li => { li.liquidAssets = amount == null ? null : clampAmount(amount, 'สินทรัพย์สภาพคล่อง'); });
   render();
 }
 

@@ -1833,8 +1833,17 @@ const _PS_EDU_STAGES = [
   { key:'mid',startAge:12,years:3 }, { key:'high',startAge:15,years:3 },
   { key:'bachelor',startAge:18,years:4 },
   { key:'master',startAge:22,years:2,optional:'master' },
-  { key:'phd',startAge:24,years:4,optional:'phd' },
+  { key:'phd',startAge:24,years:3,optional:'phd' },   /* 3 ปี — ตรงกับหน้าค่าเล่าเรียน */
 ];
+/* ค่าเทอม K-12 ต่อปี — อ่านจากตารางค่าใช้จ่ายของลูกค้า (client.eduCostTable) ชุดเดียวกับหน้าการศึกษาบุตร
+   (เดิมใช้ตารางคงที่คนละชุด → PDF ไม่เท่าหน้าจอ) */
+const _PS_K12_DEFAULT = { tuition_kp:[17000,175000,800000], tuition_mid:[19500,200000,1300000] };
+function _psK12Cost(client, stageKey, lvIdx) {
+  const key = { kinder:'tuition_kp', primary:'tuition_kp', mid:'tuition_mid', high:'tuition_mid' }[stageKey];
+  const t = client && client.eduCostTable;
+  const row = (t && Array.isArray(t[key]) && t[key][lvIdx] != null) ? t[key] : _PS_K12_DEFAULT[key];
+  return Number((row || [])[lvIdx] || 0);
+}
 const _PS_EDU_COST = {
   kinder:[30000,80000,250000], primary:[25000,100000,350000], mid:[30000,120000,400000],
   high:[35000,150000,450000], bachelor:[60000,200000,800000],
@@ -1920,7 +1929,7 @@ function _psChildEdu(child, client) {
     } else {
       /* K-12 stages — ใช้ level เดียวกัน */
       const custKey = `${s.key}_${level}`;
-      baseAnnual = customCosts[custKey] != null ? Number(customCosts[custKey]) : _PS_EDU_COST[s.key][lvIdx];
+      baseAnnual = customCosts[custKey] != null ? Number(customCosts[custKey]) : _psK12Cost(client, s.key, lvIdx);
     }
     const startAge = s.startAge, endAge = startAge + s.years;
     let yearsLeft = age >= endAge ? 0 : (age < startAge ? s.years : endAge - age);
@@ -1940,8 +1949,12 @@ function _psChildEdu(child, client) {
   const _split = client ? _psEduAssetPerChild(client) : { lump:0, monthly:0 };
   const eduSavings = Number(child.eduSavings || 0) + _split.lump;
   const eduMonthly = Number(child.eduMonthly || 0) + _split.monthly;
-  const yearsToFinish = Math.max(...['phd','master','bachelor','high','mid','primary','kinder']
-    .map(k => { const s = _PS_EDU_STAGES.find(x=>x.key===k); return s.startAge + s.years - age; }), 0);
+  /* ระยะเวลาออม = ถึงปีจบของระดับสูงสุดที่ "เลือกไว้" (ไม่นับ ป.โท/ป.เอก ที่ข้าม และระดับที่จบแล้ว)
+     เดิมนับถึง ป.เอก อายุ 28 เสมอ → เงินออมโตนานเกิน "ขาดอีก" ต่ำกว่าจริง */
+  const yearsToFinish = Math.max(0, ..._PS_EDU_STAGES
+    .filter(s => !['bachelor','master','phd'].includes(s.key) || _psGetUniLevel(child, s.key))
+    .map(s => s.startAge + s.years - age)
+    .filter(y => y > 0));
   const SR = 0.04, r_m = SR/12, n_m = yearsToFinish * 12;
   const fvLump = eduSavings * Math.pow(1 + SR, yearsToFinish);
   const fvAnnuity = (eduMonthly > 0 && n_m > 0) ? eduMonthly * (Math.pow(1+r_m, n_m) - 1) / r_m * (1+r_m) : 0;
@@ -1979,7 +1992,9 @@ function _psHealthAgeInt(client) {
 /* = computeRecommendations() ใน health-insurance.html — แก้สูตรที่นั่นต้องแก้ที่นี่ด้วย */
 function _psHealthRecommend(client, hi) {
   const hospital = hi.hospital || null;
-  const hospitalRate = hospital ? Number(hi.tier === 'vip' ? hospital.vip : hospital.std) || 0 : 0;
+  /* เลือก VIP แต่โรงพยาบาลไม่มีราคา VIP → ใช้ห้องมาตรฐาน (= effectiveTier ในหน้าประกันสุขภาพ) */
+  const useVip = hi.tier === 'vip' && hospital && Number(hospital.vip) > 0;
+  const hospitalRate = hospital ? Number(useVip ? hospital.vip : hospital.std) || 0 : 0;
   const rate = hospitalRate || 3000;
   const tierKey = rate < 3000 ? 'state' : rate < 6000 ? 'mid' : rate < 10000 ? 'premium' : 'international';
   const m = {
@@ -2030,10 +2045,17 @@ function _psHealthFromPolicies(client) {
       } else if (r.type === 'critical') {
         add('ciEarly', r.ciEarly);
         add('ciSevere', r.ciSevere);
+      } else if (r.type === 'accident') {
+        const weekly = ['disComplete','disPartial'].filter(k => (r[k + 'Freq'] || 'ต่อสัปดาห์') === 'ต่อสัปดาห์').map(k => Number(r[k] || 0));
+        add('accidentWeekly', Math.max(0, ...weekly));
+      } else if (r.type === 'disability') {
+        add('disability', r.disabilityAmt);
       }
     });
-    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — riderHealthCov = วงเงินค่ารักษาต่อครั้ง */
-    if (!riders.some(r => r.type === 'medical')) add('perVisit', p.riderHealthCov);
+    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — ช่องเดี่ยว (coverage เฉพาะประเภทสุขภาพ) */
+    if (!riders.some(r => r.type === 'medical'))    add('perVisit', p.type === 'สุขภาพ' ? (p.coverage || p.riderHealthCov) : p.riderHealthCov);
+    if (!riders.some(r => r.type === 'critical'))   add('ciSevere', p.riderCriticalCov);
+    if (!riders.some(r => r.type === 'disability')) add('disability', p.riderDisabilityMonthly);
   });
   return out;
 }
@@ -2052,7 +2074,7 @@ function _psHealthCalc(client) {
   return {
     target: ipd.need, have: ipd.have, gap: Math.max(ipd.need - ipd.have, 0),
     rows, okCount: rows.filter(r => r.ok).length,
-    hospital, roomType: hi.tier === 'vip' ? 'VIP' : 'STD', rate,
+    hospital, roomType: (hi.tier === 'vip' && hospital && Number(hospital.vip) > 0) ? 'VIP' : 'STD', rate,
   };
 }
 
@@ -2196,7 +2218,8 @@ function computeSummary(client) {
      หน้าประกันชีวิตคิดแบบ "หนี้สิน + ความรับผิดชอบ" (บังคับ Simple) และรวมเฉพาะแถวที่เปิดนับรวม
      (เดิม PDF รวมทุกแถวรวมแถวที่กดปิด และยังคิดแบบ DIME ได้ → ตัวเลขไม่ตรงกับหน้าจอ) */
   const li = client.lifeInputs || {};
-  const lifeTypes = ['ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา'];
+  /* = lifeTypes ใน life-insurance.html (ทุกประเภทที่จ่ายทุนชีวิต ยกเว้น สุขภาพ/CI/PA/อุบัติเหตุ) */
+  const lifeTypes = ['ชีวิต','ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา','เกษียณ','ลดหย่อนภาษี','ลงทุน','ส่งมอบ'];
   const lifeCov = (client.policies||[])
     .filter(p => lifeTypes.includes(p.type))
     .reduce((s,p) => s + Number(p.lifeCoverage || p.coverage || 0), 0);
