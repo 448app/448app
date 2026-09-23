@@ -2373,6 +2373,18 @@ function _pfAvailability(c) {
 /* ════════════════════════════════════════════
    PYRAMID — Phase 4.5
 ═══════════════════════════════════════════ */
+/* ทุนประกันชีวิตที่จะส่งต่อให้ทายาท = ทุนชีวิตรวมของกรมธรรม์ทุกแบบที่จ่ายเงินเมื่อเสียชีวิต
+   (ไม่ใช่เฉพาะประเภท "ส่งมอบ" — ทุกแบบที่มีทุนชีวิตส่งมอบให้ผู้รับประโยชน์อยู่แล้ว · ไม่นับสุขภาพ/โรคร้ายแรง/PA/อุบัติเหตุ) */
+function _psLegacyCover(client) {
+  const lifeTypes = ['ชีวิต','ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา','เกษียณ','ลดหย่อนภาษี','ลงทุน','ส่งมอบ'];
+  const pols = (client.policies || []).filter(p => lifeTypes.includes(p.type) && Number(p.lifeCoverage || p.coverage || 0) > 0);
+  return {
+    cover: pols.reduce((s, p) => s + Number(p.lifeCoverage || p.coverage || 0), 0),
+    count: pols.length,
+    legacyTypeCount: pols.filter(p => p.type === 'ส่งมอบ').length,
+  };
+}
+
 /* has (ไม่บังคับ) = ผลจาก _pfTopicHasData — ส่งมาจาก PDF เพื่อบอกว่าชั้นไหน "ยังไม่ได้ประเมิน"
    หน้าจอหลักเรียกแบบไม่ส่ง has → assessed เป็น true ทุกชั้น (พฤติกรรมเดิม) */
 function computePyramid(client, summary, has) {
@@ -2407,7 +2419,8 @@ function computePyramid(client, summary, has) {
      ประเมินเมื่อบันทึกเช็กลิสต์แล้ว · ผ่านเมื่อมีพินัยกรรม + ระบุผู้รับประโยชน์ครบ
      (เดิมอ่านช่อง will/estatePlan ที่ไม่มีหน้าไหนบันทึก → "ยังไม่ประเมิน" ทุกคน) */
   const ep = client.estatePlan || {};
-  const hasLegacyPolicy = (client.policies || []).some(p => p.type === 'ส่งมอบ');
+  const legacy = _psLegacyCover(client);
+  const hasLegacyPolicy = legacy.cover > 0;
   const epAssessed = !!(ep.updatedAt || client.will);
   const epWill = !!(ep.will || client.will);
   const epBenef = !!ep.beneficiaries;
@@ -2416,7 +2429,7 @@ function computePyramid(client, summary, has) {
   const wealthNote = !epAssessed
     ? 'ยังไม่ได้ติ๊กเช็กลิสต์ (สรุปแผน › ปิรามิด)'
     : wealthDistOk
-      ? 'มีพินัยกรรม · ผู้รับประโยชน์ครบ' + (hasLegacyPolicy ? ' · มีประกันเพื่อส่งมอบ' : '')
+      ? 'มีพินัยกรรม · ผู้รับประโยชน์ครบ' + (hasLegacyPolicy ? ' · ทุนชีวิตส่งต่อให้ทายาท ' + fmt(legacy.cover) : '')
       : 'ยังขาด: ' + epMissing.join(' · ');
 
   return [
@@ -2720,7 +2733,11 @@ function openPyramid() {
 
   /* เช็กลิสต์ชั้น 5 — บันทึกอัตโนมัติลง client.estatePlan */
   const ep = client.estatePlan || {};
-  const hasLegacyPolicy = (client.policies || []).some(p => p.type === 'ส่งมอบ');
+  const legacy = _psLegacyCover(client);
+  const hasLegacyPolicy = legacy.cover > 0;
+  const legacyHint = hasLegacyPolicy
+    ? `ตรวจให้จากสรุปกรมธรรม์ — ทุนชีวิตรวม ${fmt(legacy.cover)} จาก ${legacy.count} ฉบับ${legacy.legacyTypeCount ? ` (ประเภท “ส่งมอบ” ${legacy.legacyTypeCount} ฉบับ)` : ''}`
+    : 'ตรวจให้จากสรุปกรมธรรม์ — ยังไม่มีกรมธรรม์ที่มีทุนชีวิต';
   const chk = (key, label, hint) => `
     <label class="ep-item">
       <input type="checkbox" ${ep[key] ? 'checked' : ''} onchange="saveEstatePlan('${key}', this.checked)">
@@ -2736,7 +2753,7 @@ function openPyramid() {
       ${chk('beneficiaries', 'ระบุผู้รับประโยชน์ในกรมธรรม์ครบทุกฉบับ', 'จำเป็นสำหรับ ✓ ผ่าน')}
       <div class="ep-item auto">
         <span class="ep-auto">${hasLegacyPolicy ? '✓' : '–'}</span>
-        <span><b>มีประกันชีวิตเพื่อส่งมอบ</b><small>ตรวจให้จากสรุปกรมธรรม์ (ประเภท “ส่งมอบ”) — ${hasLegacyPolicy ? 'มีแล้ว' : 'ยังไม่มี'}</small></span>
+        <span><b>มีทุนประกันชีวิตส่งต่อให้ทายาท</b><small>${legacyHint}</small></span>
       </div>
       ${chk('estateTax', 'วางแผนภาษีมรดก / โอนทรัพย์สินแล้ว', 'เกี่ยวเมื่อทรัพย์สินสุทธิเกิน 100 ล้านบาท')}
       <div class="ep-foot">${ep.updatedAt
