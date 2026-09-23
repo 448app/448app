@@ -1611,18 +1611,32 @@ function setRenewalTab(days, el) {
   renderRenewal();
 }
 
-function computeEndDate(policy) {
-  // Try explicit endDate first
-  if (policy.endDate) return new Date(policy.endDate);
-  // Try startDate + duration (years)
-  if (policy.startDate && policy.duration) {
-    const d = new Date(policy.startDate);
-    d.setFullYear(d.getFullYear() + Number(policy.duration));
-    return d;
+/* เหตุการณ์ของกรมธรรม์ 1 ฉบับ:
+   - 'premium' วันครบกำหนดชำระเบี้ยงวดถัดไป = วันครบรอบปีของวันเริ่มสัญญา (เฉพาะขณะยังอยู่ในช่วงชำระเบี้ยตามปีที่ชำระ)
+   - 'end'     วันครบสัญญา
+   หน้าสรุปกรมธรรม์บันทึก field start / end / payYearsMain (เดิมอ่าน startDate/endDate/duration ที่ไม่มีหน้าไหนบันทึก
+   → ไม่เคยเตือน และเตือนเฉพาะวันครบสัญญา ไม่ใช่วันครบกำหนดชำระเบี้ยรายปี) */
+function computePolicyEvents(p, today) {
+  const events = [];
+  const startRaw = p.start || p.startDate;
+  const start = startRaw ? new Date(startRaw) : null;
+  let end = (p.end || p.endDate) ? new Date(p.end || p.endDate) : null;
+  if ((!end || isNaN(end)) && start && !isNaN(start) && Number(p.duration) > 0) {
+    end = new Date(start); end.setFullYear(end.getFullYear() + Number(p.duration));
   }
-  // Try renewalDate
-  if (policy.renewalDate) return new Date(policy.renewalDate);
-  return null;
+  if ((!end || isNaN(end)) && p.renewalDate) end = new Date(p.renewalDate);
+  if (end && !isNaN(end)) events.push({ kind: 'end', date: end });
+
+  if (start && !isNaN(start)) {
+    const payYears = Number(p.payYearsMain) || 0;
+    let lastDue = null;   /* งวดสุดท้ายอยู่ก่อนวันนี้ */
+    if (payYears > 0) { lastDue = new Date(start); lastDue.setFullYear(lastDue.getFullYear() + payYears); }
+    else if (end && !isNaN(end)) lastDue = end;
+    const due = new Date(start); due.setFullYear(today.getFullYear());
+    if (due < today) due.setFullYear(today.getFullYear() + 1);
+    if (due > start && (!lastDue || due < lastDue)) events.push({ kind: 'premium', date: due });
+  }
+  return events;
 }
 
 function renderRenewal() {
@@ -1633,18 +1647,18 @@ function renderRenewal() {
   const items = [];
   allClients.forEach(c => {
     (c.policies || []).forEach(p => {
-      const end = computeEndDate(p);
-      if (!end || isNaN(end)) return;
-      const diffMs = end - today;
-      const days   = Math.ceil(diffMs / 86400000);
-      if (days < 0) return; // already expired
-      items.push({
-        clientName: (c.firstName || '') + ' ' + (c.lastName || ''),
-        policyName: p.name || p.type || 'กรมธรรม์',
-        type:       p.type || '',
-        company:    p.company || '',
-        endDate:    end,
-        days
+      computePolicyEvents(p, today).forEach(ev => {
+        const days = Math.ceil((ev.date - today) / 86400000);
+        if (days < 0) return; // already passed
+        items.push({
+          clientName: (c.firstName || '') + ' ' + (c.lastName || ''),
+          policyName: p.name || p.type || 'กรมธรรม์',
+          type:       p.type || '',
+          company:    p.company || '',
+          kind:       ev.kind,
+          endDate:    ev.date,
+          days
+        });
       });
     });
   });
@@ -1675,7 +1689,7 @@ function renderRenewal() {
 
   if (shown.length === 0) {
     listEl.innerHTML = `<div class="renewal-empty">
-      ✅ ไม่มีกรมธรรม์ที่ต้องต่ออายุใน${renewalTabDays === 0 ? '90' : renewalTabDays} วันนี้
+      ✅ ${renewalTabDays === 0 ? 'ไม่มีกรมธรรม์ที่ต้องชำระเบี้ย/ต่ออายุในอนาคต' : `ไม่มีกรมธรรม์ที่ต้องชำระเบี้ย/ต่ออายุใน ${renewalTabDays} วันนี้`}
     </div>`;
     return;
   }
@@ -1687,11 +1701,12 @@ function renderRenewal() {
     const daysLbl = i.days === 0 ? 'วันนี้!' : i.days === 1 ? 'พรุ่งนี้' : `อีก ${i.days} วัน`;
     const endFmt  = `${i.endDate.getDate()} ${thMonths[i.endDate.getMonth()]} ${i.endDate.getFullYear()+543}`;
     const detail  = [i.policyName, i.company].filter(Boolean).join(' · ');
+    const what    = i.kind === 'premium' ? '💳 ชำระเบี้ย' : '📄 ครบสัญญา';
     return `<div class="renewal-item">
       <div class="renewal-dot ${dotCls}"></div>
       <div class="renewal-info">
         <div class="renewal-client">${i.clientName.trim()}</div>
-        <div class="renewal-policy">${detail} · ครบ ${endFmt}</div>
+        <div class="renewal-policy">${detail} · ${what} ${endFmt}</div>
       </div>
       <span class="renewal-days ${daysCls}">${daysLbl}</span>
     </div>`;
@@ -1770,22 +1785,23 @@ function checkUpcomingNotifications() {
     }
   });
 
-  // 3) Renewals due in 7 days — notify once per day
+  // 3) Renewals / premium due in 7 days — notify once per day (วันครบสัญญา + วันครบกำหนดชำระเบี้ย)
+  const today0 = new Date(now); today0.setHours(0,0,0,0);
   clients.forEach(c => {
     (c.policies || []).forEach(p => {
-      const end = computeEndDate(p);
-      if (!end) return;
-      const days = Math.ceil((end - now) / 86400000);
-      if (days >= 0 && days <= 7) {
-        const id = 'renewal-' + c.id + '-' + (p.id || p.name || 'pol');
-        if (!sent.includes(id)) {
-          showBrowserNotification(
-            `🔔 กรมธรรม์ใกล้ครบกำหนด (อีก ${days} วัน)`,
-            `${c.firstName || ''} - ${p.name || p.type || 'กรมธรรม์'}`
-          );
-          sent.push(id);
+      computePolicyEvents(p, today0).forEach(ev => {
+        const days = Math.ceil((ev.date - today0) / 86400000);
+        if (days >= 0 && days <= 7) {
+          const id = 'renewal-' + c.id + '-' + (p.id || p.name || 'pol') + '-' + ev.kind + '-' + ev.date.getFullYear();
+          if (!sent.includes(id)) {
+            showBrowserNotification(
+              ev.kind === 'premium' ? `💳 ครบกำหนดชำระเบี้ย (อีก ${days} วัน)` : `🔔 กรมธรรม์ใกล้ครบสัญญา (อีก ${days} วัน)`,
+              `${c.firstName || ''} - ${p.name || p.type || 'กรมธรรม์'}`
+            );
+            sent.push(id);
+          }
         }
-      }
+      });
     });
   });
 

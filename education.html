@@ -890,12 +890,17 @@ function fmtShort(n) {
   return '฿' + Math.round(n).toLocaleString('th-TH');
 }
 
+/* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า · วันเกิดไม่ถูกต้อง → null (เดิมได้ NaN) */
 function ageNow(birthdate) {
   if (!birthdate) return null;
   const bd = new Date(birthdate);
+  if (isNaN(bd)) return null;
   const today = new Date();
-  const diff = today - bd;
-  const age = diff / (365.25 * 24 * 3600 * 1000);
+  let years = today.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > today) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  const age = years + (today - last) / (next - last);
   /* กัน dob ในอนาคต — clamp เป็น 0 (เกิดใหม่) ไม่ให้คำนวณ inflation ปีลบ */
   return age < 0 ? 0 : age;
 }
@@ -940,6 +945,7 @@ function computeChildPlan(child) {
   const inflationPct  = child.inflationRate != null ? Number(child.inflationRate) : DEFAULT_INFLATION;
   const INFLATION     = inflationPct / 100;
 
+  const costByYear = [];   /* ค่าใช้จ่ายรายปีนับจากวันนี้ (ปีที่ 0 = ปีนี้) — ใช้จำลองเงินออมปีต่อปี */
   const stages = EDUCATION_STAGES
     .filter(s => !s.optional
       || (s.optional === 'master' && includeMaster)
@@ -972,7 +978,10 @@ function computeChildPlan(child) {
         for (let i = 0; i < Math.ceil(yearsLeft); i++) {
           const yearFromNow = yearOfStart + i;
           const partialYear = Math.min(1, yearsLeft - i);
-          futureCost += baseAnnualCost * Math.pow(1 + INFLATION, yearFromNow) * partialYear;
+          const yearCost = baseAnnualCost * Math.pow(1 + INFLATION, yearFromNow) * partialYear;
+          futureCost += yearCost;
+          const yb = Math.floor(yearFromNow);
+          costByYear[yb] = (costByYear[yb] || 0) + yearCost;
         }
       }
 
@@ -998,28 +1007,23 @@ function computeChildPlan(child) {
   const eduMonthly = Number(child.eduMonthly || 0) + _eduSplit.monthly;
   const yearsToFinish = Math.max(...stages.filter(s => s.status !== 'passed').map(s => s.startAge + s.years - age), 0);
 
-  // FV ของก้อนปัจจุบัน + ออม/เดือน (annuity-due, return 4%/yr)
+  /* จำลองปีต่อปี (ผลตอบแทนเงินออม 4%/ปี): เงินที่มีโต + ออมเข้ารายเดือน − จ่ายค่าเทอมของปีนั้น
+     "ขาดอีก" = ส่วนที่เงินไม่พอจ่ายในปีที่ต้องจ่ายจริง (นับตามปีที่จ่าย เทียบกับค่าใช้จ่ายรวมได้ตรง ๆ)
+     เดิมโตเงินออมทั้งก้อนไปถึงปีเรียนจบแล้วค่อยลบค่าใช้จ่ายที่จ่ายทุกปีตั้งแต่อนุบาล → "ขาดอีก" ต่ำกว่าจริง
+     (เด็ก 3 ขวบ เงิน 1 ล้าน ถูกโตเป็น 2.1 ล้านทั้งที่ต้องทยอยจ่ายตั้งแต่ปีแรก) */
   const SAVINGS_RETURN = 0.04;
-  const r_m = SAVINGS_RETURN / 12;
-  const n_m = yearsToFinish * 12;
-  const fvLump   = eduSavings * Math.pow(1 + SAVINGS_RETURN, yearsToFinish);
-  const fvAnnuity = (eduMonthly > 0 && n_m > 0)
-    ? eduMonthly * (Math.pow(1 + r_m, n_m) - 1) / r_m * (1 + r_m)
-    : 0;
-  const fvOfCurrentSavings = fvLump + fvAnnuity;
-
-  const gap = Math.max(totalFuture - fvOfCurrentSavings, 0);
-  /* Required monthly: ต้องออมเพิ่มเดือนละเท่าไหร่ (รวมที่ออมอยู่แล้ว) เพื่อปิด gap
-     สูตร PMT ของ FV annuity-due:
-       PMT = FV / [((1+r)^n - 1)/r × (1+r)]
-     ใช้ rate รายเดือน 4%/12 — กลับด้านสูตรเพื่อให้สมเหตุสมผลกว่าหารตรงๆ */
+  const sim = _simulateEduSavings(costByYear, eduSavings, eduMonthly, SAVINGS_RETURN);
+  const gap = sim.shortfall;
+  const fvOfCurrentSavings = Math.max(totalFuture - gap, 0);   /* ส่วนของค่าใช้จ่ายที่เงินออมครอบคลุมได้ */
+  /* ต้องออมเพิ่มเดือนละเท่าไร (นอกเหนือจากที่ออมอยู่) ให้จ่ายค่าเทอมได้ครบทุกปี — หาด้วย bisection บนการจำลองเดียวกัน */
   let reqMonthly = 0;
-  if (yearsToFinish > 0 && gap > 0) {
-    if (r_m === 0) {
-      reqMonthly = gap / n_m;
-    } else {
-      reqMonthly = gap / ((Math.pow(1 + r_m, n_m) - 1) / r_m * (1 + r_m));
+  if (gap > 0 && yearsToFinish > 0) {
+    let lo = 0, hi = Math.max(totalFuture / 12, 1);
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (_simulateEduSavings(costByYear, eduSavings, eduMonthly + mid, SAVINGS_RETURN).shortfall > 0) lo = mid; else hi = mid;
     }
+    reqMonthly = hi;
   }
 
   return {
@@ -1029,11 +1033,25 @@ function computeChildPlan(child) {
     totalFuture,
     eduSavings,
     fvOfCurrentSavings,
+    surplusAtEnd: sim.surplus,
     gap,
     reqMonthly,
     yearsToFinish,
     inflationPct,
   };
+}
+
+/* จำลองเงินออมปีต่อปี — costByYear = ค่าใช้จ่ายรายปีนับจากวันนี้ (สร้างใน computeChildPlan พร้อมค่าใช้จ่ายรายช่วงชั้น)
+   คืน { shortfall: ยอดที่ขาดรวม (ตามปีที่จ่าย), surplus: เงินที่เหลือเมื่อจบ } · สูตรเดียวกับ _psChildEdu ใน PDF */
+function _simulateEduSavings(costByYear, lump, monthly, rate) {
+  const r_m = rate / 12;
+  const yearContrib = monthly > 0 ? (r_m > 0 ? monthly * (Math.pow(1 + r_m, 12) - 1) / r_m * (1 + r_m) : monthly * 12) : 0;
+  let balance = Number(lump) || 0, shortfall = 0;
+  for (let y = 0; y < costByYear.length; y++) {
+    balance = balance * (1 + rate) + yearContrib - (costByYear[y] || 0);
+    if (balance < 0) { shortfall += -balance; balance = 0; }   /* ส่วนที่ขาดในปีนั้นต้องหาจากที่อื่น */
+  }
+  return { shortfall, surplus: balance };
 }
 
 /* ════════════════════════════════════════════
@@ -1246,7 +1264,9 @@ function changeChildCount(delta) {
       });
     });
   } else if (delta < 0 && children.length > 0) {
-    /* ลบคนสุดท้าย */
+    /* ลบคนสุดท้าย — ถามก่อน (เดิมลบทันทีพร้อมข้อมูลออม/ค่าเทอมที่แก้ไว้) */
+    const last = children[children.length - 1];
+    if (!confirm(`ลบข้อมูลบุตรคนล่าสุด "${(last && last.name) || 'ยังไม่ตั้งชื่อ'}"?`)) return;
     updateUser(u => {
       const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
       if (c && c.children) c.children.pop();
@@ -1362,7 +1382,12 @@ function saveCostTable() {
         overrides[k.key] = cur.slice();
       }
     });
-    if (Object.keys(overrides).length > 0) c.eduCostTable = overrides;
+    /* รวมกับค่าที่มีอยู่ — เก็บเฉพาะแถว K-12 ของหน้านี้ ไม่ทับค่าเทอม ป.ตรี/โท/เอก ที่แก้ในหน้าค่าเล่าเรียน
+       (เดิมเขียนทับทั้ง object → tuition_master/tuition_doctoral หาย) */
+    const merged = Object.assign({}, c.eduCostTable || {});
+    COST_KEYS.forEach(k => { delete merged[k.key]; });
+    Object.assign(merged, overrides);
+    if (Object.keys(merged).length > 0) c.eduCostTable = merged;
     else delete c.eduCostTable;   /* all default → don't store */
   });
   closeCostModal();
@@ -1477,12 +1502,12 @@ function renderChildCard(child, plan) {
         <strong>${fmt(plan.totalFuture)}</strong>
       </div>
 
-      <!-- Savings + Gap -->
+      <!-- Savings + Gap — จำลองปีต่อปี: เงินที่มีโต 4% + ออมรายเดือน − ค่าเทอมของปีนั้น -->
       <div class="savings-row">
         <div class="sv-cell have">
-          <div class="sv-lbl">💰 มีอยู่ + ออมต่อ (FV)</div>
+          <div class="sv-lbl">💰 มีอยู่ + ออมต่อ จ่ายได้</div>
           <div class="sv-val">${fmt(plan.fvOfCurrentSavings)}</div>
-          <div class="sv-extra">@ 4% return ${plan.yearsToFinish.toFixed(1)} ปี</div>
+          <div class="sv-extra">${plan.surplusAtEnd > 0 ? `เหลือ ${fmt(plan.surplusAtEnd)} เมื่อเรียนจบ` : `@ 4% return · จ่ายตามปีจริง ${plan.yearsToFinish.toFixed(1)} ปี`}</div>
         </div>
         <div class="sv-cell">
           <div class="sv-lbl">💸 ที่ต้องการ (FV)</div>
@@ -1492,7 +1517,7 @@ function renderChildCard(child, plan) {
         <div class="sv-cell gap ${isGapZero ? 'zero' : ''}">
           <div class="sv-lbl">${isGapZero ? '✅ ยอด' : '⚠️ ขาดอีก'}</div>
           <div class="sv-val">${isGapZero ? 'พร้อมแล้ว' : fmt(plan.gap)}</div>
-          <div class="sv-extra">${isGapZero ? 'แผนการเงินเพียงพอ' : `ต้องออม ~${fmt(plan.reqMonthly)}/เดือน`}</div>
+          <div class="sv-extra">${isGapZero ? 'แผนการเงินเพียงพอ' : `ต้องออมเพิ่ม ~${fmt(plan.reqMonthly)}/เดือน`}</div>
         </div>
       </div>
     </div>

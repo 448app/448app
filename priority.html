@@ -481,145 +481,22 @@ const PRIORITIES = [
 
 const WEIGHT_VALUES = { high: 3, med: 2, low: 1 };
 
-/* คำนวณ "เงินที่ต้องลงทุน/เดือน" ของแต่ละ priority จากข้อมูลลูกค้าจริง */
-function computePriorityNeed(client, key) {
-  if (!client) return { gap: 0, monthly: 0, status: 'no-data', detail: '' };
+/* หน้าที่ไปวางแผนต่อของแต่ละหมวด (ยอดขาดจริงคำนวณในหน้านั้น ๆ — หน้านี้ไม่คำนวณซ้ำอีกสูตร) */
+const PRIORITY_LINKS = {
+  retire: 'retirement2.html', education: 'education.html', lifeIns: 'life-insurance.html',
+  healthIns: 'health-insurance.html', tax: 'tax2.html', longInvest: 'goals.html', lumpSum: 'portfolio.html',
+};
 
-  const monthlyIncome = client.cashflow && Number(client.cashflow.income) ||
-    (Number(client.income) ? Number(client.income) / 12 : 0);
-  const monthlyExp    = client.cashflow
-    ? (Number(client.cashflow.expFixed||0) + Number(client.cashflow.expVariable||0) + Number(client.cashflow.expDebt||0))
-    : monthlyIncome * 0.7;
-
-  switch (key) {
-    case 'emergency': {
-      /* gap = 6 เท่าของรายจ่าย - liquid assets */
-      const target = monthlyExp * 6;
-      const liquidAssets = (client.assets || []).filter(a => ['cash','deposit','bond'].includes(a.type))
-        .reduce((s,a) => s + Number(a.currentValue||0), 0);
-      const gap = Math.max(target - liquidAssets, 0);
-      /* ออม 12 เดือนจนเต็ม */
-      const monthly = gap > 0 ? gap / 12 : 0;
-      return {
-        gap, monthly,
-        status: gap > 0 ? 'gap' : 'ok',
-        detail: `เป้าหมาย ${fmtShort(target)} · มี ${fmtShort(liquidAssets)}`,
-      };
-    }
-    case 'lifeIns': {
-      /* ใช้ DIME หรือ simple จาก lifeInputs */
-      const li = client.lifeInputs || {};
-      const debts = (li.debts || []).reduce((s,d) => s + Number(d.amount||0), 0);
-      const resp  = (li.responsibilities || []).reduce((s,r) => s + Number(r.amount||0), 0);
-      const need  = li.method === 'dime' ? null : (debts + resp);
-      const lifeTypes = ['ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา'];
-      const currentCov = (client.policies || [])
-        .filter(p => lifeTypes.includes(p.type))
-        .reduce((s,p) => s + Number(p.lifeCoverage || p.coverage || 0), 0);
-      const target = need || (Number(client.income||monthlyIncome*12) * 10); // fallback: 10× annual income
-      const gap = Math.max(target - currentCov, 0);
-      /* เบี้ย ≈ 1.5% ของทุน/ปี → /12 เดือน */
-      const monthly = gap > 0 ? gap * 0.015 / 12 : 0;
-      return {
-        gap, monthly,
-        status: gap > 0 ? 'gap' : 'ok',
-        detail: `ต้องการ ${fmtShort(target)} · มี ${fmtShort(currentCov)}`,
-      };
-    }
-    case 'healthIns': {
-      /* gap จาก rider medical */
-      const policies = client.policies || [];
-      const medicalCov = policies.flatMap(p => Array.isArray(p.riders) ? p.riders : [])
-        .filter(r => r.type === 'medical')
-        .reduce((s,r) => s + Number(r.sumAssured||0), 0);
-      const legacyHealth = policies
-        .filter(p => !Array.isArray(p.riders) || !p.riders.length)
-        .reduce((s,p) => s + Number(p.riderHealthCov||0), 0);
-      const have = medicalCov + legacyHealth;
-      /* ค่าห้องเป้าหมายตามตลาด ฿4,000-15,000/วัน — ใช้ค่ากลาง ฿8,000 */
-      const target = 8000;
-      const gap = Math.max(target - have, 0);
-      const monthly = gap > 0 ? 1500 : 0; // เบี้ยสุขภาพประมาณ ฿1,500/เดือนสำหรับคุ้มครองทั่วไป
-      return {
-        gap, monthly,
-        status: gap > 0 ? 'gap' : 'ok',
-        detail: `ค่าห้องเป้าหมาย ฿${target}/วัน · มี ฿${have}/วัน`,
-      };
-    }
-    case 'retirement': {
-      /* คำนวณคร่าว: ต้องการ 70% ของรายได้สุดท้าย × 25 ปีหลังเกษียณ
-         ใช้ FV ของ assets ที่มี (PVD/RMF/SSF) เป็นฐาน */
-      const annualIncome = Number(client.income) || monthlyIncome * 12;
-      let yearsToRetire = 30;
-      if (client.dob) {
-        const age = (new Date() - new Date(client.dob)) / (365.25*24*3600*1000);
-        yearsToRetire = Math.max(60 - age, 1);
-      }
-      const targetCorpus = annualIncome * 0.7 * 25;
-      const currentRetire = (client.assets||[])
-        .filter(a => ['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
-        .reduce((s,a) => s + Number(a.currentValue||0), 0);
-      /* FV ของเงินที่มี (return 5%/ปี) */
-      const fvCurrent = currentRetire * Math.pow(1.05, yearsToRetire);
-      const gap = Math.max(targetCorpus - fvCurrent, 0);
-      /* ออม/เดือน เพื่อปิด gap (ต้องเติบโต 5%/ปี) */
-      const r = 0.05/12, n = yearsToRetire*12;
-      const monthly = gap > 0 && n > 0
-        ? gap * r / (Math.pow(1+r, n) - 1)
-        : 0;
-      return {
-        gap, monthly,
-        status: gap > 0 ? 'gap' : 'ok',
-        detail: `เป้าหมาย ${fmtShort(targetCorpus)} · เหลือ ${yearsToRetire.toFixed(0)} ปี`,
-      };
-    }
-    case 'education': {
-      const children = client.children || [];
-      if (children.length === 0) return { gap: 0, monthly: 0, status: 'no-data', detail: 'ยังไม่มีบุตร' };
-      /* ใช้ค่าเฉลี่ย 1.5M/คน เป็น default */
-      const totalNeed = children.reduce((s, ch) => {
-        const lvIdx = { economy:0, medium:1, premium:2 }[ch.level||'medium'] || 1;
-        const avgCost = [800000, 1500000, 3000000][lvIdx] || 1500000;
-        const sav = Number(ch.eduSavings||0);
-        return s + Math.max(avgCost - sav, 0);
-      }, 0);
-      const monthly = children.length > 0 && totalNeed > 0
-        ? totalNeed / (15 * 12) // เฉลี่ย 15 ปีก่อนเรียนจบ
-        : 0;
-      return {
-        gap: totalNeed, monthly,
-        status: totalNeed > 0 ? 'gap' : 'ok',
-        detail: `${children.length} คน`,
-      };
-    }
-    case 'goals': {
-      const goals = client.lifeGoals || [];
-      if (goals.length === 0) return { gap: 0, monthly: 0, status: 'no-data', detail: 'ยังไม่มีเป้าหมาย' };
-      const totalMonthly = goals.reduce((s,g) => s + Number(g.monthlyContribution||0), 0);
-      const totalGap = goals.reduce((s,g) => {
-        const target = Number(g.targetAmount||0);
-        const cur = Number(g.currentSaved!=null?g.currentSaved:g.currentAmount||0);
-        return s + Math.max(target - cur, 0);
-      }, 0);
-      return {
-        gap: totalGap, monthly: totalMonthly,
-        status: totalGap > 0 ? 'gap' : 'ok',
-        detail: `${goals.length} เป้าหมาย`,
-      };
-    }
-    case 'wealth': {
-      /* ส่วนเหลือจากรายได้ - รายจ่าย - savings ที่อื่น = wealth investment */
-      const surplus = Math.max(monthlyIncome - monthlyExp, 0);
-      /* แนะนำให้ลงทุน 10-20% ของรายได้ */
-      const monthly = monthlyIncome * 0.10;
-      return {
-        gap: 0, monthly,
-        status: 'ok',
-        detail: `แนะนำ 10% ของรายได้ ${fmtShort(monthlyIncome)}/เดือน`,
-      };
-    }
-  }
-  return { gap: 0, monthly: 0, status: 'no-data', detail: '' };
+/* จัดสรรเงินลงทุน (ต่อเดือน + เงินก้อน) ตามน้ำหนัก HIGH/MED/LOW ที่ตั้งไว้
+   — เดิมช่องเงินลงทุนบันทึกไว้เฉย ๆ ไม่มีหน้าไหนใช้ต่อ และฟังก์ชันคำนวณเงินขาด (คนละสูตรกับหน้าจริง) ไม่เคยถูกเรียก */
+function computeAllocation(weights, investMonthly, investLump) {
+  const totalW = PRIORITIES.reduce((s, p) => s + (WEIGHT_VALUES[weights[p.key]] || 0), 0);
+  const out = {};
+  PRIORITIES.forEach(p => {
+    const share = totalW > 0 ? (WEIGHT_VALUES[weights[p.key]] || 0) / totalW : 0;
+    out[p.key] = { share, monthly: investMonthly * share, lump: investLump * share };
+  });
+  return out;
 }
 
 /* ════════════════════════════════════════════
@@ -735,6 +612,30 @@ function render() {
         <div></div>
       </div>
 
+      <!-- Allocation row — จัดสรรเงินลงทุนตามน้ำหนัก + ลิงก์ไปวางแผนต่อ -->
+      ${(() => {
+        const alloc = computeAllocation(weights, investMonthly, investLump);
+        const hasMoney = investMonthly > 0 || investLump > 0;
+        return `
+        <div class="p2-grid-wrap" style="align-items:start; margin-top:14px;">
+          <div style="font-size:.72rem;color:var(--gray-500);line-height:1.5;padding-top:2px;">จัดสรร<br>ตามน้ำหนัก</div>
+          ${PRIORITIES.map(p => {
+            const a = alloc[p.key];
+            return `
+            <div style="text-align:center;font-size:.74rem;line-height:1.55;">
+              ${hasMoney ? `
+                <div style="font-weight:700;color:var(--navy,#1B2A5E);">${a.share > 0 ? Math.round(a.share * 100) + '%' : '—'}</div>
+                ${investMonthly > 0 ? `<div>${a.monthly > 0 ? fmtShort(a.monthly) + '/ด.' : '—'}</div>` : ''}
+                ${investLump > 0 ? `<div style="color:var(--gray-500);">ก้อน ${a.lump > 0 ? fmtShort(a.lump) : '—'}</div>` : ''}
+              ` : `<div style="color:var(--gray-400);">—</div>`}
+              <a href="${PRIORITY_LINKS[p.key]}" style="display:inline-block;margin-top:4px;font-size:.72rem;color:var(--action,#2E4CA6);text-decoration:none;white-space:nowrap;">วางแผน →</a>
+            </div>`;
+          }).join('')}
+          <div></div>
+        </div>
+        ${hasMoney ? '' : `<div style="text-align:center;font-size:.76rem;color:var(--gray-500);margin-top:8px;">กรอกเงินลงทุนด้านล่าง → ระบบจะจัดสรรตามน้ำหนัก HIGH 3 : MED 2 : LOW 1</div>`}`;
+      })()}
+
       <!-- Investment fields -->
       <div style="margin-top:24px; padding-top:18px; border-top:1.5px dashed #DDD;">
         <div class="p2-invest">
@@ -806,6 +707,7 @@ function saveInvest(field, value) {
     if (!c) return;
     c[dbField] = v;
   });
+  render();   /* อัปเดตแถวจัดสรร */
 }
 
 function resetPriorities() {

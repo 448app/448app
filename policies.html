@@ -4955,8 +4955,13 @@ function _naAgeNow(dobStr) {
   if (_NA_AGE_CACHE.has(dobStr)) return _NA_AGE_CACHE.get(dobStr);
   const bd = new Date(dobStr);
   if (isNaN(bd)) { _NA_AGE_CACHE.set(dobStr, null); return null; }
+  /* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า */
   const today = new Date();
-  const age = (today - bd) / (365.25 * 24 * 3600 * 1000);
+  let years = today.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > today) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  const age = years + (today - last) / (next - last);
   const stable = age < 0 ? 0 : age;
   _NA_AGE_CACHE.set(dobStr, stable);
   return stable;

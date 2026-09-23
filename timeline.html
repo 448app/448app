@@ -933,6 +933,12 @@ function setRetirementAge(age) {
     render();
     return;
   }
+  /* อายุเกษียณเป็นค่าเดียวกับแผนเกษียณ — ถ้ามีแผนอยู่แล้วและค่าต่างกัน ให้ยืนยันก่อน (เดิมเขียนทับเงียบ ๆ) */
+  const cur = getCurrent();
+  const planAge = cur && cur.retirementPlan && cur.retirementPlan.retireAge != null ? Number(cur.retirementPlan.retireAge) : null;
+  if (planAge != null && planAge !== a) {
+    if (!confirm(`แผนเกษียณของลูกค้าตั้งอายุเกษียณไว้ ${planAge} ปี — เปลี่ยนเป็น ${a} ปี ทั้งใน Timeline และแผนเกษียณ?`)) { render(); return; }
+  }
   updateUser(u => {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c) return;
@@ -967,10 +973,18 @@ function fmt(n) {
   return '฿' + Math.round(n).toLocaleString('th-TH');
 }
 
+/* อายุแบบทศนิยมตามปฏิทินจริง (ปีเต็ม + เศษของปีนับจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า
+   floor() ตรงกับอายุปีเต็มในหน้าลูกค้า/หน้าแรกเสมอ (เดิมหาร 365.25 → ใกล้วันเกิดต่างกัน 1 ปี) · วันเกิดไม่ถูกต้อง → null */
 function ageNow(dob) {
   if (!dob) return null;
-  const diff = new Date() - new Date(dob);
-  return diff / (365.25*24*3600*1000);
+  const bd = new Date(dob);
+  if (isNaN(bd)) return null;
+  const now = new Date();
+  let years = now.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  return years + (now - last) / (next - last);
 }
 
 function escapeHtml(s) {

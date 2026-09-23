@@ -686,8 +686,8 @@ function updateLoanPreview() {
   const n = Number(document.getElementById('lf-months').value || 0);
 
   const preview = document.getElementById('loan-preview');
-  /* ต้องมีอย่างน้อย ผ่อน/เดือน + เหลืออีก ถึงคำนวณได้ */
-  if (m <= 0 || n <= 0) {
+  /* ต้องมี ยอดหนี้ + ผ่อน/เดือน + เหลืออีก ถึงคำนวณได้ (เดิมไม่เช็คยอดหนี้ → ดอกเบี้ยรวม = ยอดผ่อนทั้งหมด) */
+  if (p <= 0 || m <= 0 || n <= 0) {
     preview.style.display = 'none';
     return;
   }

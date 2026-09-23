@@ -1116,7 +1116,7 @@
     document.getElementById('p-stat-tax').textContent   = fmtShort(taxDeduct);
 
     // Personal info card
-    const bmiStr = (client.weight && client.height)
+    const bmiStr = (Number(client.weight) > 0 && Number(client.height) >= 50)
       ? ` · BMI ${(client.weight / ((client.height/100)**2)).toFixed(1)}`
       : '';
     const infoRows = [
@@ -1750,6 +1750,20 @@
       const v = parseFloat(raw);
       return isNaN(v) ? null : v;
     };
+    /* ตรวจช่วงค่าก่อนบันทึก — เดิมรายได้ติดลบได้ และส่วนสูง/น้ำหนักไม่ถูกตรวจ (ส่วนสูง 1 ซม. → BMI หลักแสน) */
+    const checkRange = (id, label, min, max) => {
+      const v = numOrNull(id);
+      if (v == null) return true;
+      if (v < min || v > max) {
+        document.getElementById(id).focus();
+        alert(`⚠️ ${label}ต้องอยู่ระหว่าง ${min.toLocaleString('th-TH')} – ${max.toLocaleString('th-TH')}`);
+        return false;
+      }
+      return true;
+    };
+    if (!checkRange('ef-weight', 'น้ำหนัก (กก.) ', 1, 300)) return;
+    if (!checkRange('ef-height', 'ส่วนสูง (ซม.) ', 50, 250)) return;
+    if (!checkRange('ef-income', 'รายได้ต่อปี ', 0, 1e12)) return;
     const famReq = getFamilyRequest('ef');
     /* atomic — create family + update client ใน updateUser เดียวกัน
        กัน orphan family ถ้า save client fail */

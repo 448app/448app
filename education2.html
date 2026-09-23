@@ -617,9 +617,17 @@ function saveHigherEdTable() {
   render();
 }
 
+/* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า · วันเกิดไม่ถูกต้อง → null (เดิมได้ NaN แล้วผ่านการตรวจ) */
 function ageNow(dob) {
   if (!dob) return null;
-  return Math.max((new Date() - new Date(dob)) / (365.25 * 24 * 3600 * 1000), 0);
+  const bd = new Date(dob);
+  if (isNaN(bd)) return null;
+  const now = new Date();
+  let years = now.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  return Math.max(years + (now - last) / (next - last), 0);
 }
 function getChildDob(c) { return c && (c.dob || c.birthdate) || null; }
 function escapeHtml(s) {

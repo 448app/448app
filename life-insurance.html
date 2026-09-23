@@ -842,9 +842,14 @@ function _ageNow(dobStr) {
   if (_ageCache.has(dobStr)) return _ageCache.get(dobStr);
   const bd = new Date(dobStr);
   if (isNaN(bd)) { _ageCache.set(dobStr, null); return null; }
+  /* อายุตามปฏิทินจริง: ปีเต็ม + เศษของปีนับจากวันเกิดล่าสุด — floor() ตรงกับอายุปีเต็มทุกหน้า
+     (เดิมหาร 365.25 → ใกล้วันเกิดต่างจากหน้าอื่น 1 ปี) */
   const today = new Date();
-  const diff = today - bd;
-  const age = diff / (365.25 * 24 * 3600 * 1000);
+  let years = today.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > today) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  const age = years + (today - last) / (next - last);
   const stable = age < 0 ? 0 : age;
   _ageCache.set(dobStr, stable);
   return stable;
@@ -946,48 +951,7 @@ function getChildTotalCost(child) {
   return eduTotal + rearTotal;
 }
 
-/* อ่านอายุเกษียณจาก client (priority เดียวกับ retirement.html getPlan):
-   1. client.retirementPlan.retireAge  (ตั้งใน retirement.html)
-   2. client.retirementAge              (legacy จาก timeline.html)
-   3. 60                                (fallback) */
-function getRetireAge(client) {
-  if (!client) return 60;
-  if (client.retirementPlan && client.retirementPlan.retireAge != null) {
-    return Number(client.retirementPlan.retireAge);
-  }
-  if (client.retirementAge != null) return Number(client.retirementAge);
-  return 60;
-}
-
-/* DIME method: Debt + Income × years to retirement + Mortgage + Education
-   E ใช้ totalFuture (ค่าใช้จ่ายรวม FV) ตรงกับหน้า education.html */
-function getDIMENeed() {
-  const c = getCurrent();
-  if (!c) return { debt: 0, income: 0, education: 0, total: 0, retireAge: 60 };
-  /* D: หนี้สินรวม จาก client.liabilities */
-  const debt = (c.liabilities || []).reduce((s,l) => s + Number(l.principal || l.balance || 0), 0);
-  /* I: รายได้/ปี × (อายุเกษียณ - อายุปัจจุบัน)
-     อายุเกษียณ ดึงจากหน้าวางแผนเกษียณ (retirementPlan.retireAge) — fallback 60
-     ใช้ _ageNow (cached) — ตัวเดียวกับ E เพื่อให้ I/E เสถียรพร้อมกันทั้ง session */
-  const annualIncome = Number(c.income) ||
-    (c.cashflow && Number(c.cashflow.income) ? Number(c.cashflow.income) * 12 : 0);
-  const retireAge = getRetireAge(c);
-  let ytrRaw = Math.max(retireAge - 35, 1); // default ถ้าไม่มี dob (สมมุติอายุ 35)
-  const cachedAge = _ageNow(c.dob);
-  if (cachedAge != null) {
-    ytrRaw = Math.max(retireAge - cachedAge, 1);
-  }
-  /* round 1 ทศนิยม — ตรงกับ policies.html getNeedsInputs เพื่อให้ค่า I ตรงกัน
-     (ก่อนหน้านี้ life-insurance ใช้ fractional ยาว เช่น 19.0780 ทำให้ math ≠ display 19.1) */
-  const yearsToRetire = Math.round(ytrRaw * 10) / 10;
-  const income = annualIncome * yearsToRetire;
-  /* E: ค่าใช้จ่ายรวม (FV) ของลูกทุกคน — ตรงกับ "💸 ค่าใช้จ่ายรวม (FV)" ในหน้าการศึกษาบุตร */
-  let education = 0;
-  if (c.children && c.children.length > 0) {
-    education = c.children.reduce((s, ch) => s + getChildEducationFuture(ch), 0);
-  }
-  return { debt, income, education, total: debt + income + education, retireAge, yearsToRetire };
-}
+/* (ตัดโหมด DIME ออก — UI บังคับวิธี "หนี้สิน + ความรับผิดชอบ" อยู่แล้ว แต่โค้ดเดิมยังคำนวณ DIME ทุกครั้งที่ render) */
 
 /* ════════════════════════════════════════════
    CLIENT SELECTOR
@@ -1030,11 +994,8 @@ function render() {
   const totalDebt = li.debts.filter(d => d.included !== false).reduce((s,d) => s + Number(d.amount||0), 0);
   const totalResp = li.responsibilities.filter(r => r.included !== false).reduce((s,r) => s + Number(r.amount||0), 0);
 
-  /* method: 'simple' = หนี้สิน+ความรับผิดชอบ (เดิม)
-              'dime'   = Debt+Income+Mortgage+Education (มาตรฐาน DIME) */
-  const method = li.method || 'simple';
-  const dime = getDIMENeed();
-  const totalNeed = method === 'dime' ? dime.total : (totalDebt + totalResp);
+  /* ทุนที่ต้องการ = หนี้สิน + ความรับผิดชอบ (แถวที่เปิดนับรวม) */
+  const totalNeed = totalDebt + totalResp;
 
   const currentLifeCov = getCurrentLifeCoverage();
   /* ใช้ != null check — ให้ผู้ใช้ override เป็น 0 ได้ · null/'' = ดึงจากหน้าสินทรัพย์อัตโนมัติ */
@@ -1049,9 +1010,6 @@ function render() {
   // Get policy preview
   const c = getCurrent();
   const policies = (c && c.policies) || [];
-
-  /* Force Simple method on new UI — DIME logic preserved for other pages via schema */
-  if (li.method !== 'simple') saveLifeInputs(x => { x.method = 'simple'; });
 
   const gapAbs = Math.abs(gap);
   const pctClass = pct >= 100 ? '' : (pct >= 50 ? 'warn' : 'bad');
@@ -1249,12 +1207,6 @@ function addRow(kind) {
   render();
 }
 
-/* สลับวิธีคำนวณ — บันทึกลง lifeInputs.method */
-function setMethod(m) {
-  saveLifeInputs(li => { li.method = m; });
-  render();
-}
-
 /* ดึงข้อมูลจากงบการเงิน — TRUE SYNC (2-way ตรงกับ networth ทุกครั้ง):
    1. client.liabilities → li.debts
       • type='home' → REPLACE แถวคงที่ d-home (รวมหนี้บ้าน — รวม 0)
@@ -1368,6 +1320,10 @@ function importLiabilities() {
 
 function deleteRow(kind, id) {
   const dataKey = kind === 'debt' ? 'debts' : 'responsibilities';
+  const li0 = getLifeInputs();
+  const row = ((li0 && li0[dataKey]) || []).find(x => x.id === id);
+  /* ถามก่อนลบ — เดิมลบทันที กดพลาดแล้วกู้คืนไม่ได้ */
+  if (!confirm(`ลบรายการ "${(row && row.name) || (kind === 'debt' ? 'หนี้สิน' : 'ความรับผิดชอบ')}"?`)) return;
   saveLifeInputs(li => {
     if (!li[dataKey]) return;
     li[dataKey] = li[dataKey].filter(x => x.id !== id);
@@ -1558,29 +1514,11 @@ function getValidations() {
   /* นับเฉพาะแถวที่เปิด "นับรวม" — ให้ตรงกับการ์ด (เดิมแถบคำแนะนำรวมทุกแถวรวมที่กดปิด) */
   const totalDebt = li.debts.filter(d => d.included !== false).reduce((s,d) => s + Number(d.amount||0), 0);
   const totalResp = li.responsibilities.filter(r => r.included !== false).reduce((s,r) => s + Number(r.amount||0), 0);
-  const method    = li.method || 'simple';
-  const dime      = getDIMENeed();
-  const totalNeed = method === 'dime' ? dime.total : (totalDebt + totalResp);
+  const totalNeed = totalDebt + totalResp;
   const annualIncome = Number(c.income) ||
     (c.cashflow && Number(c.cashflow.income) ? Number(c.cashflow.income) * 12 : 0);
   const liquidAssets = (li.liquidAssets != null && li.liquidAssets !== '')
     ? Number(li.liquidAssets) : getCurrentLiquidAssets();
-
-  /* WARN: DIME mode + ขาด dob */
-  if (method === 'dime' && !c.dob) {
-    issues.push({
-      level: 'warn',
-      msg: '<b>ลูกค้านี้ยังไม่มีวันเกิด</b> — DIME I ใช้ default 25 ปีถึงเกษียณ <a href="clients.html">ไปเพิ่มวันเกิด →</a>'
-    });
-  }
-
-  /* WARN: DIME mode + ไม่มีรายได้ */
-  if (method === 'dime' && annualIncome === 0) {
-    issues.push({
-      level: 'warn',
-      msg: '<b>ลูกค้านี้ยังไม่ได้ระบุรายได้</b> — DIME I = 0 (สูตรหลักหายไป) <a href="clients.html">ไปเพิ่มรายได้ →</a>'
-    });
-  }
 
   /* WARN: ทุนต้องการ = 0 */
   if (totalNeed === 0) {
@@ -1601,7 +1539,7 @@ function getValidations() {
 
   /* HINT: ค่าดูแลพ่อแม่ default = 0 */
   const parentRow = li.responsibilities.find(r => r.id === 'r-parents');
-  if (parentRow && Number(parentRow.amount||0) === 0 && method === 'simple') {
+  if (parentRow && Number(parentRow.amount||0) === 0) {
     issues.push({
       level: 'hint',
       msg: 'ทั่วไป <b>ค่าดูแลพ่อแม่</b> ≈ ฿4,800,000 (20,000/เดือน × 20 ปี)'
@@ -1611,7 +1549,7 @@ function getValidations() {
   /* HINT: ค่าเลี้ยงบุตร default = 0 และมีบุตร */
   const childRow = li.responsibilities.find(r => r.id === 'r-children');
   const childCount = (c.children || []).length;
-  if (childRow && Number(childRow.amount||0) === 0 && childCount > 0 && method === 'simple') {
+  if (childRow && Number(childRow.amount||0) === 0 && childCount > 0) {
     const total = childCount * 1500000;
     issues.push({
       level: 'hint',

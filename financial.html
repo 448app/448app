@@ -786,9 +786,10 @@
         </div>
       </div>
 
-      <!-- Add goal form -->
+      <!-- Add goal form — เป้าหมายชุดเดียวกับหน้า "เป้าหมายชีวิต" -->
       <div class="form-card">
         <h3>➕ เพิ่มเป้าหมายการเงิน</h3>
+        <div style="font-size:.8rem;color:#6C7490;margin:-6px 0 12px;">เป้าหมายที่เพิ่มที่นี่เป็นชุดเดียวกับหน้า <a href="goals.html" style="color:#2E4CA6;">เป้าหมายชีวิต</a> · Timeline และไฟล์สรุปแผนใช้ชุดเดียวกัน</div>
         <div class="form-grid">
           <div class="fg">
             <label>ชื่อเป้าหมาย *</label>
@@ -1030,8 +1031,60 @@ const catIcons = {
   'ท่องเที่ยว':    '✈️',
   'บ้าน':          '🏠',
   'การศึกษา':      '🎓',
-  'อื่นๆ':         '📌'
+  'อื่นๆ':         '📌',
+  /* ประเภทจากหน้าเป้าหมายชีวิต */
+  'ซื้อรถ':        '🚗',
+  'ช้อปปิ้ง':      '🛍️',
+  'เงินทุนธุรกิจ': '💼',
+  'พอร์ตการลงทุน': '📈',
+  'ค่าใช้จ่ายครอบครัว': '💳',
 };
+
+/* ═══════════════════════════════════════════════
+   เป้าหมายชุดเดียวกับหน้า "เป้าหมายชีวิต" (client.lifeGoals)
+   เดิมหน้านี้เก็บ financialGoals แยกอีกชุด → Timeline/PDF เห็นแค่ชุดใดชุดหนึ่ง
+   ครั้งแรกที่เปิด: ย้าย financialGoals เดิมเข้า lifeGoals แล้วล้างชุดเก่า
+═══════════════════════════════════════════════ */
+const FG_CAT_TO_TYPE = { 'กองทุนฉุกเฉิน':'emergency', 'เกษียณ':'retire', 'สุขภาพ':'other', 'ท่องเที่ยว':'travel', 'บ้าน':'home', 'การศึกษา':'other', 'อื่นๆ':'other' };
+const FG_TYPE_TO_CAT = { emergency:'กองทุนฉุกเฉิน', retire:'เกษียณ', travel:'ท่องเที่ยว', home:'บ้าน', car:'ซื้อรถ', shop:'ช้อปปิ้ง', business:'เงินทุนธุรกิจ', portfolio:'พอร์ตการลงทุน', family:'ค่าใช้จ่ายครอบครัว', other:'อื่นๆ' };
+function fgToLifeGoal(fg) {
+  const type = FG_CAT_TO_TYPE[fg.category] || 'other';
+  return {
+    id: 'g' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+    type,
+    name: fg.name || '',
+    targetAmount: Number(fg.target || 0),
+    currentSaved: Number(fg.current || 0),
+    currentAmount: Number(fg.current || 0),
+    monthlyContribution: Number(fg.monthly || 0),
+    expectedReturn: 0,
+    inflationRate: 0,
+    deadline: fg.deadline || '',
+    /* เก็บหมวดเดิม (สุขภาพ/การศึกษา) ไว้ใน note เพื่อแสดงต่อ */
+    note: (type === 'other' && fg.category && fg.category !== 'อื่นๆ') ? fg.category : '',
+    createdAt: fg.createdAt || new Date().toISOString(),
+  };
+}
+function lifeGoalView(g) {
+  const cat = (g.type === 'other' && g.note && catIcons[g.note]) ? g.note : (FG_TYPE_TO_CAT[g.type] || 'อื่นๆ');
+  return {
+    id: g.id, name: g.name || '', category: cat,
+    target: Number(g.targetAmount || 0),
+    current: Number(g.currentSaved != null ? g.currentSaved : (g.currentAmount || 0)),
+    monthly: Number(g.monthlyContribution || 0),
+    deadline: g.deadline || '', createdAt: g.createdAt || '',
+  };
+}
+function getClientGoalViews(client) { return ((client && client.lifeGoals) || []).map(lifeGoalView); }
+function migrateFinancialGoals() {
+  const c = getSelectedClient();
+  if (!c || !(c.financialGoals || []).length) return;
+  updateSelectedClient(cl => {
+    if (!cl.lifeGoals) cl.lifeGoals = [];
+    (cl.financialGoals || []).forEach(fg => cl.lifeGoals.push(fgToLifeGoal(fg)));
+    cl.financialGoals = [];
+  });
+}
 
 function fmt(n) {
   return '฿\u00A0' + (n || 0).toLocaleString('th-TH');
@@ -1089,7 +1142,8 @@ function renderClientSelect() {
   }
 
   grid.innerHTML = filtered.map(c => {
-    const goals       = c.financialGoals || [];
+    /* นับทั้งชุดเก่า (ยังไม่ย้าย) และ lifeGoals — ย้ายจริงเมื่อเปิดหน้าลูกค้าคนนั้น */
+    const goals       = [...(c.financialGoals || []).map(g => ({ target: Number(g.target || 0) })), ...getClientGoalViews(c)];
     const totalTarget = goals.reduce((s, g) => s + (g.target || 0), 0);
     const age         = c.age || calculateAge(c.dob || c.birthdate);
     const genderLabel = c.gender === 'male' ? 'ชาย' : c.gender === 'female' ? 'หญิง' : (c.gender || '');
@@ -1271,10 +1325,11 @@ function renderTimelineChart(goals) {
    VIEW 2: RENDER MAIN (financial planning for a client)
 ═══════════════════════════════════════════════ */
 function renderMain() {
+  migrateFinancialGoals();   /* ย้ายเป้าหมายชุดเก่าเข้า lifeGoals (ครั้งเดียว) */
   const client = getSelectedClient();
   if (!client) { showClientSelect(); return; }
 
-  const goals       = client.financialGoals || [];
+  const goals       = getClientGoalViews(client);
   const totalSaved  = goals.reduce((s, g) => s + (g.current || 0), 0);
   const totalTarget = goals.reduce((s, g) => s + (g.target  || 0), 0);
   const avgPct      = goals.length
@@ -1403,8 +1458,8 @@ function addGoal() {
   err.style.display = 'none';
 
   updateSelectedClient(cl => {
-    if (!cl.financialGoals) cl.financialGoals = [];
-    cl.financialGoals.push({ name, category, target, current, monthly, deadline, createdAt: new Date().toISOString() });
+    if (!cl.lifeGoals) cl.lifeGoals = [];
+    cl.lifeGoals.push(fgToLifeGoal({ name, category, target, current, monthly, deadline, createdAt: new Date().toISOString() }));
   });
 
   // Log activity on user
@@ -1426,8 +1481,10 @@ function addGoal() {
 
 function deleteGoal(i) {
   if (!confirm('ยืนยันลบเป้าหมายนี้?')) return;
+  const g = getClientGoalViews(getSelectedClient())[i];
+  if (!g) return;
   updateSelectedClient(cl => {
-    if (cl.financialGoals) cl.financialGoals.splice(i, 1);
+    cl.lifeGoals = (cl.lifeGoals || []).filter(x => x.id !== g.id);
   });
   renderMain();
 }
@@ -1438,7 +1495,7 @@ function deleteGoal(i) {
 function openModal(i) {
   activeGoalIdx = i;
   const client = getSelectedClient();
-  const goals  = client ? (client.financialGoals || []) : [];
+  const goals  = getClientGoalViews(client);
   const g      = goals[i];
   document.getElementById('modal-goal-name').textContent = g ? `เป้าหมาย: ${g.name}` : '';
   document.getElementById('modal-amount').value = '';
@@ -1456,14 +1513,18 @@ function confirmAddSaving() {
   if (amount <= 0) { alert('กรุณากรอกจำนวนเงินให้มากกว่า 0'); return; }
 
   updateSelectedClient(cl => {
-    const g = (cl.financialGoals || [])[activeGoalIdx];
-    if (g) g.current = (g.current || 0) + amount;
+    const view = getClientGoalViews(cl)[activeGoalIdx];
+    const g = view && (cl.lifeGoals || []).find(x => x.id === view.id);
+    if (g) {
+      const cur = Number(g.currentSaved != null ? g.currentSaved : (g.currentAmount || 0)) + amount;
+      g.currentSaved = cur; g.currentAmount = cur;   /* เขียนทั้ง 2 field ให้ตรง schema หน้าเป้าหมายชีวิต */
+    }
   });
 
   updateCurrentUser(u => {
     if (!u.data.activities) u.data.activities = [];
     const client = (u.data.clients || []).find(c => c.id === selectedClientId);
-    const goals  = client ? (client.financialGoals || []) : [];
+    const goals  = getClientGoalViews(client);
     const g      = goals[activeGoalIdx];
     const who    = client ? `${client.firstName} ${client.lastName}` : 'ลูกค้า';
     u.data.activities.unshift({

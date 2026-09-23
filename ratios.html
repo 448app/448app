@@ -551,15 +551,13 @@ function renderRatio(opts) {
     : (unit === 'เดือน' ? ratio.value.toFixed(1) : ratio.value.toFixed(1));
 
   // Compute needle position
+  // แถบสี: ซ้าย = ไม่ดี → ขวา = ดี เสมอ (ป้ายใต้แถบของแบบกลับด้านคือ "สูง … ดี")
+  // แบบกลับด้าน (ค่าต่ำ = ดี): หาตำแหน่งจากช่วงปกติแล้วพลิกกระจก → ค่าต่ำไปขวา (ดี), ค่าสูงไปซ้าย
+  // (เดิมส่งช่วงแบบเรียงกลับเข้า gaugePos ซึ่งรองรับเฉพาะช่วงเรียงจากน้อยไปมาก → เข็มชี้ผิดฝั่ง
+  //  และยังพลิกสีแถบสวนทางกับป้ายอีกชั้น)
   let pct = 0;
   if (ratio.value != null) {
-    if (reverse) {
-      // For reversed ratios (lower is better), gauge bar gradient should be reversed too
-      // So we compute pos as 100 - normal
-      pct = 100 - gaugePos(ratio.value, [ranges[3], ranges[2], ranges[1], ranges[0]]);
-    } else {
-      pct = gaugePos(ratio.value, ranges);
-    }
+    pct = reverse ? 100 - gaugePos(ratio.value, ranges) : gaugePos(ratio.value, ranges);
   }
 
   // Status label
@@ -573,10 +571,8 @@ function renderRatio(opts) {
     ? `<span>สูง</span><span>ปานกลาง</span><span>ดี</span>`
     : `<span>ต่ำ</span><span>ปานกลาง</span><span>ดี</span>`;
 
-  // For reversed gauges, flip bar gradient
-  const barStyle = reverse
-    ? 'background: linear-gradient(to right, #C8E6C9 0%, #E8F5E9 33%, #FFF3E0 66%, #EEF1FA 100%);'
-    : '';
+  /* แถบสีทิศเดียวกันทุกเกจ (ซ้ายไม่ดี → ขวาดี) — เข็มของแบบกลับด้านถูกพลิกให้แล้วด้านบน */
+  const barStyle = '';
 
   return `<div class="ratio-card ${cls}">
     <div class="rc-head">

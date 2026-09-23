@@ -593,8 +593,8 @@ const INVESTMENT_ROWS = [
 /* Field visibility per type */
 const ROW_FIELDS_BY_TYPE = {
   _default:   { contrib: true,  term: true,  fv: true,  cashFlow: false },
-  annuity:    { contrib: true,  term: false, fv: false, cashFlow: true  },
-  realestate: { contrib: true,  term: false, fv: false, cashFlow: true  },
+  annuity:    { contrib: false, term: false, fv: false, cashFlow: true  },   /* ไม่มีระยะเวลา/FV — ช่องออมเพิ่มไม่ถูกนำไปคิด */
+  realestate: { contrib: false, term: false, fv: false, cashFlow: true  },
   pvd:        { contrib: false, term: true,  fv: true,  cashFlow: false },
 };
 function _rowFields(type) {
@@ -605,6 +605,13 @@ function _rowFields(type) {
 let selectedClientId = null;
 
 /* FV calculation — annuity-due */
+/* จัดรูปแบบตัวเลขในช่องเมื่อ blur — พิมพ์ตัวอักษรที่ไม่ใช่ตัวเลขแล้วไม่ขึ้น "NaN" ค้างในช่อง */
+function _astFmtBlur(el) {
+  const raw = String(el.value || '').replace(/,/g, '').trim();
+  const n = Number(raw);
+  el.value = (raw !== '' && isFinite(n)) ? n.toLocaleString('th-TH') : '';
+}
+
 function calcFV(pv, rate, years, pmt, freq) {
   pv = Number(pv) || 0;
   rate = (Number(rate) || 0) / 100;
@@ -615,7 +622,8 @@ function calcFV(pv, rate, years, pmt, freq) {
     const r_m = rate / 12; const n_m = years * 12;
     const factor_m = Math.pow(1 + r_m, n_m);
     if (r_m === 0) return pv + pmt * n_m;
-    return pv * Math.pow(1 + rate, years) + pmt * (factor_m - 1) / r_m * (1 + r_m);
+    /* ทบต้นรายเดือนทั้งเงินต้นและเงินออม (= assets.html) */
+    return pv * factor_m + pmt * (factor_m - 1) / r_m * (1 + r_m);
   }
   const factor = Math.pow(1 + rate, years);
   if (rate === 0) return pv + pmt * years;
@@ -812,7 +820,8 @@ function updateRowFV(type) {
 function updateTotals() {
   const assets = getAssets();
   const tCV = assets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const tFV = assets.reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
+  /* เฉพาะแถวที่คำนวณ FV ได้ — ไม่รวมประกันบำนาญ/อสังหาฯ/รายการกระแสเงินสด (= assets.html) */
+  const tFV = assets.filter(a => _rowFields(a.type).fv !== false && a.customCategory !== 'cf').reduce((s,a) => s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
   const tCF = assets.reduce((s,a) => s + Number(a.cashFlow||0), 0);
   /* Per-section totals */
   const savCV = SAVINGS_ROWS.reduce((s,r) => s + getRowData(r.type).currentValue, 0);
@@ -966,7 +975,7 @@ function renderRow(rowMeta) {
         <input type="text" class="a2-input ${cv?'has-val':''}" inputmode="decimal"
                value="${cvFmt}" placeholder="—"
                onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${rowMeta.type}','currentValue',this.value);"
+               onblur="_astFmtBlur(this);onCellChange('${rowMeta.type}','currentValue',this.value);"
                onchange="onCellChange('${rowMeta.type}','currentValue',this.value)">
       </div>
       <div>
@@ -974,7 +983,7 @@ function renderRow(rowMeta) {
           <input type="text" class="a2-input ${co?'has-val':''}" inputmode="decimal"
                  value="${coFmt}" placeholder="—"
                  onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${rowMeta.type}','contribution',this.value);"
+                 onblur="_astFmtBlur(this);onCellChange('${rowMeta.type}','contribution',this.value);"
                  onchange="onCellChange('${rowMeta.type}','contribution',this.value)">
         ` : `<div class="a2-cell-disabled">−</div>`}
       </div>
@@ -1004,7 +1013,7 @@ function renderRow(rowMeta) {
           <input type="text" class="a2-input ${cf?'has-val':''}" inputmode="decimal"
                  value="${cfFmt}" placeholder="—"
                  onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${rowMeta.type}','cashFlow',this.value);"
+                 onblur="_astFmtBlur(this);onCellChange('${rowMeta.type}','cashFlow',this.value);"
                  onchange="onCellChange('${rowMeta.type}','cashFlow',this.value)">
         ` : `<div class="a2-cell-disabled">−</div>`}
       </div>
@@ -1046,14 +1055,14 @@ function renderCustomRow(a) {
         <input type="text" class="a2-input ${cv?'has-val':''}" inputmode="decimal"
                value="${cvFmt}" placeholder="—"
                onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','currentValue',this.value);"
+               onblur="_astFmtBlur(this);onCustomCellChange('${a.id}','currentValue',this.value);"
                onchange="onCustomCellChange('${a.id}','currentValue',this.value)">
       </div>
       <div>
         <input type="text" class="a2-input ${co?'has-val':''}" inputmode="decimal"
                value="${coFmt}" placeholder="—"
                onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','contribution',this.value);"
+               onblur="_astFmtBlur(this);onCustomCellChange('${a.id}','contribution',this.value);"
                onchange="onCustomCellChange('${a.id}','contribution',this.value)">
       </div>
       <div>
@@ -1082,7 +1091,7 @@ function renderCustomRow(a) {
           <input type="text" class="a2-input ${cf?'has-val':''}" inputmode="decimal"
                  value="${cfFmt}" placeholder="—"
                  onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','cashFlow',this.value);"
+                 onblur="_astFmtBlur(this);onCustomCellChange('${a.id}','cashFlow',this.value);"
                  onchange="onCustomCellChange('${a.id}','cashFlow',this.value)">
         ` : `<div class="a2-cell-disabled">−</div>`}
       </div>

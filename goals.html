@@ -603,21 +603,20 @@ function fmtShort(n) {
 /* ════════════════════════════════════════════
    TVM CALCULATIONS
 ═══════════════════════════════════════════ */
-// FV = PV(1+r)^n + PMT × ((1+r)^n - 1)/r
+// FV = PV(1+r/12)^(12n) + PMT × ((1+r/12)^(12n) - 1)/(r/12)
+// ทบต้นรายเดือนทั้งเงินก้อนและเงินออม — สูตรเดียวกับ calcRequiredPMT
+// (เดิมเงินก้อนทบต้นรายปี แต่ "ควรออม/เดือน" ทบต้นรายเดือน → ตัวเลข 2 ช่องในกล่องเดียวกันมาจากคนละอนาคต)
 function calcFV(pv, rate, years, pmt) {
   pv = Number(pv) || 0;
   rate = (Number(rate) || 0) / 100;
   years = Number(years) || 0;
   pmt = Number(pmt) || 0;
   if (years <= 0) return pv;
-  const factor = Math.pow(1 + rate, years);
-  if (rate === 0) return pv + pmt * 12 * years;
-  // PMT is monthly → convert to monthly compounding
   const mRate = rate / 12;
-  const mFactor = Math.pow(1 + mRate, years * 12);
-  const annualFV = pv * factor;
-  const pmtFV = mRate === 0 ? pmt * 12 * years : pmt * (mFactor - 1) / mRate;
-  return annualFV + pmtFV;
+  const months = years * 12;
+  if (mRate === 0) return pv + pmt * months;
+  const mFactor = Math.pow(1 + mRate, months);
+  return pv * mFactor + pmt * (mFactor - 1) / mRate;
 }
 
 // Required monthly PMT to reach FV given PV, rate, years
@@ -636,11 +635,31 @@ function calcRequiredPMT(target, pv, rate, years) {
   return remaining * mRate / (Math.pow(1 + mRate, months) - 1);
 }
 
+/* ปีที่เหลือถึงกำหนด — ติดลบได้เมื่อเลยกำหนดแล้ว (เดิมตัดเป็น 0 → เป้าหมายที่เลยมาแล้วขึ้น "ครบกำหนด") */
 function yearsTo(deadline) {
   if (!deadline) return 0;
   const dl = new Date(deadline);
+  if (isNaN(dl)) return 0;
   const now = new Date();
-  return Math.max((dl - now) / (365.25 * 24 * 3600 * 1000), 0);
+  return (dl - now) / (365.25 * 24 * 3600 * 1000);
+}
+/* ข้อความสถานะเวลา: "อีก 2.5 ปี" · "ครบกำหนด" (ภายใน ±1 สัปดาห์) · "เลยกำหนด 1.2 ปี" */
+function yearsLabel(yr) {
+  if (yr > 0.02) return `อีก ${yr.toFixed(1)} ปี`;
+  if (yr >= -0.02) return 'ครบกำหนด';
+  return `เลยกำหนด ${Math.abs(yr).toFixed(1)} ปี`;
+}
+/* วิเคราะห์เป้าหมาย 1 รายการ — ใช้ทั้งการ์ดในรายการและตัวอย่างในฟอร์ม */
+function analyzeGoal(g) {
+  const years = yearsTo(g.deadline);
+  const target = inflatedTarget(g);
+  const current = getGoalCurrent(g);
+  const monthly = Number(g.monthlyContribution || 0);
+  const ret = Number(g.expectedReturn || 0);
+  const fv = calcFV(current, ret, years, monthly);
+  const reqMonthly = calcRequiredPMT(target, current, ret, years);
+  const surplus = fv - target;
+  return { years, target, current, monthly, ret, fv, reqMonthly, surplus, achieved: surplus >= 0, overdue: years <= 0 };
 }
 
 /* helper: รองรับ schema ทั้ง currentSaved (กลาง) และ currentAmount (legacy) */
@@ -661,7 +680,7 @@ function inflatedTarget(g) {
   const target = Number(g.targetAmount || 0);
   const infl   = Number(g.inflationRate || 0) / 100;
   if (infl <= 0) return target;
-  const years = yearsTo(g.deadline);
+  const years = Math.max(yearsTo(g.deadline), 0);   /* เลยกำหนดแล้ว → ไม่ปรับเงินเฟ้อย้อนหลัง */
   return target * Math.pow(1 + infl, years);
 }
 
@@ -710,26 +729,14 @@ function render() {
   const totalTarget   = goals.reduce((s,g) => s + inflatedTarget(g), 0);
   const totalCurrent  = goals.reduce((s,g) => s + getGoalCurrent(g), 0);
   const totalMonthly  = goals.reduce((s,g) => s + Number(g.monthlyContribution||0), 0);
-  const achievedCount = goals.filter(g => {
-    const years = yearsTo(g.deadline);
-    const fv = calcFV(getGoalCurrent(g), g.expectedReturn, years, g.monthlyContribution);
-    return fv >= inflatedTarget(g);
-  }).length;
+  const achievedCount = goals.filter(g => analyzeGoal(g).achieved).length;
 
   const filteredGoals = currentFilter === 'all'
     ? goals
     : currentFilter === 'achieved'
-      ? goals.filter(g => {
-          const years = yearsTo(g.deadline);
-          const fv = calcFV(g.currentAmount, g.expectedReturn, years, g.monthlyContribution);
-          return fv >= Number(g.targetAmount||0);
-        })
+      ? goals.filter(g => analyzeGoal(g).achieved)
     : currentFilter === 'risk'
-      ? goals.filter(g => {
-          const years = yearsTo(g.deadline);
-          const fv = calcFV(g.currentAmount, g.expectedReturn, years, g.monthlyContribution);
-          return fv < Number(g.targetAmount||0);
-        })
+      ? goals.filter(g => !analyzeGoal(g).achieved)
     : goals.filter(g => g.type === currentFilter);
 
   /* Count + check existence per type for the launchpad */
@@ -779,15 +786,20 @@ function render() {
           ? `<div class="g2-list-empty">ยังไม่มีเป้าหมาย — คลิกไอคอนด้านบนเพื่อสร้างเป้าหมายแรก</div>`
           : goals.map(g => {
               const t = GOAL_TYPES[g.type] || GOAL_TYPES.other;
-              const target = inflatedTarget(g);
-              const yr = yearsTo(g.deadline);
-              const yrStr = yr > 0 ? `อีก ${yr.toFixed(1)} ปี` : (yr === 0 ? 'ครบกำหนด' : 'เลยกำหนด');
+              const a = analyzeGoal(g);
+              /* บรรทัดวิเคราะห์ (เดิมมีโค้ดการ์ดวิเคราะห์แต่ไม่เคยถูกเรียก — หลังบันทึกเห็นแค่ชื่อ ยอด ปีที่เหลือ) */
+              const analysis = a.achieved
+                ? `<span style="color:#1F7A55;">✅ ถึงเป้า${a.surplus > 0 ? ` · เกิน ${fmtShort(a.surplus)}` : ''}</span>`
+                : a.overdue
+                  ? `<span style="color:#B3261E;">⏰ เลยกำหนด · ขาด ${fmtShort(Math.abs(a.surplus))}</span>`
+                  : `<span style="color:#B3261E;">ขาด ${fmtShort(Math.abs(a.surplus))}</span> · ควรออม ${fmtShort(a.reqMonthly)}/เดือน${a.monthly > 0 ? ` (ตอนนี้ ${fmtShort(a.monthly)})` : ''}`;
               return `
                 <div class="g2-list-card" onclick="openGoalModal('${g.id}')" title="แก้ไข">
                   <div class="g2-list-card-icon">${_renderGoalIcon(t, 22)}</div>
                   <div class="g2-list-card-text">
                     <div class="g2-list-card-name">${escapeHtml(g.name || t.label)}</div>
-                    <div class="g2-list-card-meta">${fmtShort(target)} · ${yrStr}</div>
+                    <div class="g2-list-card-meta">${fmtShort(a.target)} · ${yearsLabel(a.years)}</div>
+                    <div class="g2-list-card-meta" style="margin-top:2px;">${analysis}</div>
                   </div>
                   <button class="g2-list-card-del" onclick="event.stopPropagation(); deleteGoal('${g.id}', event)" title="ลบเป้าหมาย">×</button>
                 </div>
@@ -817,99 +829,7 @@ function openLaunchpad(type) {
   }
 }
 
-function renderGoalCard(g) {
-  const t = GOAL_TYPES[g.type] || GOAL_TYPES.other;
-  const target = inflatedTarget(g);  /* ปรับ inflation ถ้ามี */
-  const current = getGoalCurrent(g);
-  const monthly = Number(g.monthlyContribution || 0);
-  const ret = Number(g.expectedReturn || 0);
-  const years = yearsTo(g.deadline);
-
-  const fv = calcFV(current, ret, years, monthly);
-  const reqMonthly = calcRequiredPMT(target, current, ret, years);
-  const surplus = fv - target;
-  const achieved = surplus >= 0;
-  const pct = target > 0 ? Math.min(Math.round(current / target * 100), 100) : 0;
-
-  // Status
-  let pillCls, pillText;
-  if (achieved) { pillCls = 'pill-good'; pillText = '✅ พอแน่นอน'; }
-  else if (fv >= target * 0.8) { pillCls = 'pill-warn'; pillText = '⚠️ เกือบพอ'; }
-  else { pillCls = 'pill-bad'; pillText = '⛔ ขาดมาก'; }
-
-  let tvmCls = achieved ? 'green' : (fv >= target * 0.8 ? 'warn' : '');
-
-  const deadlineStr = g.deadline
-    ? new Date(g.deadline).toLocaleDateString('th-TH-u-ca-gregory',{year:'numeric',month:'long',day:'numeric'})
-    : 'ไม่ระบุ';
-
-  return `<div class="goal-card ${t.cls} ${achieved ? 'achieved':''}">
-    <div class="gc-head">
-      <div class="gc-title-wrap">
-        <div class="gc-icon-name">
-          <span class="gc-icon">${_renderGoalIcon(t, 22)}</span>
-          <span class="gc-name">${(g.name||t.label).replace(/</g,'&lt;')}</span>
-        </div>
-        <div class="gc-cat">${t.cat}${g.note ? ' · '+g.note.replace(/</g,'&lt;') : ''}</div>
-      </div>
-      <div class="gc-actions">
-        <button class="gc-btn" onclick="openGoalModal('${g.id}')" title="แก้ไข">✏️</button>
-        <button class="gc-btn del" onclick="deleteGoal('${g.id}')" title="ลบ">🗑️</button>
-      </div>
-    </div>
-
-    <!-- Progress -->
-    <div>
-      <div class="gc-progress">
-        <div class="gc-progress-fill ${achieved?'green':''}" style="width:${pct}%"></div>
-      </div>
-      <div class="gc-progress-text">
-        <span>${fmt(current)}</span>
-        <span>${pct}%</span>
-        <span>${fmt(target)}</span>
-      </div>
-    </div>
-
-    <!-- Amounts -->
-    <div class="gc-amounts">
-      <div class="gc-amount">
-        <div class="amt-lbl">📅 ออม/เดือนปัจจุบัน</div>
-        <div class="amt-val">${fmt(monthly)}</div>
-      </div>
-      <div class="gc-amount">
-        <div class="amt-lbl">📈 ผลตอบแทน/ปี</div>
-        <div class="amt-val">${ret.toFixed(1)}%</div>
-      </div>
-    </div>
-
-    <!-- TVM -->
-    <div class="tvm-box ${tvmCls}">
-      <div class="tvm-line">
-        <span class="tvm-lbl">⏰ เวลาเหลือ</span>
-        <span class="tvm-val">${years > 0 ? years.toFixed(1) + ' ปี' : 'ครบกำหนดแล้ว'}</span>
-      </div>
-      <div class="tvm-line">
-        <span class="tvm-lbl">📊 FV ตามแผนปัจจุบัน</span>
-        <span class="tvm-val">${fmt(fv)}</span>
-      </div>
-      <div class="tvm-line">
-        <span class="tvm-lbl">${achieved ? '✅ ส่วนเกิน' : '⚠️ ขาดอีก'}</span>
-        <span class="tvm-val">${fmt(Math.abs(surplus))}</span>
-      </div>
-      ${!achieved && years > 0 ? `<div class="tvm-line">
-        <span class="tvm-lbl">💡 ต้องออม/เดือน</span>
-        <span class="tvm-val">${fmt(reqMonthly)}</span>
-      </div>` : ''}
-      <div class="tvm-formula">FV = ${fmtShort(current)}(1+${ret}%)<sup>${years.toFixed(1)}</sup> ${monthly > 0 ? '+ '+fmtShort(monthly)+'/ด.' : ''}</div>
-    </div>
-
-    <!-- Footer -->
-    <div class="gc-footer-row">
-      <div class="gc-deadline">📅 ${deadlineStr}</div>
-      <span class="gc-status-pill ${pillCls}">${pillText}</span>
-    </div>
-  </div>`;
-}
+/* (การ์ดวิเคราะห์แบบเก่า renderGoalCard ถูกตัดออก — ไม่เคยถูกเรียก · การวิเคราะห์ย้ายไปอยู่ในการ์ดรายการด้านบนผ่าน analyzeGoal) */
 
 /* ════════════════════════════════════════════
    GOAL CRUD + Modal
@@ -982,8 +902,8 @@ function updatePreview() {
   if (!targetRaw || !deadline) { previewEl.style.display = 'none'; return; }
 
   const years = yearsTo(deadline);
-  /* ปรับ inflation ถ้ามี — แสดงเป้าหมายในอนาคตตามมูลค่าจริง */
-  const target = inflRate > 0 ? targetRaw * Math.pow(1 + inflRate/100, years) : targetRaw;
+  /* ปรับ inflation ถ้ามี — แสดงเป้าหมายในอนาคตตามมูลค่าจริง (เลยกำหนดแล้วไม่ปรับย้อนหลัง) */
+  const target = inflRate > 0 ? targetRaw * Math.pow(1 + inflRate/100, Math.max(years, 0)) : targetRaw;
   const fv = calcFV(current, ret, years, monthly);
   const reqMonthly = calcRequiredPMT(target, current, ret, years);
   const surplus = fv - target;
@@ -992,7 +912,7 @@ function updatePreview() {
   /* ถ้า deadline ผ่านไปแล้ว → แสดง info ชัดเจน ไม่บอกว่า "ออม/เดือน" */
   const overdue = years <= 0;
   document.getElementById('calc-preview-body').innerHTML = `
-    <div class="calc-row"><span>เวลาเหลือ:</span><span>${overdue ? '⏰ เลยกำหนดแล้ว' : years.toFixed(1) + ' ปี'}</span></div>
+    <div class="calc-row"><span>เวลาเหลือ:</span><span>${overdue ? '⏰ ' + yearsLabel(years) : years.toFixed(1) + ' ปี'}</span></div>
     <div class="calc-row"><span>FV ตามแผน:</span><span>${fmt(fv)}</span></div>
     <div class="calc-row"><span>เป้าหมาย${inflRate > 0 ? ' (ปรับเงินเฟ้อ)' : ''}:</span><span>${fmt(target)}</span></div>
     <div class="calc-row total">

@@ -530,9 +530,9 @@ const ROW_ORDER = [
 const ROW_FIELDS_BY_TYPE = {
   /* defaults (FV-type / red) */
   _default:   { contrib: true,  term: true,  fv: true,  cashFlow: false, badge: '' },
-  /* Cash-flow type (blue) */
-  annuity:    { contrib: true,  term: false, fv: false, cashFlow: true,  badge: '' },
-  realestate: { contrib: true,  term: false, fv: false, cashFlow: true,  badge: '' },
+  /* Cash-flow type (blue) — ไม่มีช่องออมเพิ่ม (ไม่มีระยะเวลา/FV ให้คิด — เดิมกรอกได้แต่ไม่ถูกนำไปคิดที่ไหน) */
+  annuity:    { contrib: false, term: false, fv: false, cashFlow: true,  badge: '' },
+  realestate: { contrib: false, term: false, fv: false, cashFlow: true,  badge: '' },
   /* PVD (green) — มีช่องเงินสมทบ (นายจ้าง+ลูกจ้าง) รวมใน FV */
   pvd:        { contrib: true,  term: true,  fv: true,  cashFlow: false, badge: '📊' },
 };
@@ -549,20 +549,28 @@ let selectedClientId = null;
    FV CALCULATION (annuity-due — เงินสมทบเข้าตอนต้นงวด)
    freq: 'annual' หรือ 'monthly' (default annual เพื่อ backward-compat)
 ═══════════════════════════════════════════ */
+/* จัดรูปแบบตัวเลขในช่องเมื่อ blur — พิมพ์ตัวอักษรที่ไม่ใช่ตัวเลขแล้วไม่ขึ้น "NaN" ค้างในช่อง */
+function _astFmtBlur(el) {
+  const raw = String(el.value || '').replace(/,/g, '').trim();
+  const n = Number(raw);
+  el.value = (raw !== '' && isFinite(n)) ? n.toLocaleString('th-TH') : '';
+}
+
 function calcFV(pv, rate, years, pmt, freq) {
   pv = Number(pv) || 0;
   rate = (Number(rate) || 0) / 100;
   years = Number(years) || 0;
   pmt = Number(pmt) || 0;
   if (years <= 0) return pv;
-  /* ถ้าเป็นรายเดือน → ใช้ rate รายเดือน + n เป็นเดือน */
+  /* ถ้าเป็นรายเดือน → ใช้ rate รายเดือน + n เป็นเดือน — ทบต้นรายเดือนทั้งเงินต้นและเงินออม
+     (เดิมเงินต้นทบต้นรายปีแต่เงินออมรายเดือน → แถวเดียวใช้สองวิธี) · สูตรเดียวกับสรุปแผนเกษียณ/PDF */
   if (freq === 'monthly' && pmt > 0) {
     const r_m = rate / 12;
     const n_m = years * 12;
     const factor_m = Math.pow(1 + r_m, n_m);
     if (r_m === 0) return pv + pmt * n_m;
     /* annuity-due: × (1+r) สมมติว่าจ่ายต้นงวด */
-    return pv * Math.pow(1 + rate, years) + pmt * (factor_m - 1) / r_m * (1 + r_m);
+    return pv * factor_m + pmt * (factor_m - 1) / r_m * (1 + r_m);
   }
   /* รายปี (default) — annuity-due */
   const factor = Math.pow(1 + rate, years);
@@ -852,7 +860,9 @@ function updateTotals() {
   const tCV      = assets.reduce((s,a) => s + Number(a.currentValue||0), 0);
   /* Normalize contribution to annual — match what's shown in "ออมเพิ่มต่อปี" column */
   const tContrib = assets.reduce((s,a) => s + _annualContrib(a), 0);
-  const tFV      = assets.reduce((s,a) => s + calcFV(
+  /* รวมมูลค่าอนาคต: เฉพาะแถวที่คำนวณ FV ได้ — ไม่รวมประกันบำนาญ/อสังหาฯ/รายการกระแสเงินสด
+     (เดิมเอามูลค่าปัจจุบันของแถวเหล่านี้มาบวกเป็น "มูลค่าอนาคต" ทั้งที่ไม่มีระยะเวลา) */
+  const tFV      = assets.filter(a => _rowFields(a.type).fv !== false && a.customCategory !== 'cf').reduce((s,a) => s + calcFV(
     a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq||'annual'), 0);
   const tCF      = assets.reduce((s,a) => s + Number(a.cashFlow||0), 0);
   const setIf = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ? _astFmtNum(val) : '—'; };
@@ -1030,14 +1040,14 @@ function renderCustomRow(a) {
         <input type="text" class="ast-input ${cv?'has-val':''}" inputmode="decimal"
                value="${cvFmt}" placeholder="—"
                onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','currentValue',this.value);"
+               onblur="_astFmtBlur(this);onCustomCellChange('${a.id}','currentValue',this.value);"
                onchange="onCustomCellChange('${a.id}','currentValue',this.value)">
       </td>
       <td class="ast-cell">
         <input type="text" class="ast-input ${co?'has-val':''}" inputmode="decimal"
                value="${coFmt}" placeholder="—"
                onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','contribution',this.value);"
+               onblur="_astFmtBlur(this);onCustomCellChange('${a.id}','contribution',this.value);"
                onchange="onCustomCellChange('${a.id}','contribution',this.value)">
       </td>
       <td class="ast-cell">
@@ -1067,7 +1077,7 @@ function renderCustomRow(a) {
           <input type="text" class="ast-input ${cf?'has-val':''}" inputmode="decimal"
                  value="${cfFmt}" placeholder="—"
                  onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCustomCellChange('${a.id}','cashFlow',this.value);"
+                 onblur="_astFmtBlur(this);onCustomCellChange('${a.id}','cashFlow',this.value);"
                  onchange="onCustomCellChange('${a.id}','cashFlow',this.value)">
         ` : empty}
       </td>
@@ -1154,7 +1164,7 @@ function renderRow(row) {
         <input type="text" class="ast-input ${cv?'has-val':''}" inputmode="decimal"
                value="${cvFmt}" placeholder="—"
                onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-               onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${row.type}','currentValue',this.value);"
+               onblur="_astFmtBlur(this);onCellChange('${row.type}','currentValue',this.value);"
                onchange="onCellChange('${row.type}','currentValue',this.value)">
       </td>
       <td class="ast-cell">
@@ -1162,7 +1172,7 @@ function renderRow(row) {
           <input type="text" class="ast-input ${co?'has-val':''}" inputmode="decimal"
                  value="${coFmt}" placeholder="—"
                  onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${row.type}','contribution',this.value);"
+                 onblur="_astFmtBlur(this);onCellChange('${row.type}','contribution',this.value);"
                  onchange="onCellChange('${row.type}','contribution',this.value)">
         ` : empty}
       </td>
@@ -1193,7 +1203,7 @@ function renderRow(row) {
           <input type="text" class="ast-input ${cf?'has-val':''}" inputmode="decimal"
                  value="${cfFmt}" placeholder="—"
                  onfocus="this.value=this.value.replace(/,/g,''); this.select();"
-                 onblur="this.value=this.value?Number(this.value.replace(/,/g,'')).toLocaleString('th-TH'):''; onCellChange('${row.type}','cashFlow',this.value);"
+                 onblur="_astFmtBlur(this);onCellChange('${row.type}','cashFlow',this.value);"
                  onchange="onCellChange('${row.type}','cashFlow',this.value)">
         ` : empty}
       </td>

@@ -421,17 +421,6 @@
   </main>
 </div>
 
-<!-- Confirmation modal — pull data from assets -->
-<div class="r3-confirm-overlay" id="r3-pull-modal" onclick="if(event.target===this)cancelPull()">
-  <div class="r3-confirm-card">
-    <div class="r3-confirm-title">ดึงข้อมูลหน้าสินทรัพย์มาใช้</div>
-    <div class="r3-confirm-actions">
-      <button class="r3-confirm-btn yes" onclick="confirmPull()">ใช่</button>
-      <button class="r3-confirm-btn no" onclick="cancelPull()">ไม่ใช่</button>
-    </div>
-  </div>
-</div>
-
 <!-- Simulator modal — interactive sandbox -->
 <div class="r3-sim-overlay" id="r3-sim-modal" onclick="if(event.target===this)closeSimulator()">
   <div class="r3-sim-card">
@@ -499,9 +488,17 @@ function getPlan(client) {
     monthlyContribution:  Number(s.monthlyContribution ?? 0),
   };
 }
+/* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า · วันเกิดไม่ถูกต้อง → null (เดิมได้ NaN แล้วผ่านการตรวจ) */
 function ageNow(dob) {
   if (!dob) return null;
-  return (new Date() - new Date(dob)) / (365.25*24*3600*1000);
+  const bd = new Date(dob);
+  if (isNaN(bd)) return null;
+  const now = new Date();
+  let years = now.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  return years + (now - last) / (next - last);
 }
 function annualContribOf(a) {
   const v = Number(a.contribution || 0);
@@ -521,7 +518,8 @@ function calcFV(pv, rate, years, pmt, freq) {
     const n_m = years * 12;
     const factor_m = Math.pow(1 + r_m, n_m);
     if (r_m === 0) return pv + pmt * n_m;
-    return pv * Math.pow(1 + rate, years) + pmt * (factor_m - 1) / r_m * (1 + r_m);
+    /* ทบต้นรายเดือนทั้งเงินต้นและเงินออม (= assets.html) */
+    return pv * factor_m + pmt * (factor_m - 1) / r_m * (1 + r_m);
   }
   const factor = Math.pow(1 + rate, years);
   if (rate === 0) return pv + pmt * years;
@@ -594,15 +592,31 @@ function compute(client) {
 
   const annualSpendAtRetire = annualSpendNow * Math.pow(1 + plan.inflationRate/100, yearsBefore);
 
-  /* Target corpus at retirement */
+  /* ════════════════════════════════════════════
+     ANNUAL INCOME AFTER RETIREMENT — กระแสเงินสดรับ/ปี หลังเกษียณ
+     ดึงจาก assets ที่:
+     - type ∈ ['annuity', 'realestate']  (มี cashFlow field โดยธรรมชาติ)
+     - หรือ appliedTo === 'retire'        (user tag แบบ manual)
+     cashFlow ใน assets เก็บเป็น "บาท/เดือน" → × 12 ได้รายปี
+  ═══════════════════════════════════════════ */
+  const incomeAssets = (client.assets || []).filter(a =>
+    (['annuity','realestate'].includes(a.type) || a.appliedTo === 'retire')
+    && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
+  const annualIncomeAfter = incomeAssets.reduce((s,a) => s + Number(a.cashFlow||0), 0) * 12;
+  /* กองทุนต้องรองรับเฉพาะส่วนที่รายได้หลังเกษียณ (บำนาญ/ค่าเช่า) ยังไม่ครอบคลุม
+     (เดิมคิดกองทุนจากค่าใช้จ่ายเต็ม แล้วหักรายได้เฉพาะตอนจำลองการถอน → "ต้องเตรียมเพิ่ม" สูงเกินจริง) */
+  const netSpendAtRetire = Math.max(annualSpendAtRetire - annualIncomeAfter, 0);
+  const cashFlowGap = netSpendAtRetire;
+
+  /* Target corpus at retirement (จากค่าใช้จ่ายสุทธิหลังหักรายได้หลังเกษียณ) */
   let targetCorpus;
   if (plan.preserveCapital && plan.withdrawalRate > 0) {
-    targetCorpus = annualSpendAtRetire / (plan.withdrawalRate / 100);
+    targetCorpus = netSpendAtRetire / (plan.withdrawalRate / 100);
   } else {
     const realRate = (1 + plan.returnAfter/100) / (1 + plan.inflationRate/100) - 1;
     targetCorpus = Math.abs(realRate) < 0.0001
-      ? annualSpendAtRetire * yearsAfter
-      : annualSpendAtRetire * (1 - Math.pow(1 + realRate, -yearsAfter)) / realRate;
+      ? netSpendAtRetire * yearsAfter
+      : netSpendAtRetire * (1 - Math.pow(1 + realRate, -yearsAfter)) / realRate;
   }
 
   /* FV ของเงินที่เตรียมไว้ตอนเกษียณ — รวมมูลค่าปัจจุบัน + เงินสมทบของแต่ละ
@@ -623,19 +637,6 @@ function compute(client) {
       reqAnnual = gap / fvFactor;
     }
   }
-
-  /* ════════════════════════════════════════════
-     ANNUAL INCOME AFTER RETIREMENT — กระแสเงินสดรับ/ปี หลังเกษียณ
-     ดึงจาก assets ที่:
-     - type ∈ ['annuity', 'realestate']  (มี cashFlow field โดยธรรมชาติ)
-     - หรือ appliedTo === 'retire'        (user tag แบบ manual)
-     cashFlow ใน assets เก็บเป็น "บาท/เดือน" → × 12 ได้รายปี
-  ═══════════════════════════════════════════ */
-  const incomeAssets = (client.assets || []).filter(a =>
-    (['annuity','realestate'].includes(a.type) || a.appliedTo === 'retire')
-    && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
-  const annualIncomeAfter = incomeAssets.reduce((s,a) => s + Number(a.cashFlow||0), 0) * 12;
-  const cashFlowGap = Math.max(annualSpendAtRetire - annualIncomeAfter, 0);
 
   /* เงินที่เหลือตอนสิ้นสุดอายุขัย
      ─────────────────────────────────────────────────────
@@ -709,16 +710,7 @@ function onClientChange(cid) {
   render();
 }
 
-/* ════════════════════════════════════════════
-   PULL FROM ASSETS — modal confirmation
-═══════════════════════════════════════════ */
-function openPullModal() {
-  if (!selectedClientId) return;
-  document.getElementById('r3-pull-modal').classList.add('open');
-}
-function cancelPull() {
-  document.getElementById('r3-pull-modal').classList.remove('open');
-}
+/* (ตัดหน้าต่าง "ดึงข้อมูลหน้าสินทรัพย์" ออก — ไม่มีปุ่มเปิด และหน้านี้ดึงเงินสมทบจากสินทรัพย์อัตโนมัติอยู่แล้ว) */
 /* ════════════════════════════════════════════
    SIMULATOR — interactive what-if sandbox
    - State copy, no mutation of client data
@@ -746,6 +738,7 @@ function openSimulator() {
     /* Hidden state — copy from plan, not editable in UI but used in calc for consistency */
     preserveCapital: !!plan.preserveCapital,
     withdrawalRate:  Number(plan.withdrawalRate || 4),
+    fvManual: false,   /* true เมื่อผู้ใช้แก้ "เตรียมไว้แล้ว" เอง → ไม่คำนวณทับเมื่อเลื่อนอายุ */
   };
   document.getElementById('r3-sim-modal').classList.add('open');
   renderSimulator();
@@ -759,6 +752,15 @@ function closeSimulator() {
 function updateSim(field, value) {
   if (!simState) return;
   simState[field] = Number(value) || 0;
+  if (field === 'fvAtRetire') simState.fvManual = true;
+  /* เลื่อนอายุเกษียณ/อายุปัจจุบัน → โตสินทรัพย์ใหม่ถึงวันเกษียณใหม่ (เดิมใช้ค่าตอนเปิดหน้าต่างค้างไว้) */
+  if ((field === 'retireAge' || field === 'currentAge') && !simState.fvManual) {
+    const client = getCurrent();
+    if (client) {
+      const yb = Math.max(simState.retireAge - simState.currentAge, 0);
+      simState.fvAtRetire = Math.round(getDerivedData(client, yb).fvCurrentSavings);
+    }
+  }
   renderSimulator();
 }
 
@@ -766,18 +768,20 @@ function computeSim(s) {
   const yearsBefore = Math.max(s.retireAge - s.currentAge, 0);
   const yearsAfter = Math.max(s.lifeExpectancy - s.retireAge, 1);
   const annualSpendAtRetire = s.annualSpend * Math.pow(1 + s.inflationRate/100, yearsBefore);
+  /* ค่าใช้จ่ายสุทธิหลังหักรายได้หลังเกษียณ — ตรงกับ compute() หลัก */
+  const netSpendAtRetire = Math.max(annualSpendAtRetire - s.extraIncomeAfter, 0);
 
   /* Target corpus — match main compute() logic
-     - preserveCapital mode: targetCorpus = annualSpend / withdrawalRate (e.g. 4% rule)
+     - preserveCapital mode: targetCorpus = netSpend / withdrawalRate (e.g. 4% rule)
      - else: PV annuity @ real rate (draw down until lifeExpectancy) */
   let targetCorpus;
   if (s.preserveCapital && s.withdrawalRate > 0) {
-    targetCorpus = annualSpendAtRetire / (s.withdrawalRate / 100);
+    targetCorpus = netSpendAtRetire / (s.withdrawalRate / 100);
   } else {
     const realRate = (1 + s.returnAfter/100) / (1 + s.inflationRate/100) - 1;
     targetCorpus = Math.abs(realRate) < 0.0001
-      ? annualSpendAtRetire * yearsAfter
-      : annualSpendAtRetire * (1 - Math.pow(1 + realRate, -yearsAfter)) / realRate;
+      ? netSpendAtRetire * yearsAfter
+      : netSpendAtRetire * (1 - Math.pow(1 + realRate, -yearsAfter)) / realRate;
   }
 
   /* Gap at retirement (after fvAtRetire) — signed (negative = surplus) */
@@ -795,7 +799,7 @@ function computeSim(s) {
   }
 
   /* Cash flow gap after retirement = annualSpendAtRetire − extraIncomeAfter */
-  const cashFlowGap = Math.max(annualSpendAtRetire - s.extraIncomeAfter, 0);
+  const cashFlowGap = netSpendAtRetire;
 
   /* Remaining at lifeExpectancy — honor preserveCapital (same logic as main compute).
      • preserveCapital ON  → remaining = targetCorpus (capital preserved by 4% rule)
@@ -810,7 +814,7 @@ function computeSim(s) {
       const yearSpend  = annualSpendAtRetire * Math.pow(1 + s.inflationRate/100, y);
       const yearIncome = s.extraIncomeAfter;
       const draw = yearSpend - yearIncome;
-      balance = (balance - draw) * (1 + rA);   /* allow negative */
+      balance = balance * (1 + rA) - draw;   /* โตทั้งปีก่อนแล้วถอนปลายปี — ตรงกับ compute() หลัก · allow negative */
     }
     remaining = balance;
   }
@@ -1019,30 +1023,6 @@ function _simBlur(el, field) {
 function _simKey(e) {
   /* Enter → blur (triggers _simBlur) */
   if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); }
-}
-
-function confirmPull() {
-  /* รวม monthly contribution จาก assets ที่ใช้ในการเกษียณ:
-       - type ใน [pvd, rmf, ssf, thaiesg, annuity]
-       - หรือ appliedTo === 'retire'
-     → set เป็น plan.monthlyContribution (รายเดือน)
-     → ตั้ง flag c.retirementPullFromAssets = true เพื่อให้ retirement.html รู้ว่า user pull ค่าแล้ว */
-  updateUser(u => {
-    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
-    if (!c) return;
-    const retireAssets = (c.assets||[]).filter(a =>
-      (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
-      && a.appliedTo !== 'education');
-    const monthly = retireAssets.reduce((s,a) => {
-      const v = Number(a.contribution || 0);
-      return s + (a.contribFreq === 'monthly' ? v : v/12);
-    }, 0);
-    if (!c.retirementPlan) c.retirementPlan = {};
-    c.retirementPlan.monthlyContribution = Math.round(monthly);
-    c.retirementPullFromAssets = true;
-  });
-  cancelPull();
-  render();
 }
 
 function render() {

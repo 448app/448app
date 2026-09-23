@@ -798,21 +798,34 @@ function buildTaxHTML() {
           <div class="t3-cr-val"><div class="t3-cr-pill">${fmt(cur.tax)}</div></div>
           <div class="t3-cr-val"><div class="t3-cr-pill">${fmt(imp.tax)}</div></div>
         </div>
+        ${(() => {
+          /* ภาษีหัก ณ ที่จ่าย (กรอกได้) → เสียเพิ่ม / ได้คืน = ภาษีที่เสีย − หัก ณ ที่จ่าย (เดิม 3 แถวนี้ว่างถาวร) */
+          const whCur = getValue(ti, 'cur', 'withholding', 0);
+          const whImp = getValue(ti, 'imp', 'withholding', 0);
+          const whInput = (scope, v) => `<div class="t3-cr-pill"><input type="text" inputmode="numeric" value="${v > 0 ? fmt(v) : ''}" placeholder="0"
+            style="width:100%;border:none;background:transparent;text-align:center;font:inherit;color:inherit;outline:none;"
+            oninput="saveField('${scope}','withholding',taxFmtInput(this))"
+            onblur="commitField('${scope}','withholding',this.value)"
+            onchange="commitField('${scope}','withholding',this.value)"></div>`;
+          const extra = (tax, wh) => Math.max(tax - wh, 0);
+          const refund = (tax, wh) => Math.max(wh - tax, 0);
+          return `
         <div class="t3-compare-row">
-          <div class="t3-cr-lbl">ภาษีหัก ณ ที่จ่าย</div>
-          <div class="t3-cr-val"><div class="t3-cr-pill"></div></div>
-          <div class="t3-cr-val"><div class="t3-cr-pill"></div></div>
+          <div class="t3-cr-lbl">ภาษีหัก ณ ที่จ่าย <span style="font-weight:400;color:var(--gray-400);font-size:.72rem;">(กรอกได้)</span></div>
+          <div class="t3-cr-val">${whInput('cur', whCur)}</div>
+          <div class="t3-cr-val">${whInput('imp', whImp)}</div>
         </div>
         <div class="t3-compare-row">
           <div class="t3-cr-lbl">เสียภาษีเพิ่ม</div>
-          <div class="t3-cr-val"></div>
-          <div class="t3-cr-val"></div>
+          <div class="t3-cr-val red">${extra(cur.tax, whCur) > 0 ? fmt(extra(cur.tax, whCur)) : '—'}</div>
+          <div class="t3-cr-val red">${extra(imp.tax, whImp) > 0 ? fmt(extra(imp.tax, whImp)) : '—'}</div>
         </div>
         <div class="t3-compare-row">
           <div class="t3-cr-lbl">ได้ภาษีคืน</div>
-          <div class="t3-cr-val"></div>
-          <div class="t3-cr-val"></div>
-        </div>
+          <div class="t3-cr-val green">${refund(cur.tax, whCur) > 0 ? fmt(refund(cur.tax, whCur)) : '—'}</div>
+          <div class="t3-cr-val green">${refund(imp.tax, whImp) > 0 ? fmt(refund(imp.tax, whImp)) : '—'}</div>
+        </div>`;
+        })()}
         <div class="t3-compare-row">
           <div class="t3-cr-lbl">ประหยัดภาษี</div>
           <div class="t3-cr-val green">${cur.tax > imp.tax ? fmt(cur.tax - imp.tax) : ''}</div>

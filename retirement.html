@@ -479,10 +479,18 @@ function fmt(n) {
 }
 function fmtFull(n) { return '฿' + Math.round(n).toLocaleString('th-TH'); }
 
+/* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า · วันเกิดไม่ถูกต้อง → null
+   (เดิมหาร 365.25 และวันเกิดผิดรูปแบบได้ NaN แล้วผ่านการตรวจ → ทั้งหน้าเป็น NaN) */
 function ageNow(dob) {
   if (!dob) return null;
-  const diff = new Date() - new Date(dob);
-  return diff / (365.25*24*3600*1000);
+  const bd = new Date(dob);
+  if (isNaN(bd)) return null;
+  const now = new Date();
+  let years = now.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  return years + (now - last) / (next - last);
 }
 
 /* ════════════════════════════════════════════
@@ -774,10 +782,8 @@ function render() {
 
   const plan = getPlan(client);
   const derived = getDerivedData(client);
-  const calc = calculate(plan, derived, currentAge);
-
-  /* Auto-fill monthly contribution ถ้าผู้ใช้ยังไม่ได้แก้ */
-  const showAutoFill = derived.currentMonthlyContrib > 0 && plan.monthlyContribution === 0;
+  /* (ตัดแถบ "ดึงเงินออมต่อเดือน → ใช้ค่านี้" ออก — ค่านั้นไม่มีหน้าไหนใช้แล้ว:
+      หน้าสรุปแผนเกษียณโตเงินสมทบรายสินทรัพย์จากหน้าสินทรัพย์โดยตรง) */
 
   wrap.innerHTML = `
     ${derived.annualIncome === 0 ? `
@@ -785,12 +791,6 @@ function render() {
         ⚠️ <b>ยังไม่ได้กรอกรายได้</b> — ไปที่
         <a href="clients.html">หน้าลูกค้า</a> หรือ
         <a href="financial.html">กระแสเงินสด</a> เพื่อกรอกรายได้ก่อน
-      </div>
-    ` : ''}
-    ${showAutoFill ? `
-      <div class="auto-fill-info">
-        ✨ ดึงเงินออมต่อเดือน <b>${fmt(derived.currentMonthlyContrib)}</b>/เดือน จาก PVD/RMF/SSF/ThaiESG ในหน้าสินทรัพย์
-        <a href="javascript:void(0)" onclick="savePlanField('monthlyContribution',${derived.currentMonthlyContrib})">→ ใช้ค่านี้</a>
       </div>
     ` : ''}
 
@@ -992,46 +992,7 @@ function renderChart(calc, retireAge) {
   `;
 }
 
-function renderYearTable(calc, currentAge) {
-  const data = calc.yearlyData;
-  /* แสดงทุก 5 ปี + ปีสุดท้าย ถ้า showFullTable = false */
-  const filtered = showFullTable
-    ? data
-    : data.filter((d, i) => i === 0 || i === data.length - 1 || (currentAge + i) % 5 === 0 || d.isRetire);
-
-  return `
-    <table class="year-table">
-      <thead>
-        <tr>
-          <th>ปีที่</th>
-          <th>อายุ</th>
-          <th>เงินสะสม</th>
-          <th>+ ผลตอบแทน</th>
-          <th>+ ออมเข้า</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${filtered.map((d, i) => {
-          const prev = i === 0 ? null : filtered[i-1];
-          const growth = prev ? (d.fv - prev.fv) : 0;
-          return `
-            <tr class="${d.isRetire ? 'is-retire':''}">
-              <td>${d.year} ${d.isRetire ? '🏁' : ''}</td>
-              <td>${d.age}</td>
-              <td>${fmtFull(d.fv)}</td>
-              <td>${prev ? fmtFull(growth) : '—'}</td>
-              <td>${prev ? fmtFull((d.year - prev.year) * 12) : '—'}</td>
-            </tr>
-          `;
-        }).join('')}
-      </tbody>
-    </table>
-    <button class="toggle-table" onclick="toggleTable()">
-      ${showFullTable ? '▲ ย่อตาราง (ทุก 5 ปี)' : '▼ ดูทุกปี'}
-    </button>
-  `;
-}
-
+/* (ตัดตารางรายปีที่ไม่เคยถูกแสดงออก — คอลัมน์ "ออมเข้า" พิมพ์จำนวนเดือนเป็นจำนวนเงิน) */
 function toggleTable() {
   showFullTable = !showFullTable;
   render();

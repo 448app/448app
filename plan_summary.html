@@ -1715,7 +1715,13 @@ function _psAgeNow(dobStr) {
   if (_PS_AGE_CACHE.has(dobStr)) return _PS_AGE_CACHE.get(dobStr);
   const bd = new Date(dobStr);
   if (isNaN(bd)) { _PS_AGE_CACHE.set(dobStr, null); return null; }
-  const age = (new Date() - bd) / (365.25 * 24 * 3600 * 1000);
+  /* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า */
+  const now = new Date();
+  let years = now.getFullYear() - bd.getFullYear();
+  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
+  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
+  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
+  const age = years + (now - last) / (next - last);
   const stable = age < 0 ? 0 : age;
   _PS_AGE_CACHE.set(dobStr, stable);
   return stable;
@@ -1759,7 +1765,8 @@ function _psAssetFV(a, years) {
   if ((a.contribFreq || 'annual') === 'monthly' && pmt > 0) {
     const r_m = rate / 12, n_m = years * 12;
     if (r_m === 0) return pv + pmt * n_m;
-    return pv * Math.pow(1 + rate, years) + pmt * (Math.pow(1 + r_m, n_m) - 1) / r_m * (1 + r_m);
+    /* ทบต้นรายเดือนทั้งเงินต้นและเงินออม (= assets.html) */
+    return pv * Math.pow(1 + r_m, n_m) + pmt * (Math.pow(1 + r_m, n_m) - 1) / r_m * (1 + r_m);
   }
   const factor = Math.pow(1 + rate, years);
   if (rate === 0) return pv + pmt * years;
@@ -1792,17 +1799,19 @@ function _psRetireCalc(client) {
     ? plan.annualSpend
     : annualIncome * (plan.incomePctAfterRetire / 100);
   const annualNeedAtRetire = annualNeedNow * Math.pow(1 + plan.inflationRate/100, yearsToRetire);
+  /* กองทุนรองรับเฉพาะส่วนที่รายได้หลังเกษียณ (บำนาญ/ค่าเช่า) ยังไม่ครอบคลุม (= retirement2.html) */
+  const netNeedAtRetire = Math.max(annualNeedAtRetire - annualIncomeAfter, 0);
 
-  /* targetCorpus: preserveCapital ON → ใช้กฎ 4% (annualSpend / withdrawalRate)
+  /* targetCorpus: preserveCapital ON → ใช้กฎ 4% (netNeed / withdrawalRate)
                   preserveCapital OFF → PV of annuity (drawdown to zero) */
   let targetCorpus;
   if (plan.preserveCapital && plan.withdrawalRate > 0) {
-    targetCorpus = annualNeedAtRetire / (plan.withdrawalRate / 100);
+    targetCorpus = netNeedAtRetire / (plan.withdrawalRate / 100);
   } else {
     const realRate = (1 + plan.returnAfter/100) / (1 + plan.inflationRate/100) - 1;
     targetCorpus = Math.abs(realRate) < 0.0001
-      ? annualNeedAtRetire * yearsAfterRetire
-      : annualNeedAtRetire * (1 - Math.pow(1 + realRate, -yearsAfterRetire)) / realRate;
+      ? netNeedAtRetire * yearsAfterRetire
+      : netNeedAtRetire * (1 - Math.pow(1 + realRate, -yearsAfterRetire)) / realRate;
   }
 
   /* เตรียมไว้แล้ว = FV รายสินทรัพย์ (เงินต้น + เงินสมทบ) โตด้วย return ของสินทรัพย์จนถึงวันเกษียณ */
@@ -1913,6 +1922,7 @@ function _psChildEdu(child, client) {
   let totalFuture = 0;
   let k12Total = 0, uniTotal = 0;
   const uniBreakdown = {};   /* { bachelor: cost, master: cost, phd: cost } */
+  const costByYear = [];     /* ค่าใช้จ่ายรายปีนับจากวันนี้ — ใช้จำลองเงินออมปีต่อปี (= education.html) */
   _PS_EDU_STAGES.forEach(s => {
     /* University stages: เคารพ bachelor/master/doctoral level ใหม่
        — ถ้า level = null → ข้าม stage นั้น */
@@ -1938,27 +1948,30 @@ function _psChildEdu(child, client) {
       const yearOfStart = Math.max(startAge - age, 0);
       let stageCost = 0;
       for (let i = 0; i < Math.ceil(yearsLeft); i++) {
-        stageCost += baseAnnual * Math.pow(1 + INFL, yearOfStart + i) * Math.min(1, yearsLeft - i);
+        const yearCost = baseAnnual * Math.pow(1 + INFL, yearOfStart + i) * Math.min(1, yearsLeft - i);
+        stageCost += yearCost;
+        const yb = Math.floor(yearOfStart + i);
+        costByYear[yb] = (costByYear[yb] || 0) + yearCost;
       }
       totalFuture += stageCost;
       if (isUni) { uniTotal += stageCost; uniBreakdown[s.key] = { level: stageLevel, cost: stageCost }; }
       else       { k12Total += stageCost; }
     }
   });
-  /* FV ของ savings (4%/yr — ตรงกับ education.html SAVINGS_RETURN) */
+  /* จำลองเงินออมปีต่อปี (4%/yr — ตรงกับ education.html SAVINGS_RETURN): เงินที่มีโต + ออมรายเดือน − ค่าเทอมของปีนั้น
+     "ขาดอีก" = ส่วนที่เงินไม่พอในปีที่ต้องจ่ายจริง · fvSavings = ส่วนของค่าใช้จ่ายที่เงินออมจ่ายได้
+     (เดิมโตเงินออมทั้งก้อนถึงปีเรียนจบแล้วค่อยลบค่าใช้จ่ายที่จ่ายทุกปีตั้งแต่อนุบาล → "ขาดอีก" ต่ำกว่าจริง) */
   const _split = client ? _psEduAssetPerChild(client) : { lump:0, monthly:0 };
   const eduSavings = Number(child.eduSavings || 0) + _split.lump;
   const eduMonthly = Number(child.eduMonthly || 0) + _split.monthly;
-  /* ระยะเวลาออม = ถึงปีจบของระดับสูงสุดที่ "เลือกไว้" (ไม่นับ ป.โท/ป.เอก ที่ข้าม และระดับที่จบแล้ว)
-     เดิมนับถึง ป.เอก อายุ 28 เสมอ → เงินออมโตนานเกิน "ขาดอีก" ต่ำกว่าจริง */
-  const yearsToFinish = Math.max(0, ..._PS_EDU_STAGES
-    .filter(s => !['bachelor','master','phd'].includes(s.key) || _psGetUniLevel(child, s.key))
-    .map(s => s.startAge + s.years - age)
-    .filter(y => y > 0));
-  const SR = 0.04, r_m = SR/12, n_m = yearsToFinish * 12;
-  const fvLump = eduSavings * Math.pow(1 + SR, yearsToFinish);
-  const fvAnnuity = (eduMonthly > 0 && n_m > 0) ? eduMonthly * (Math.pow(1+r_m, n_m) - 1) / r_m * (1+r_m) : 0;
-  return { totalFuture, fvSavings: fvLump + fvAnnuity, k12Total, uniTotal, uniBreakdown };
+  const SR = 0.04, r_m = SR/12;
+  const yearContrib = eduMonthly > 0 ? eduMonthly * (Math.pow(1 + r_m, 12) - 1) / r_m * (1 + r_m) : 0;
+  let balance = eduSavings, shortfall = 0;
+  for (let y = 0; y < costByYear.length; y++) {
+    balance = balance * (1 + SR) + yearContrib - (costByYear[y] || 0);
+    if (balance < 0) { shortfall += -balance; balance = 0; }
+  }
+  return { totalFuture, fvSavings: Math.max(totalFuture - shortfall, 0), gap: shortfall, surplus: balance, k12Total, uniTotal, uniBreakdown };
 }
 
 /* === HEALTH — sync กับหน้า "ประกันสุขภาพ" (health-insurance.html) ===
@@ -2186,7 +2199,7 @@ function _psTaxCalc(client) {
   const usefulRoom = Math.min(room, Math.max(cur.net - 150000, 0));
   const best = _psTaxScope(c, 'cur', usefulRoom);
   const imp = c.taxInputs && c.taxInputs.improve;
-  const hasImprove = !!imp && Object.keys(imp).some(k => !(k in _PS_TAX_DEFAULTS) && Number(imp[k]) > 0);
+  const hasImprove = !!imp && Object.keys(imp).some(k => !(k in _PS_TAX_DEFAULTS) && k !== 'withholding' && Number(imp[k]) > 0);
   const have = lhUsed + retUsed + used('thaiesg') + used('thaiesgx') + used('parentIns');
   return {
     target: have + usefulRoom, have, gap: usefulRoom,
@@ -2457,9 +2470,11 @@ function render() {
   const client = getCurrent();
   const summary = computeSummary(client);
   if (!summary) { wrap.innerHTML = '<div class="no-client">ไม่พบข้อมูลลูกค้า</div>'; return; }
+  /* หมวดไหน "มีข้อมูล" — เกณฑ์เดียวกับ PDF (เดิมหน้าจอแสดงหมวดที่ยังไม่ได้ทำเป็น 0% และเรดาร์เป็นหนาม) */
+  const has = _pfTopicHasData(client, summary);
 
-  /* avg score (ไม่นับ no-data) */
-  const validPcts = CATEGORIES.map(c => summary[c.key].pct).filter(p => isFinite(p));
+  /* avg score (เฉพาะหมวดที่ประเมินได้) */
+  const validPcts = CATEGORIES.filter(c => has[c.key]).map(c => summary[c.key].pct).filter(p => isFinite(p));
   const avgScore = validPcts.length > 0 ? validPcts.reduce((s,p) => s+p, 0) / validPcts.length : 0;
   const overallStatus = statusOf(avgScore);
 
@@ -2477,9 +2492,9 @@ function render() {
 
       <!-- Body: radar + progress bars -->
       <div class="ps2-body">
-        <div>${renderRadar(summary)}</div>
+        <div>${renderRadar(summary, has)}</div>
         <div class="ps2-prog-list">
-          ${CATEGORIES.map(cat => renderProgressRowNew(cat, summary[cat.key])).join('')}
+          ${CATEGORIES.map(cat => renderProgressRowNew(cat, summary[cat.key], has[cat.key])).join('')}
         </div>
       </div>
 
@@ -2501,7 +2516,17 @@ function render() {
 }
 
 /* New simplified progress row — single amount on right (gap or have) */
-function renderProgressRowNew(cat, data) {
+function renderProgressRowNew(cat, data, assessed) {
+  /* หมวดที่ยังไม่มีข้อมูล → "ยังไม่ได้ประเมิน" (ไม่ใช่ 0%) */
+  if (assessed === false) {
+    return `
+    <div class="ps2-prog-row">
+      <div class="ps2-prog-name">${cat.name}</div>
+      <div class="ps2-prog-bar"><div class="ps2-prog-fill" style="width:0%"></div></div>
+      <div class="ps2-prog-pct" style="color:#9AA3B8;font-size:.72rem;white-space:nowrap;">ยังไม่ได้ประเมิน</div>
+      <div class="ps2-prog-amt empty">—</div>
+    </div>`;
+  }
   const pct = data.pct;
   const hasData = data.target > 0 || data.have > 0;
   const pctText = isFinite(pct) ? pct.toFixed(2) + '%' : '0%';
@@ -2552,8 +2577,10 @@ function renderProgressRow(cat, data) {
   `;
 }
 
-function renderRadar(summary) {
+function renderRadar(summary, has) {
   const size = 420, cx = size/2, cy = size/2, R = 150;
+  const isOn = cat => !has || has[cat.key] !== false;
+  const onCats = CATEGORIES.filter(isOn);
   const levels = 5;
   /* Background grid (5 levels of pentagons) */
   let grid = '';
@@ -2571,13 +2598,13 @@ function renderRadar(summary) {
     const rad = cat.angle * Math.PI / 180;
     axes += `<line x1="${cx}" y1="${cy}" x2="${cx + R*Math.cos(rad)}" y2="${cy + R*Math.sin(rad)}" stroke="#E0E7FF" stroke-width="1.5"/>`;
   });
-  /* Data polygon */
-  const dataPoints = CATEGORIES.map(cat => {
+  /* Data polygon — เฉพาะหมวดที่ประเมินได้ (อย่างน้อย 3 หมวดจึงวาด) — หมวดที่ยังไม่ได้ประเมินไม่วาดเป็นหนาม 0 */
+  const dataPoints = onCats.length >= 3 ? onCats.map(cat => {
     const pct = summary[cat.key].pct || 0;
     const r = R * Math.min(pct, 100) / 100;
     const rad = cat.angle * Math.PI / 180;
     return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)].join(',');
-  }).join(' ');
+  }).join(' ') : '';
   /* Labels (minimal SVG icons at outer points — no emojis) */
   let labels = '';
   const ICON_SCALE = 1.15;          /* icon ≈ 27.6 px, fits inside r=22 circle */
@@ -2588,12 +2615,15 @@ function renderRadar(summary) {
     const lx = cx + lr * Math.cos(rad);
     const ly = cy + lr * Math.sin(rad);
     const d = RADAR_ICON_PATHS[cat.key] || '';
+    const muted = !isOn(cat);   /* ยังไม่ได้ประเมิน → ไอคอนจาง */
     labels += `
+      <g opacity="${muted ? 0.3 : 1}">
       <circle cx="${lx}" cy="${ly}" r="22" fill="white" stroke="#1B2A5E" stroke-width="2"/>
       <g transform="translate(${lx - ICON_OFFSET}, ${ly - ICON_OFFSET}) scale(${ICON_SCALE})"
          fill="none" stroke="#1B2A5E" stroke-width="${2 / ICON_SCALE}"
          stroke-linecap="round" stroke-linejoin="round">
         <path d="${d}"/>
+      </g>
       </g>
     `;
   });
@@ -2601,7 +2631,7 @@ function renderRadar(summary) {
     <svg class="radar-svg" viewBox="0 0 ${size} ${size}" width="420" height="420">
       ${grid}
       ${axes}
-      <polygon points="${dataPoints}" fill="rgba(255,167,38,0.4)" stroke="#F39C12" stroke-width="2.5"/>
+      ${dataPoints ? `<polygon points="${dataPoints}" fill="rgba(255,167,38,0.4)" stroke="#F39C12" stroke-width="2.5"/>` : ''}
       ${labels}
     </svg>
   `;
@@ -2614,24 +2644,29 @@ function openPyramid() {
   const client = getCurrent();
   const summary = computeSummary(client);
   if (!summary) return;
-  const layers = computePyramid(client, summary);
+  /* ชั้นที่ยังไม่มีข้อมูล → "ยังไม่ได้ประเมิน" — เกณฑ์เดียวกับ PDF (เดิมหน้าจอขึ้น ⚠ ทุกชั้นที่ยังไม่ได้ทำ
+     รวมถึง "ส่งมอบความมั่งคั่ง" ที่อ่านช่องพินัยกรรมซึ่งไม่มีหน้าไหนบันทึก) */
+  const layers = computePyramid(client, summary, _pfTopicHasData(client, summary));
+  const NA_STYLE = 'background:#E4E7F0;color:#6C7490;';
 
   /* Tier name overlays — positioned over the empty pyramid bands in pyramid-blank.jpg.
      Layer order from API: [5 top → 1 base]. Tier positions handled by CSS class. */
   /* Row layout: badge first, then name on the same line */
   const layerLabels = layers.map(l => `
     <div class="ph-layer ph-layer-${l.layer}">
-      <div class="ph-badge ${l.ok?'ok':'warn'}">${l.ok?'✓':'⚠'}</div>
+      ${l.assessed === false
+        ? `<div class="ph-badge" style="${NA_STYLE}" title="ยังไม่ได้ประเมิน">–</div>`
+        : `<div class="ph-badge ${l.ok?'ok':'warn'}">${l.ok?'✓':'⚠'}</div>`}
       <div class="ph-name">${l.title}</div>
     </div>
   `).join('');
 
   /* Status summary row — base (L1) → top (L5), left-to-right (matches "build from base" logic) */
   const sumItems = layers.slice().reverse().map(l => `
-    <div class="ph-sum-item ${l.ok?'ok':'warn'}">
+    <div class="ph-sum-item ${l.assessed === false ? '' : (l.ok?'ok':'warn')}" ${l.assessed === false ? `style="${NA_STYLE}"` : ''}>
       <div class="ph-sum-lvl">L${l.layer}</div>
       <div class="ph-sum-label">${l.titleTh || l.title}</div>
-      <div class="ph-sum-status">${l.ok ? '✓ ผ่าน' : '⚠ ยัง'}</div>
+      <div class="ph-sum-status">${l.assessed === false ? '– ยังไม่ประเมิน' : (l.ok ? '✓ ผ่าน' : '⚠ ยัง')}</div>
     </div>
   `).join('');
 
@@ -2799,9 +2834,9 @@ function renderPlanPreview(client) {
   const sel = _pfSelected;
   const today = new Date();
   const dateStr = today.toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
-  const clientName = ((client.firstName||'') + ' ' + (client.lastName||'')).trim() || 'ไม่ระบุชื่อ';
+  const clientName = _pfEsc(((client.firstName||'') + ' ' + (client.lastName||'')).trim() || 'ไม่ระบุชื่อ');
   const agent = getUser();
-  const agentName = ((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent';
+  const agentName = _pfEsc(((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent');
 
   const cover = sel.has('cover') ? _pfRenderCover(client, agent, dateStr) : '';
 
@@ -2919,12 +2954,13 @@ function _pfKpi(lbl, val, opts) {
 
 /* —— per-section renderers —— */
 function _pfRenderCover(c, agent, dateStr) {
-  const clientName = ((c.firstName||'') + ' ' + (c.lastName||'')).trim() || 'ไม่ระบุชื่อ';
+  /* ชื่อ/ข้อความจากผู้ใช้ผ่าน _pfEsc ก่อนใส่ HTML (ชื่อที่มี < > จะทำโครงสร้างเอกสารพัง) */
+  const clientName = _pfEsc(((c.firstName||'') + ' ' + (c.lastName||'')).trim() || 'ไม่ระบุชื่อ');
   const age = _psAgeNow(c.dob);
   const ageStr = age ? Math.floor(age) + ' ปี' : '';
-  const occ = c.occupation || c.job || '';
+  const occ = _pfEsc(c.occupation || c.job || '');
   const ap = (agent && agent.profile) || {};
-  const agentName = ((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent';
+  const agentName = _pfEsc(((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent');
   /* ใช้รูปที่ resolve แล้ว (_pfAgentPhoto = data URL) ; ถ้าเป็น id ที่ยัง resolve ไม่ได้ → ซ่อน (กันรูปพังใน PDF) */
   let agentPhoto = _pfAgentPhoto || ap.photo || '';
   if (window.IMG && window.IMG.isRef(agentPhoto)) agentPhoto = '';
@@ -3005,7 +3041,7 @@ function _pfRenderCover(c, agent, dateStr) {
 
 function _pfRenderAgent(agent, clientName) {
   const ap = (agent && agent.profile) || {};
-  const agentName = ((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent';
+  const agentName = _pfEsc(((agent.firstName||'') + ' ' + (agent.lastName||'')).trim() || 'AIA Agent');
   const nickname = ap.nickname || '';
   /* ใช้รูปที่ resolve แล้ว ; id ที่ยัง resolve ไม่ได้ → ซ่อน (กันรูปพังใน PDF) */
   let photo = _pfAgentPhoto || ap.photo || '';
@@ -3131,9 +3167,9 @@ function _pfRenderClient(c) {
       </div>
 
       <div class="pf-doc-grid">
-        <div class="pf-row"><span>ชื่อ-นามสกุล</span><span>${((c.firstName||'')+' '+(c.lastName||'')).trim()||'—'}</span></div>
+        <div class="pf-row"><span>ชื่อ-นามสกุล</span><span>${_pfEsc(((c.firstName||'')+' '+(c.lastName||'')).trim()||'—')}</span></div>
         <div class="pf-row"><span>วันเกิด</span><span>${dobStr}</span></div>
-        <div class="pf-row"><span>อาชีพ</span><span>${occ}</span></div>
+        <div class="pf-row"><span>อาชีพ</span><span>${_pfEsc(occ)}</span></div>
         <div class="pf-row"><span>เบอร์โทร</span><span>${c.phone||'—'}</span></div>
         <div class="pf-row"><span>อีเมล</span><span>${c.email||'—'}</span></div>
         <div class="pf-row"><span>รายได้/เดือน</span><span>${fmt(monthlyIncome)}</span></div>
@@ -3185,9 +3221,9 @@ function _pfRenderSummary(summary, has) {
   else if (avg >= 20) interp = 'แผนการเงิน <b>ยังขาด</b> · มีหลายช่องโหว่ที่ต้องเร่งจัดการ';
   else interp = 'แผนการเงิน <b>ต้องปรับปรุงด่วน</b> · กรุณาดูคำแนะนำในส่วน Recommendations';
 
-  const totalGap = cats.reduce((s,c) => s + Math.max(summary[c.key].gap, 0), 0);
-  const totalHave = cats.reduce((s,c) => s + Number(summary[c.key].have || 0), 0);
-  const totalTarget = cats.reduce((s,c) => s + Number(summary[c.key].target || 0), 0);
+  /* นับเป็น "หมวด" ไม่รวมยอดเงินข้ามหมวด — กองทุนเกษียณ + ทุนประกัน + วงเงินค่ารักษาต่อครั้ง + ค่าลดหย่อน เป็นคนละหน่วย บวกกันไม่มีความหมาย */
+  const metCount = cats.filter(c => summary[c.key].pct >= 100).length;
+  const gapCount = cats.filter(c => summary[c.key].gap > 0).length;
 
   return `
     <div class="pf-doc-section">
@@ -3195,9 +3231,9 @@ function _pfRenderSummary(summary, has) {
 
       <div class="pf-kpi-grid">
         ${_pfKpi('คะแนนรวม', avg.toFixed(0) + '/100', { status: avg>=60?'good':avg>=40?'med':'bad' })}
-        ${_pfKpi('ความคุ้มครอง/เป้าหมายรวม', fmt(totalHave))}
-        ${_pfKpi('เป้าหมายที่ต้องการรวม', fmt(totalTarget))}
-        ${_pfKpi('ยังขาดรวม', fmt(totalGap), { status: totalGap>0?'bad':'good' })}
+        ${_pfKpi('หมวดที่ประเมิน', `${cats.length}/${CATEGORIES.length} หมวด`)}
+        ${_pfKpi('หมวดที่ครบเป้า', `${metCount}/${cats.length} หมวด`, { status: metCount === cats.length ? 'good' : metCount > 0 ? 'med' : 'bad' })}
+        ${_pfKpi('หมวดที่ยังขาด', `${gapCount} หมวด`, { status: gapCount>0?'bad':'good' })}
       </div>
 
       ${cats.length >= 3 ? _pfRenderRadarSVG(summary, cats) : ''}
@@ -3400,10 +3436,10 @@ function _pfRenderNetworth(c) {
   const eqStatus = equityRatio >= 50 ? 'good' : equityRatio >= 25 ? 'med' : 'bad';
 
   const assetRows = assets.length ? assets.slice(0,12).map(a => `
-    <tr><td>${a.name||a.type||'—'}</td><td>${a.type||'—'}</td><td class="num">${fmt(a.currentValue||0)}</td><td class="num">${totalAssets>0?(a.currentValue/totalAssets*100).toFixed(1):'—'}%</td></tr>
+    <tr><td>${_pfEsc(a.name||a.type||'—')}</td><td>${_pfEsc(a.type||'—')}</td><td class="num">${fmt(a.currentValue||0)}</td><td class="num">${totalAssets>0?(a.currentValue/totalAssets*100).toFixed(1):'—'}%</td></tr>
   `).join('') : '<tr><td colspan="4" style="text-align:center;color:#999;">— ไม่มีสินทรัพย์ —</td></tr>';
   const liabRows = liabilities.length ? liabilities.slice(0,12).map(l => `
-    <tr><td>${l.name||l.type||'—'}</td><td>${l.type||'—'}</td><td class="num">${fmt(l.principal||0)}</td></tr>
+    <tr><td>${_pfEsc(l.name||l.type||'—')}</td><td>${_pfEsc(l.type||'—')}</td><td class="num">${fmt(l.principal||0)}</td></tr>
   `).join('') : '<tr><td colspan="3" style="text-align:center;color:#999;">— ไม่มีหนี้สิน —</td></tr>';
 
   let insight = '';
@@ -3538,7 +3574,7 @@ function _pfRenderEducation(c) {
     const yearsToEdu = age ? Math.max(18 - Math.floor(age), 0) : 0;
     const monthlySavings = yearsToEdu > 0 ? gap / (yearsToEdu * 12) : 0;
     return `<tr>
-      <td>${ch.name||'—'}</td>
+      <td>${_pfEsc(ch.name||'—')}</td>
       <td class="num">${age?Math.floor(age):'—'}</td>
       <td class="num">${yearsToEdu} ปี</td>
       <td class="num">${fmt(r.k12Total||0)}</td>
@@ -3561,7 +3597,7 @@ function _pfRenderEducation(c) {
       return `<span class="pf-uni-tier">${tier}</span><br><span class="pf-uni-cost">${fmt(b.cost)}</span>`;
     };
     return `<tr>
-      <td>${ch.name||'—'}</td>
+      <td>${_pfEsc(ch.name||'—')}</td>
       <td>${fmtCell('bachelor')}</td>
       <td>${fmtCell('master')}</td>
       <td>${fmtCell('phd')}</td>
@@ -3590,9 +3626,9 @@ function _pfRenderEducation(c) {
           <th class="num">K-12</th>
           <th class="num">มหาวิทยาลัย</th>
           <th class="num">รวม</th>
-          <th class="num">FV เงินออม</th>
+          <th class="num">เงินออมจ่ายได้</th>
           <th class="num">ขาด</th>
-          <th class="num">ออม/เดือน</th>
+          <th class="num">ออมเพิ่ม/เดือน</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -3798,9 +3834,9 @@ function _pfRenderPolicies(c) {
   const rows = policies.map(p => {
     const cov = Number(p.lifeCoverage || p.coverage || 0);
     return `<tr>
-      <td>${p.name||'—'}</td>
-      <td>${p.type||'—'}</td>
-      <td>${p.company||'—'}</td>
+      <td>${_pfEsc(p.name||'—')}</td>
+      <td>${_pfEsc(p.type||'—')}</td>
+      <td>${_pfEsc(p.company||'—')}</td>
       <td class="num">${fmt(cov)}</td>
       <td class="num">${fmt(p.annualPremium || p.premium || 0)}</td>
     </tr>`;
@@ -3855,7 +3891,7 @@ function _pfRenderGoals(c) {
 
   const rows = goals.map(g => `
     <tr>
-      <td>${g.name||'—'}</td>
+      <td>${_pfEsc(g.name||'—')}</td>
       <td class="num">${fmt(g.targetAmount||g.amount||0)}</td>
       <td class="num">${g.targetAge||g.targetYear||'—'}</td>
       <td>${g.priority||'—'}</td>
@@ -3905,7 +3941,7 @@ async function downloadPlanPDF() {
     if (document.fonts && document.fonts.ready) await document.fonts.ready;
 
     const client = getCurrent();
-    const clientName = ((client.firstName||'') + ' ' + (client.lastName||'')).trim() || 'ลูกค้า';
+    const clientName = _pfEsc(((client.firstName||'') + ' ' + (client.lastName||'')).trim() || 'ลูกค้า');
     const docHTML = src.outerHTML;
 
     /* Gather all stylesheets from current page so the print window matches */
@@ -3994,20 +4030,18 @@ ${docHTML}
       w.document.write(printHTML);
       w.document.close();
     } else {
-      /* Popup blocked — fallback: use Blob URL navigation */
-      const blob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-      }, 60000);
-      alert('กรุณาอนุญาต Popup สำหรับเว็บนี้ — หรือเปิดแท็บใหม่ที่ปรากฏ แล้วกด Save as PDF ในกล่อง Print');
+      /* Popup ถูกบล็อก → พิมพ์ผ่าน iframe ในหน้าเดียวกัน (ไม่ถูกบล็อก) — เอกสารสั่ง print เองเมื่อโหลดเสร็จ
+         (เดิมเปิดแท็บใหม่ผ่านลิงก์ Blob ซึ่งถูกบล็อกเช่นกัน) */
+      const old = document.getElementById('pf-print-frame');
+      if (old) old.remove();
+      const fr = document.createElement('iframe');
+      fr.id = 'pf-print-frame';
+      fr.setAttribute('title', 'print');
+      fr.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';
+      document.body.appendChild(fr);
+      fr.contentDocument.open();
+      fr.contentDocument.write(printHTML);
+      fr.contentDocument.close();
     }
   } catch (err) {
     console.error('PDF print error', err);
