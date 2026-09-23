@@ -527,27 +527,30 @@ function calcFV(pv, rate, years, pmt, freq) {
   if (rate === 0) return pv + pmt * years;
   return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
 }
-function getDerivedData(client) {
+/* สินทรัพย์ที่ให้กระแสเงินสดหลังเกษียณ (ประกันบำนาญ/ค่าเช่า ที่กรอก "กระแสเงินสดรับ")
+   นับเป็น "รายได้หลังเกษียณ" ใน compute() อย่างเดียว ไม่นับมูลค่าเข้ากองทุนอีก
+   (เดิมนับทั้งสองทาง = นับซ้ำ) */
+function isIncomeAsset(a) { return Number(a.cashFlow || 0) > 0; }
+/* yearsToRetire = จำนวนปีถึงเกษียณ (ส่งมาจาก compute()) — ใช้โตทุกสินทรัพย์
+   ถ้าไม่ส่งมา (ผู้เรียกเก่า) ใช้ช่อง "ระยะเวลา" ของสินทรัพย์ตามเดิม */
+function getDerivedData(client, yearsToRetire) {
   const annualIncome = Number(client.income) ||
     (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
   /* Include both retire-type assets AND assets that the user explicitly
      tagged with appliedTo === 'retire' (via the apply-to button on the
-     assets page). Matches the filter used in retirement.html line 633
-     and confirmPull() line 971. */
+     assets page). ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน (v185) */
   const retireAssets = (client.assets || []).filter(a =>
     (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
-    && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
+    && a.appliedTo !== 'education' && !isIncomeAsset(a));
   const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  /* FV รายสินทรัพย์ = มูลค่าปัจจุบันโตตาม return/term ของตัวเอง + เงินสมทบ
-     (ออมเพิ่มต่อปี) โตแบบ annuity-due — ใช้ calcFV() สูตรเดียวกับ assets.html
-     เป๊ะ ๆ ดังนั้น "เตรียมไว้แล้ว" = ผลรวม "มูลค่าอนาคต" ของสินทรัพย์เกษียณ
-     ในหน้าสินทรัพย์ทุกบาท (ถ้าติ๊ก "ใช้ตอนเกษียณ" ครบทุกตัว → เท่ายอดรวมหน้าสินทรัพย์)
-
-     v183: เดิมนับเฉพาะ currentValue ไม่รวมเงินสมทบ → ต้องกดปุ่ม 📊 "ดึงค่า"
-     เอง และเงินสมทบยังโตด้วย plan rate ไม่ใช่ rate ของสินทรัพย์ ทำให้ยอดไม่ตรง
-     กับหน้าสินทรัพย์ ตอนนี้รวมเงินสมทบอัตโนมัติแล้ว ไม่ต้องกดดึงค่า */
-  const fvCurrentSavings = retireAssets.reduce((s, a) =>
-    s + calcFV(a.currentValue, a.expectedReturn, a.term, a.contribution, a.contribFreq || 'annual'), 0);
+  /* FV รายสินทรัพย์ = มูลค่าปัจจุบัน + เงินสมทบ (ออมเพิ่มต่อปี, annuity-due) โตด้วย return
+     ของสินทรัพย์นั้น "จนถึงวันเกษียณ" — สูตร calcFV() เดียวกับหน้าสินทรัพย์
+     (เดิมโตตามช่อง "ระยะเวลา" ของสินทรัพย์ → RMF ระยะเวลา 10 ปี หยุดโตก่อนเกษียณ 10 ปี
+      และสินทรัพย์ที่ตั้งระยะเวลายาวกว่าถูกโตเลยวันเกษียณ) */
+  const fvCurrentSavings = retireAssets.reduce((s, a) => {
+    const years = (yearsToRetire == null) ? a.term : yearsToRetire;
+    return s + calcFV(a.currentValue, a.expectedReturn, years, a.contribution, a.contribFreq || 'annual');
+  }, 0);
   const currentMonthlyContrib = retireAssets.reduce((s,a) => s + annualContribOf(a), 0) / 12;
   return { annualIncome, currentSavings, fvCurrentSavings, currentMonthlyContrib };
 }
@@ -574,7 +577,6 @@ function fmtPct(n) {
 ═══════════════════════════════════════════ */
 function compute(client) {
   const plan = getPlan(client);
-  const derived = getDerivedData(client);
   const currentAge = ageNow(client.dob);
   if (currentAge == null) return null;
 
@@ -583,6 +585,8 @@ function compute(client) {
   const ageFloor = Math.floor(currentAge);
   const yearsBefore = Math.max(plan.retireAge - ageFloor, 0);
   const yearsAfter  = Math.max(plan.lifeExpectancy - plan.retireAge, 1);
+  /* โตสินทรัพย์ทุกตัวจนถึงวันเกษียณ (yearsBefore) — ดูหมายเหตุใน getDerivedData */
+  const derived = getDerivedData(client, yearsBefore);
 
   const annualSpendNow = plan.annualSpend > 0
     ? plan.annualSpend
@@ -655,7 +659,9 @@ function compute(client) {
       const yearSpend  = annualSpendAtRetire * Math.pow(1 + plan.inflationRate/100, y);
       const yearIncome = annualIncomeAfter;   /* คงที่ — pension/rental ไม่ปรับ inflation */
       const draw = yearSpend - yearIncome;
-      balance = (balance - draw) * (1 + rA);  /* ไม่ clamp — ติดลบได้ */
+      /* เงินโตทั้งปีก่อน แล้วค่อยถอนตอนสิ้นปี — ให้ตรงกับสูตรกองทุนเป้า (PV ของเงินถอนปลายปี)
+         เดิมถอนต้นปีแล้วค่อยโต → แผนที่เก็บได้พอดีเป้ายังขึ้นติดลบ · ไม่ clamp — ติดลบได้ */
+      balance = balance * (1 + rA) - draw;
     }
     remaining = balance;
   }

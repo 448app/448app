@@ -266,9 +266,12 @@ const ASSET_TYPES = {
   cash:{group:'liquid'}, deposit:{group:'liquid'}, bond:{group:'liquid'},
   pvd:{group:'investment'}, rmf:{group:'investment'}, ltf:{group:'investment'},
   ssf:{group:'investment'}, thaiesg:{group:'investment'}, mutual:{group:'investment'},
-  unitlinked:{group:'investment'}, stock:{group:'investment'},
+  unitlinked:{group:'investment'}, stock:{group:'investment'}, annuity:{group:'investment'},
   realestate:{group:'personal'}, other:{group:'personal'},
 };
+/* ประเภทที่ไม่รู้จัก → กลุ่ม "อื่นๆ" (เดิมหลุดจากสินทรัพย์รวมไปเลย เช่น ประกันบำนาญ
+   ทำให้อัตราส่วนหนี้สิน/ความมั่งคั่งไม่ตรงกับหน้างบการเงิน) */
+function assetGroupOf(a) { return (ASSET_TYPES[a.type] || ASSET_TYPES.other).group; }
 
 let selectedClientId = null;
 
@@ -305,11 +308,11 @@ function computeData() {
   const cf     = c.cashflow || {};
 
   // Group assets
-  const liquidAssets = assets.filter(a => (ASSET_TYPES[a.type]||{}).group === 'liquid')
+  const liquidAssets = assets.filter(a => assetGroupOf(a) === 'liquid')
                              .reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const investAssets = assets.filter(a => (ASSET_TYPES[a.type]||{}).group === 'investment')
+  const investAssets = assets.filter(a => assetGroupOf(a) === 'investment')
                              .reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const personalAssets = assets.filter(a => (ASSET_TYPES[a.type]||{}).group === 'personal')
+  const personalAssets = assets.filter(a => assetGroupOf(a) === 'personal')
                                .reduce((s,a) => s + Number(a.currentValue||0), 0);
   const totalAssets = liquidAssets + investAssets + personalAssets;
 
@@ -373,7 +376,7 @@ function ratioDebtAsset(d) {
 //    มาตรฐาน: ≤35-40% (≤25% ดีเยี่ยม, 25-40% พอใช้, >40% สูงเกิน)
 function ratioDebtService(d) {
   if (d.income <= 0) return { value: null, status: 'no-data' };
-  const v = (d.expDebt || d.monthlyDebtPayment) / d.income * 100;
+  const v = (d.expDebt) / d.income * 100;
   const status = v <= 25 ? 'good' : v <= 40 ? 'medium' : 'bad';
   return { value: v, status };
 }
@@ -507,7 +510,7 @@ function render() {
       target: '≤ 40%',
       targetDetail: 'ดี ≤ 25% · พอใช้ 25-40% · สูง > 40%',
       ranges: [60, 40, 25, 0],
-      detail: `ผ่อนหนี้/เดือน <b>${fmt(d.expDebt || d.monthlyDebtPayment)}</b> ÷ รายได้/เดือน <b>${fmt(d.income)}</b>`,
+      detail: `ผ่อนหนี้/เดือน <b>${fmt(d.expDebt)}</b> ÷ รายได้/เดือน <b>${fmt(d.income)}</b>`,
       tip: getTipDebtService(r3),
       reverse: true,
     })}

@@ -780,10 +780,14 @@ function onCellChange(type, field, rawValue) {
     const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
     if (!c) return;
     if (!c.assets) c.assets = [];
-    let a = c.assets.find(x => x.type === type);
-    if (!a) {
+    /* แถวหนึ่งอาจมีสินทรัพย์ชนิดเดียวกันหลายรายการ (ข้อมูลเก่า/เพิ่มจากหน้าอื่น)
+       ช่องแสดง "ยอดรวม" ของทุกรายการ (getRowData) → ตอนบันทึกต้องกระจายค่าใหม่กลับ
+       ทุกรายการตามสัดส่วนเดิม — เดิมเขียนยอดรวมลงรายการแรก ทำให้ยอดพองทุกครั้งที่บันทึก
+       (100,000 + 50,000 แสดง 150,000 → บันทึกกลายเป็น 150,000 + 50,000) */
+    let list = c.assets.filter(x => x.type === type && !x.customCategory);
+    if (list.length === 0) {
       const t = ASSET_TYPES[type] || ASSET_TYPES.other;
-      a = {
+      const a = {
         id: 'a' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
         type, name: t.label,
         currentValue: 0, contribution: 0, contribFreq: 'annual',
@@ -791,9 +795,19 @@ function onCellChange(type, field, rawValue) {
         createdAt: new Date().toISOString(),
       };
       c.assets.push(a);
+      list = [a];
     }
-    a[field] = value;
-    if (!a.contribFreq) a.contribFreq = 'annual';
+    const moneyField = ['currentValue', 'contribution', 'cashFlow'].includes(field);
+    /* ค่าเดิมของแต่ละรายการ — ช่อง "ออมเพิ่ม/ต่อปี" แสดงและรับค่าเป็นรายปีเสมอ
+       จึงต้องเทียบเป็นรายปีและบันทึกกลับเป็นรายปี (เดิมคงป้าย 'monthly' ไว้ → คูณ 12 ซ้ำทุกครั้ง) */
+    const cur = list.map(a => field === 'contribution' ? _annualContrib(a) : Number(a[field] || 0));
+    const sum = cur.reduce((s, v) => s + v, 0);
+    list.forEach((a, i) => {
+      if (!moneyField || list.length === 1) a[field] = value;
+      else a[field] = sum > 0 ? value * cur[i] / sum : (i === 0 ? value : 0);
+      if (field === 'contribution') a.contribFreq = 'annual';
+      if (!a.contribFreq) a.contribFreq = 'annual';
+    });
   });
   /* Update FV cell + totals in-place (no full re-render to preserve focus) */
   updateRowFV(type);

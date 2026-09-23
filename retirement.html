@@ -417,7 +417,7 @@
       <div class="feature-hero-row">
         <div>
           <h2>🛋️ วางแผนเกษียณ</h2>
-          <p>คำนวณเงินที่ต้องเก็บ + ออม/เดือน เพื่อใช้จ่ายอย่างสบายหลังเกษียณ</p>
+          <p>กรอกเป้าหมายเกษียณที่นี่ แล้วดูผลคำนวณ (กองทุนที่ต้องมี · เตรียมไว้แล้ว · เก็บเงินเพิ่มปีละ) ที่หน้า <a href="retirement2.html" style="color:var(--red-primary);font-weight:700;">สรุปแผนเกษียณ →</a></p>
         </div>
         <div class="client-pick">
           <div class="cp-mini-avatar" id="cp-mini-avatar">👤</div>
@@ -585,7 +585,13 @@ function stepField(field, delta) {
   const client = getCurrent();
   if (!client) return;
   const plan = getPlan(client);
-  const cur = Number(plan[field] || 0);
+  let cur = Number(plan[field] || 0);
+  /* ช่อง "จำนวนเงินต่อปีที่ต้องการใช้" ยังไม่ได้กรอก → เริ่มจากค่าแนะนำที่แสดงเป็น placeholder
+     (เดิมเริ่มจาก 0 → กด + ครั้งแรกจากค่าที่โชว์ 420,000 กลายเป็น 10,000) */
+  if (field === 'annualSpend' && cur <= 0) {
+    const derived = getDerivedData(client);
+    cur = Math.round(derived.annualIncome * plan.incomePctAfterRetire / 100);
+  }
   /* Field-specific bounds and step sizes */
   const cfg = {
     retireAge:       { min:30,  max:100, step:1   },
@@ -816,11 +822,11 @@ function render() {
           <div class="r2-label">จำนวนเงินต่อปีที่ต้องการใช้</div>
           <div class="r2-control">
             <div class="r2-pill">
+              <!-- ค่าที่ยังไม่ได้กรอกแสดงเป็น placeholder (ค่าแนะนำ = รายได้ × %) ไม่ใส่เป็น value
+                   เดิมใส่เป็น value → _commitDirtyInputs() บันทึกค่าแนะนำเป็นเป้าจริงทันทีที่แก้ช่องอื่น -->
               <input type="text" inputmode="decimal" class="money-fmt"
-                value="${(plan.annualSpend > 0
-                  ? plan.annualSpend
-                  : (derived.annualIncome * plan.incomePctAfterRetire / 100)
-                ).toLocaleString('th-TH', { maximumFractionDigits: 0 })}"
+                value="${plan.annualSpend > 0 ? plan.annualSpend.toLocaleString('th-TH', { maximumFractionDigits: 0 }) : ''}"
+                placeholder="${(derived.annualIncome * plan.incomePctAfterRetire / 100).toLocaleString('th-TH', { maximumFractionDigits: 0 })}"
                 onblur="savePlanField('annualSpend', parseMoney(this))"
                 onchange="savePlanField('annualSpend', parseMoney(this))">
               <span class="r2-pill-suffix">บาท</span>

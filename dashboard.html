@@ -834,11 +834,13 @@ const RECOMMEND_DEFAULT = {
 function recommendCoverage(client) {
   if (!client) return Object.assign({}, RECOMMEND_DEFAULT);
 
-  /* รายได้ต่อปี — เอาจาก cashflow.income หรือ client.income */
+  /* รายได้ต่อปี — ใช้ "รายได้ต่อปี" จากข้อมูลลูกค้าก่อน ถ้าไม่มีใช้กระแสเงินสด (ต่อเดือน) × 12
+     ให้เหมือนทุกหน้า — เดิมเอา cashflow.income (ต่อเดือน) มาใช้เป็นต่อปีตรงๆ
+     ทำให้ทุนที่แนะนำต่ำ 12 เท่า และขึ้นข้อความ "รายได้ ฿100K/ปี" */
   const cf = client.cashflow || {};
   const annualIncome =
-    Number(cf.income) ||
     Number(client.income) ||
+    (Number(cf.income) || 0) * 12 ||
     0;
 
   /* อายุ — เอาจาก client.age หรือคำนวณจาก dob */
@@ -887,11 +889,14 @@ const TYPE_ICONS = {
   'อุบัติเหตุ':   '🚑'
 };
 // map ประเภทประกันทุกแบบ → หมวดหลักของ gap bar
+/* ทุกประเภทที่จ่ายทุนชีวิต (ตามตัวเลือกในฟอร์มเพิ่ม/แก้ไขกรมธรรม์) → แถบ "ชีวิต"
+   เดิมรู้จักแค่ 'ชีวิต'/'ทุนชีวิต' → กรมธรรม์ตลอดชีพ/สะสมทรัพย์/ส่งมอบ ขึ้นเป็น "มี ฿0" */
 const TYPE_TO_GAP = {
-  'ชีวิต':'ชีวิต','ทุนชีวิต':'ชีวิต',
+  'ชีวิต':'ชีวิต','ทุนชีวิต':'ชีวิต','ตลอดชีพ':'ชีวิต','สะสมทรัพย์':'ชีวิต','บำนาญ':'ชีวิต',
+  'Unit Linked':'ชีวิต','การศึกษา':'ชีวิต','เกษียณ':'ชีวิต','ลดหย่อนภาษี':'ชีวิต','ลงทุน':'ชีวิต','ส่งมอบ':'ชีวิต',
   'สุขภาพ':'สุขภาพ',
   'โรคร้ายแรง':'โรคร้ายแรง',
-  'อุบัติเหตุ':'อุบัติเหตุ'
+  'อุบัติเหตุ':'อุบัติเหตุ','PA':'อุบัติเหตุ'
 };
 function primaryCovOf(p) {
   return p.type === 'สุขภาพ' ? (Number(p.coverage)||0) : (Number(p.lifeCoverage)||0);
@@ -944,10 +949,28 @@ function selectClient(cid) {
    Gap bars
 ════════════════════════════════════════════════════ */
 function renderGapBars(policies, client) {
+  /* รวมความคุ้มครองจากสัญญาเพิ่มเติม (riders) ด้วย แบบเดียวกับหน้าสรุปกรมธรรม์
+     เดิมนับเฉพาะประเภทหลักของกรมธรรม์ → โรคร้ายแรง/อุบัติเหตุ/สุขภาพที่ซื้อพ่วง
+     กรมธรรม์ชีวิตขึ้นเป็น 0 ทั้งที่มี
+     · สัญญาเพิ่มเติมนับเฉพาะหมวดที่ "ต่าง" จากประเภทหลัก (กันนับซ้ำกับทุนหลัก)
+     · ช่องแบบเก่า (riderXxxCov) ใช้เฉพาะเมื่อไม่มี riders[] ประเภทนั้น */
   const byType = {};
+  const add = (col, v) => { v = Number(v) || 0; if (col && v > 0) byType[col] = (byType[col] || 0) + v; };
   policies.forEach(p => {
-    const col = TYPE_TO_GAP[p.type];
-    if (col) byType[col] = (byType[col] || 0) + primaryCovOf(p);
+    const main = TYPE_TO_GAP[p.type] || null;
+    add(main, primaryCovOf(p));
+    const riders = Array.isArray(p.riders) ? p.riders : [];
+    const has = t => riders.some(r => r.type === t);
+    const RIDER_COLS = [
+      { type:'medical',  col:'สุขภาพ',      field:'perVisit',        legacy:'riderHealthCov'   },
+      { type:'critical', col:'โรคร้ายแรง',  field:'ciSevere',        legacy:'riderCriticalCov' },
+      { type:'accident', col:'อุบัติเหตุ',   field:'deathByAccident', legacy:'riderAccidentCov' },
+    ];
+    RIDER_COLS.forEach(rc => {
+      if (rc.col === main) return;
+      if (has(rc.type)) riders.filter(r => r.type === rc.type).forEach(r => add(rc.col, r[rc.field]));
+      else add(rc.col, p[rc.legacy]);
+    });
   });
 
   const GAP_LABELS = [
