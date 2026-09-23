@@ -558,6 +558,21 @@
       .ph-sum-lvl { font-size: .54rem; padding: 1px 4px; }
     }
 
+    /* เช็กลิสต์ส่งมอบความมั่งคั่ง (ชั้น 5) ใต้แถบสรุป */
+    .ep-card {
+      max-width: 760px; margin: 10px auto 4px; padding: 12px 14px;
+      border: 1px solid #EBD9B8; border-radius: 12px; background: #FBF2E4;
+      display: grid; gap: 8px; text-align: left;
+    }
+    .ep-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 800; font-size: .82rem; color: #1B2A5E; }
+    .ep-reset { border: 1px solid #C79A3F; background: white; color: #8A5A12; border-radius: 6px; padding: 2px 10px; font-size: .72rem; font-family: var(--font); cursor: pointer; }
+    .ep-item { display: flex; align-items: flex-start; gap: 10px; font-size: .8rem; color: #1B2A5E; cursor: pointer; line-height: 1.35; }
+    .ep-item input { margin: 3px 0 0; width: 16px; height: 16px; accent-color: #1B2A5E; flex: none; }
+    .ep-item small { display: block; color: #6C7490; font-size: .7rem; font-weight: 400; }
+    .ep-item.auto { cursor: default; }
+    .ep-auto { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; margin-top: 3px; border-radius: 4px; background: #1B2A5E; color: white; font-size: .7rem; font-weight: 800; flex: none; }
+    .ep-foot { font-size: .7rem; color: #6C7490; }
+
     .py-legend {
       background: var(--gray-50); padding: 14px 18px; border-radius: 10px;
       font-size: .82rem; color: var(--gray-600); line-height: 1.6;
@@ -1664,6 +1679,15 @@ function getUser() {
 }
 function getClients() { return (getUser().data && getUser().data.clients) || []; }
 function getCurrent() { return getClients().find(c => c.id === selectedClientId) || null; }
+/* บันทึกข้อมูลลูกค้าคนที่เลือก (ใช้กับเช็กลิสต์ส่งมอบความมั่งคั่งในหน้าต่างปิรามิด) */
+function updateCurrentClient(fn) {
+  const users = JSON.parse(localStorage.getItem('aia_users') || '[]');
+  const u = users.find(x => x.id === _uid);
+  const c = u && u.data && (u.data.clients || []).find(x => x.id === selectedClientId);
+  if (!c) return;
+  fn(c);
+  localStorage.setItem('aia_users', JSON.stringify(users));
+}
 
 let selectedClientId = null;
 
@@ -2379,9 +2403,21 @@ function computePyramid(client, summary, has) {
     .reduce((s,a) => s + Number(a.currentValue||0), 0);
   const investOk = investValue > 0;
 
-  /* Wealth Distribution — placeholder: เช็คว่ามี will/estate flag (ไม่มี data → false) */
-  const hasWill = !!(client.will || client.estatePlan);
-  const wealthDistOk = hasWill;
+  /* Wealth Distribution — เช็กลิสต์ที่ตัวแทนติ๊กในหน้าต่างปิรามิด (client.estatePlan)
+     ประเมินเมื่อบันทึกเช็กลิสต์แล้ว · ผ่านเมื่อมีพินัยกรรม + ระบุผู้รับประโยชน์ครบ
+     (เดิมอ่านช่อง will/estatePlan ที่ไม่มีหน้าไหนบันทึก → "ยังไม่ประเมิน" ทุกคน) */
+  const ep = client.estatePlan || {};
+  const hasLegacyPolicy = (client.policies || []).some(p => p.type === 'ส่งมอบ');
+  const epAssessed = !!(ep.updatedAt || client.will);
+  const epWill = !!(ep.will || client.will);
+  const epBenef = !!ep.beneficiaries;
+  const wealthDistOk = epWill && epBenef;
+  const epMissing = [!epWill && 'พินัยกรรม', !epBenef && 'ผู้รับประโยชน์ในกรมธรรม์'].filter(Boolean);
+  const wealthNote = !epAssessed
+    ? 'ยังไม่ได้ติ๊กเช็กลิสต์ (สรุปแผน › ปิรามิด)'
+    : wealthDistOk
+      ? 'มีพินัยกรรม · ผู้รับประโยชน์ครบ' + (hasLegacyPolicy ? ' · มีประกันเพื่อส่งมอบ' : '')
+      : 'ยังขาด: ' + epMissing.join(' · ');
 
   return [
     {
@@ -2391,7 +2427,8 @@ function computePyramid(client, summary, has) {
       desc: 'การวางแผนมรดก · ส่งต่อทรัพย์สินให้ผู้รับมรดก',
       icon: '👑',
       ok: wealthDistOk,
-      assessed: has ? hasWill : true,
+      assessed: has ? epAssessed : true,
+      note: wealthNote,
     },
     {
       layer: 4,
@@ -2681,14 +2718,55 @@ function openPyramid() {
     </div>
   `).join('');
 
+  /* เช็กลิสต์ชั้น 5 — บันทึกอัตโนมัติลง client.estatePlan */
+  const ep = client.estatePlan || {};
+  const hasLegacyPolicy = (client.policies || []).some(p => p.type === 'ส่งมอบ');
+  const chk = (key, label, hint) => `
+    <label class="ep-item">
+      <input type="checkbox" ${ep[key] ? 'checked' : ''} onchange="saveEstatePlan('${key}', this.checked)">
+      <span><b>${label}</b>${hint ? `<small>${hint}</small>` : ''}</span>
+    </label>`;
+  const checklist = `
+    <div class="ep-card">
+      <div class="ep-head">
+        <span>👑 การส่งมอบความมั่งคั่ง — เช็กลิสต์ประเมินชั้น 5</span>
+        ${ep.updatedAt ? `<button type="button" class="ep-reset" onclick="resetEstatePlan()">ล้าง</button>` : ''}
+      </div>
+      ${chk('will', 'มีพินัยกรรม / ตั้งผู้จัดการมรดกแล้ว', 'จำเป็นสำหรับ ✓ ผ่าน')}
+      ${chk('beneficiaries', 'ระบุผู้รับประโยชน์ในกรมธรรม์ครบทุกฉบับ', 'จำเป็นสำหรับ ✓ ผ่าน')}
+      <div class="ep-item auto">
+        <span class="ep-auto">${hasLegacyPolicy ? '✓' : '–'}</span>
+        <span><b>มีประกันชีวิตเพื่อส่งมอบ</b><small>ตรวจให้จากสรุปกรมธรรม์ (ประเภท “ส่งมอบ”) — ${hasLegacyPolicy ? 'มีแล้ว' : 'ยังไม่มี'}</small></span>
+      </div>
+      ${chk('estateTax', 'วางแผนภาษีมรดก / โอนทรัพย์สินแล้ว', 'เกี่ยวเมื่อทรัพย์สินสุทธิเกิน 100 ล้านบาท')}
+      <div class="ep-foot">${ep.updatedAt
+        ? 'บันทึกอัตโนมัติ · อัปเดตล่าสุด ' + new Date(ep.updatedAt).toLocaleDateString('th-TH-u-ca-gregory', { day:'numeric', month:'short', year:'numeric' })
+        : 'ติ๊กข้อใดข้อหนึ่งเพื่อเริ่มประเมินชั้นนี้ · บันทึกอัตโนมัติ'}</div>
+    </div>`;
+
   document.getElementById('pyramid-stack-container').innerHTML = `
     <div class="ph-wrap">
       <img class="ph-img" src="pyramid-blank.jpg" alt="Financial Pyramid">
       <div class="ph-overlay">${layerLabels}</div>
     </div>
     <div class="ph-summary">${sumItems}</div>
+    ${checklist}
   `;
   document.getElementById('pyramid-modal').classList.add('open');
+}
+
+function saveEstatePlan(key, checked) {
+  updateCurrentClient(c => {
+    if (!c.estatePlan) c.estatePlan = {};
+    c.estatePlan[key] = !!checked;
+    c.estatePlan.updatedAt = new Date().toISOString();
+  });
+  openPyramid();   /* วาดสถานะชั้น 5 ใหม่ทันที */
+}
+function resetEstatePlan() {
+  if (!confirm('ล้างเช็กลิสต์ส่งมอบความมั่งคั่ง? ชั้น 5 จะกลับเป็น "ยังไม่ประเมิน"')) return;
+  updateCurrentClient(c => { delete c.estatePlan; });
+  openPyramid();
 }
 
 function closePyramid() {
