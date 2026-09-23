@@ -489,6 +489,17 @@
       background: white; box-sizing: border-box;
     }
     .cf-row-input:focus { outline: none; border-color: var(--red-primary); box-shadow: 0 0 0 3px var(--red-soft); }
+    /* แถบเชื่อม "รายจ่ายผ่อนหนี้" กับผลรวม "ผ่อนต่อเดือน" ของหนี้ในงบการเงิน */
+    .cf-debt-link {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      margin: -4px 0 0 18px; font-size: .76rem; color: var(--gray-600);
+    }
+    .cf-debt-link.ok { color: #1F7A55; }
+    .cf-debt-link button {
+      border: 1px solid #9B59B6; background: white; color: #9B59B6; border-radius: 6px;
+      padding: 3px 10px; font-size: .74rem; font-weight: 700; font-family: var(--font); cursor: pointer;
+    }
+    .cf-debt-link button:hover { background: #9B59B6; color: white; }
 
     .cf-summary-strip {
       margin-top: 16px; padding: 14px 18px; border-radius: 10px;
@@ -745,6 +756,8 @@
               </div>
               <input class="cf-row-input money-fmt" id="cf-expDebt" inputmode="decimal" min="0" placeholder="0" oninput="updateCashflow()">
             </div>
+            <!-- ผลรวม "ผ่อนต่อเดือน" จากหนี้ในงบการเงิน — กด "ใช้ค่านี้" ให้สองหน้าตรงกัน (หน้าอัตราส่วนใช้ช่องนี้คิด "ชำระหนี้") -->
+            <div class="cf-debt-link" id="cf-debt-link" style="display:none;"></div>
             <div class="cf-input-row cf-savings">
               <div class="cf-row-label">
                 <span class="lb-name">🪙 ค่าใช้จ่ายออม / ลงทุน</span>
@@ -1636,6 +1649,41 @@ function updateCashflow() {
   netEl.className = 'cf-strip-val ' + (net >= 0 ? 'green' : 'red');
 
   renderPie(cf, totalExp);
+  updateDebtLink(cf.expDebt);
+}
+
+/* ผลรวม "ผ่อนต่อเดือน" ของหนี้ทุกก้อนในงบการเงิน (client.liabilities[].monthlyPayment) */
+function sumNetworthDebtPayments() {
+  const c = getCurrentClient();
+  return ((c && c.liabilities) || []).reduce((s, l) => s + (Number(l.monthlyPayment) || 0), 0);
+}
+/* แสดงใต้ช่อง "รายจ่ายผ่อนหนี้": ตรงกับงบการเงินแล้ว หรือมีปุ่ม "ใช้ค่านี้"
+   — เดิมสองช่องไม่เชื่อมกัน หน้าอัตราส่วนใช้ช่องนี้คิด "ชำระหนี้" จึงไม่ตรงกับยอดผ่อนในงบการเงิน */
+function updateDebtLink(currentDebt) {
+  const el = document.getElementById('cf-debt-link');
+  if (!el) return;
+  const sum = sumNetworthDebtPayments();
+  if (sum <= 0) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  const cur = Number(currentDebt) || 0;
+  const fmtTH = n => '฿' + Math.round(n).toLocaleString('th-TH');
+  el.style.display = 'flex';
+  if (Math.abs(cur - sum) < 1) {
+    el.className = 'cf-debt-link ok';
+    el.innerHTML = `✓ ตรงกับผ่อนต่อเดือนรวมในงบการเงิน (${fmtTH(sum)})`;
+  } else {
+    el.className = 'cf-debt-link';
+    el.innerHTML = `รวมผ่อนต่อเดือนจากงบการเงิน <b>${fmtTH(sum)}</b>${cur > 0 ? ` · ที่กรอก ${fmtTH(cur)}` : ''}
+      <button type="button" onclick="applyDebtFromNetworth()">ใช้ค่านี้</button>`;
+  }
+}
+function applyDebtFromNetworth() {
+  const sum = sumNetworthDebtPayments();
+  const el = document.getElementById('cf-expDebt');
+  if (!el) return;
+  el.value = Math.round(sum).toLocaleString('th-TH');
+  if (window.refreshAllMoneyInputs) refreshAllMoneyInputs();
+  updateCashflow();
+  saveCashflow();
 }
 
 function renderPie(cf, totalExp) {
