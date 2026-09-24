@@ -9,7 +9,7 @@
   <!-- Firebase Auth -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
   <script src="info-popup.js"></script>
@@ -733,6 +733,7 @@
               <span class="lbl">ค่าลดหย่อนรวม</span>
               <span class="val red" id="res-deduct">- ฿ 0</span>
             </div>
+            <div class="result-row" id="res-deduct-extra" style="display:none;font-size:.76rem;color:var(--gray-500);margin-top:-6px;"></div>
             <div class="result-row" style="font-weight:700;">
               <span class="lbl">รายได้สุทธิที่ต้องเสียภาษี</span>
               <span class="val" id="res-net">฿ 0</span>
@@ -943,18 +944,10 @@
     if (idx === -1) return; fn(all[idx]); saveUsers(all);
   }
 
-  // Thai personal income tax brackets 2024 — continuous boundaries (ไม่ +1)
-  const BRACKETS = [
-    { min:0,       max:150000,  rate:0   },
-    { min:150000,  max:300000,  rate:5   },
-    { min:300000,  max:500000,  rate:10  },
-    { min:500000,  max:750000,  rate:15  },
-    { min:750000,  max:1000000, rate:20  },
-    { min:1000000, max:2000000, rate:25  },
-    { min:2000000, max:5000000, rate:30  },
-    { min:5000000, max:Infinity,rate:35  },
-  ];
+  // ขั้นภาษี — ตารางเดียวกับ CALC.TAX_BRACKETS ใน calc.js (แปลงเป็นขอบต่อเนื่อง min/max และอัตราเป็น % สำหรับตารางแสดงผล)
+  const BRACKETS = CALC.TAX_BRACKETS.map(b => ({ min: b.lo === 0 ? 0 : b.lo - 1, max: b.hi, rate: Math.round(b.rate * 100) }));
 
+  /* ใช้เฉพาะตารางขั้นภาษี (breakdown) — ตัวเลขภาษีจริงมาจาก CALC.taxScope */
   function calcTax(netIncome) {
     let tax = 0;
     const breakdown = [];
@@ -1028,50 +1021,19 @@
   }
 
   function calculate() {
-    // ─── Income breakdown by 40(1)-(8) ───
-    const inc1   = val('i-salary') + val('i-bonus');   // 40(1)
-    const inc2   = val('i-40-2');                       // 40(2)
-    const inc3   = val('i-40-3');                       // 40(3)
-    const inc4   = val('i-40-4');                       // 40(4)
-    const inc5   = val('i-40-5');                       // 40(5)
-    const inc6   = val('i-40-6');                       // 40(6)
-    const inc7   = val('i-40-7');                       // 40(7)
-    const inc8   = val('i-40-8');                       // 40(8)
-    const incOther = val('i-other');                    // outside
+    /* ค่าจากช่องกรอกทั้งหมด → object รูปแบบเดียวกับ client.taxInputs แล้วส่งให้สูตรกลาง calc.js
+       (หน้าลดหย่อนภาษี / PDF / ขั้นภาษีในสรุปกรมธรรม์ ใช้ CALC.taxScope ตัวเดียวกัน — เดิมหน้านี้คิดเองอีกชุด
+        ซึ่งไม่ตัดเพดานบำนาญ 15% ของเงินได้ และไม่ตัดกลุ่มออมเพื่อเกษียณรวม 500,000) */
+    const ti = buildTaxInputsObject();
+    const inc1 = ti.salary + ti.bonus, inc2 = ti.inc402, inc3 = ti.inc403, inc4 = ti.inc404,
+          inc5 = ti.inc405, inc6 = ti.inc406, inc7 = ti.inc407, inc8 = ti.inc408, incOther = ti.other;
 
-    const isMedical = document.getElementById('i-40-6-medical') && document.getElementById('i-40-6-medical').checked;
-
-    // ─── Per-row actual expense overrides (NEW UI: ตามจริง column) ───
-    const act3 = val('i-40-3-actual');
-    const act5 = val('i-40-5-actual');
-    const act6 = val('i-40-6-actual');
-    const act7 = val('i-40-7-actual');
-    const act8 = val('i-40-8-actual');
-
-    // ─── Expense by section ───
-    // 40(1)+(2): 50% รวมกันไม่เกิน 100,000 · 40(3): 50% ไม่เกิน 100,000 แยกเพดานของตัวเอง
-    // (เดิมรวม 40(3) ในเพดานเดียวกับ 40(1)+(2) → ค่าใช้จ่ายต่ำกว่าสิทธิ์ · สูตรเดียวกับหน้าลดหย่อนภาษีและ PDF)
+    // ─── ค่าใช้จ่ายรายประเภท: 40(1)+(2) 50% ≤ 100,000 · 40(3) 50% ≤ 100,000 แยกเพดาน · 40(5)–(8) เหมา หรือ "ตามจริง" ถ้าสูงกว่า ───
+    const ex = CALC.taxExpenseDetail(ti);
     const incSalaryGroup = inc1 + inc2 + inc3;
-    const expSalaryGroup = Math.min((inc1 + inc2) * 0.5, 100000);
-    const exp3Rate = Math.min(inc3 * 0.5, 100000);
-
-    // 40(4): no expense deduction
-    const exp4 = 0;
-
-    // 40(5)-(8): rate-based, with per-row "ตามจริง"
-    const exp5Rate = inc5 * 0.30;                             // ค่าเช่า 30%
-    const exp6Rate = inc6 * (isMedical ? 0.60 : 0.30);        // วิชาชีพอิสระ 30% (แพทย์ 60%)
-    const exp7Rate = inc7 * 0.60;                             // รับเหมา 60%
-    const exp8Rate = inc8 * 0.60;                             // ขายของ 60%
-    /* ใช้ค่าที่สูงกว่าระหว่าง "เหมา" กับ "ตามจริง" ตามที่คำอธิบายบอกและตามกฎ
-       (เดิม "ตามจริง" แทนที่เหมาแม้ต่ำกว่า → รายได้หลังหักค่าใช้จ่ายไม่ตรงกับหน้าลดหย่อนภาษี) */
-    const exp3 = Math.max(act3, exp3Rate);
-    const exp5 = Math.max(act5, exp5Rate);
-    const exp6 = Math.max(act6, exp6Rate);
-    const exp7 = Math.max(act7, exp7Rate);
-    const exp8 = Math.max(act8, exp8Rate);
-    /* useActual stays for backward-compat metadata only */
-    const useActual = (act3 + act5 + act6 + act7 + act8) > 0;
+    const expSalaryGroup = ex.salaryGroup;
+    const exp3Rate = ex.exp3Rate, exp5Rate = ex.exp5Rate, exp6Rate = ex.exp6Rate, exp7Rate = ex.exp7Rate, exp8Rate = ex.exp8Rate;
+    const exp3 = ex.exp3, exp5 = ex.exp5, exp6 = ex.exp6, exp7 = ex.exp7, exp8 = ex.exp8;
 
     // Update readonly "เหมา" cells in the new pill table
     const setIfExists = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = Math.round(v).toLocaleString('th-TH'); };
@@ -1082,47 +1044,42 @@
     setIfExists('t2-exp-7', exp7Rate);
     setIfExists('t2-exp-8', exp8Rate);
 
-    const expense = expSalaryGroup + exp3 + exp4 + exp5 + exp6 + exp7 + exp8;
-
-    const income = incSalaryGroup + inc4 + inc5 + inc6 + inc7 + inc8 + incOther;
+    const expense = ex.total;
+    const income = CALC.taxIncome(ti);
 
     /* Update new pill-table totals + final summary — "รวมตามจริง" แสดงยอดที่ใช้จริง (สูงกว่าระหว่างเหมา/ตามจริง) */
-    const sumExpRate = expSalaryGroup + exp3Rate + exp4 + exp5Rate + exp6Rate + exp7Rate + exp8Rate;
+    const sumExpRate = ex.rateTotal;
     const sumExpActual = expense;
     setIfExists('t2-sum-income', income);
     setIfExists('t2-sum-exp-rate', sumExpRate);
     setIfExists('t2-sum-exp-actual', sumExpActual);
     setIfExists('t2-final-net', Math.max(income - expense, 0));
 
-    // Cap each deduction at legal max
-    // เบี้ยประกันชีวิต: ใช้ healthIns ที่ capped แล้วเพื่อให้สรุป "100K ร่วมกัน" ถูกต้อง
-    const healthInsRaw = val('d-health-ins');
-    const healthIns = Math.min(healthInsRaw, 25000);
-    const lifeIns   = Math.min(val('d-life-ins'), Math.max(100000 - healthIns, 0));
-    const parentIns = Math.min(val('d-parent-ins'),  15000);
-    const annuity   = Math.min(val('d-annuity'),    200000);
-    const pvd       = Math.min(val('d-pvd'), income * 0.15, 500000);
-    const rmf       = Math.min(val('d-rmf'), income * 0.30, 500000);
-    const ssf       = Math.min(val('d-ssf'), income * 0.30, 200000);
-    const sso       = Math.min(val('d-sso'),           9000);
-    const personal  = Math.min(val('d-personal'),    60000);
-    const spouse    = Math.min(val('d-spouse'),      60000);   /* คู่สมรสไม่มีเงินได้ 60,000 (เดิม 30,000) */
-    const child     = val('d-child');
+    // ─── ค่าลดหย่อน / เงินได้สุทธิ / ภาษี — CALC.taxScope ───
+    // รวมค่าลดหย่อนที่กรอกไว้ในหน้าลดหย่อนภาษีแต่หน้านี้ไม่มีช่อง (เช่น ดอกเบี้ยบ้าน Thai ESG) เพื่อให้ทุกหน้าได้ภาษีตัวเดียวกัน
+    const savedTi = (getCurrentClient() || {}).taxInputs || {};
+    const sc = CALC.taxScope({ taxInputs: Object.assign({}, savedTi, ti) }, 'cur');
+    const extraDeduct = Math.max(sc.totalDeduct - CALC.taxScope({ taxInputs: ti }, 'cur').totalDeduct, 0);
 
-    /* บริจาค: cap = 10% ของรายได้สุทธิ "หลังหักลดหย่อนอื่น"
-       ตามกฎสรรพากร — ต่างจากสูตรเดิมที่ใช้ (income - expense) × 10% */
-    const otherDeductsBeforeDonate = personal + spouse + child + lifeIns + healthIns + parentIns + annuity + pvd + rmf + ssf + sso;
-    const donateCap = Math.max((income - expense - otherDeductsBeforeDonate) * 0.1, 0);
-    const donate    = Math.min(val('d-donate') * 2, donateCap);
+    // ค่าที่ตัดเพดานแล้วรายช่อง — ใช้กับคำแนะนำ "ยังลดหย่อนได้อีก" และตารางเปรียบเทียบด้านล่าง
+    const cap = k => CALC.TAX_CAPS[k](income);
+    const healthIns = Math.min(ti.healthIns, cap('healthIns'));
+    const lifeIns   = Math.min(ti.lifeIns, Math.max(100000 - healthIns, 0));
+    const parentIns = Math.min(ti.parentIns, cap('parentIns'));
+    const annuity   = Math.min(ti.annuity, cap('annuity'));
+    const pvd       = Math.min(ti.pvd, cap('pvd'));
+    const rmf       = Math.min(ti.rmf, cap('rmf'));
+    const ssf       = Math.min(ti.ssf, cap('ssf'));
+    const donate    = sc.eduDeduct;   /* เงินบริจาค 2 เท่า หลังตัดเพดาน 10% */
 
-    const totalDeduct = otherDeductsBeforeDonate + donate;
-    const netIncome   = Math.max(income - expense - totalDeduct, 0);
-    const { tax: progressiveTax, breakdown } = calcTax(netIncome);
-    /* วิธีเหมา 0.5% ของเงินได้ที่ไม่ใช่เงินเดือน (40(2)–(8)) เมื่อ ≥ 120,000 และภาษีวิธีนี้ > 5,000 → เสียตามวิธีที่สูงกว่า (= tax2.html/PDF) */
-    const otherInc = inc2 + inc3 + inc4 + inc5 + inc6 + inc7 + inc8 + incOther;
-    const flatTax  = otherInc >= 120000 ? otherInc * 0.005 : 0;
-    const tax      = flatTax > 5000 ? Math.max(progressiveTax, flatTax) : progressiveTax;
+    const totalDeduct = sc.totalDeduct + sc.eduDeduct;
+    const netIncome   = Math.max(sc.net, 0);
+    const { breakdown } = calcTax(netIncome);   /* ตารางขั้นภาษี (แสดงผล) */
+    const progressiveTax = sc.progressiveTax, flatTax = sc.flatTax, tax = sc.tax;
     const effRate = income > 0 ? (tax / income * 100).toFixed(2) : 0;
+    /* ค่าลดหย่อนจากหน้าลดหย่อนภาษีที่ไม่มีช่องในหน้านี้ — บอกให้รู้ว่ายอดรวมมาจากไหน */
+    const extraEl = document.getElementById('res-deduct-extra');
+    if (extraEl) { extraEl.textContent = extraDeduct > 0 ? `รวมค่าลดหย่อนอื่นจากหน้าลดหย่อนภาษี ${fmt(extraDeduct)}` : ''; extraEl.style.display = extraDeduct > 0 ? '' : 'none'; }
 
     document.getElementById('res-income').textContent  = fmt(income);
     document.getElementById('res-expense').textContent = '- ' + fmt(expense);
@@ -1197,7 +1154,7 @@
     // Render comparison panel (ปัจจุบัน vs ปรับปรุง)
     if (typeof renderComparison === 'function') {
       renderComparison({ income, expense, totalDeduct, netIncome, tax, effRate,
-                         lifeIns, healthIns, parentIns, annuity, pvd, rmf, ssf, donate });
+                         lifeIns, healthIns, parentIns, annuity, pvd, rmf, ssf, donate, ti, savedTi });
     }
 
     return { income, expense, totalDeduct, netIncome, tax, effRate, progressiveTax, flatTax };
@@ -1273,19 +1230,17 @@
       newRmfAdj     = newRmf * r;
       newAnnuityAdj = newAnnuity * r;
     }
-    // คำนวณ deduct ก่อนบริจาคเพื่อใช้ในเพดานบริจาค (10% ของรายได้สุทธิหลังหักลดหย่อนอื่น)
-    const baseDeductWithoutEditable = current.totalDeduct
-      - current.lifeIns - current.healthIns - current.annuity
-      - current.pvd - current.rmf - current.ssf - (current.donate || 0);
-    const otherDeductsBeforeDonate = baseDeductWithoutEditable
-      + newLife + newHealth + newAnnuityAdj + newPvdAdj + newRmfAdj + newSsf;
-    const newDonateCap = Math.max((income - current.expense - otherDeductsBeforeDonate) * 0.1, 0);
-    const newDonate = Math.min(newDonateRaw * 2, newDonateCap);
-
-    // คำนวณ totalDeduct ใหม่
-    const newTotalDeduct = otherDeductsBeforeDonate + newDonate;
-    const newNetIncome = Math.max(income - current.expense - newTotalDeduct, 0);
-    const { tax: newTax } = calcTax(newNetIncome);
+    /* ภาษีหลังปรับปรุง — CALC.taxScope ชุดเดียวกับตอนกด "นำไปใช้จริง" และหน้าลดหย่อนภาษี
+       (เดิมคิดเองอีกชุด → ตัวเลข "หลังปรับปรุง" กับตัวเลขหลังนำไปใช้จริงอาจไม่เท่ากัน) */
+    const newTi = Object.assign({}, current.savedTi || {}, current.ti || {},
+      { lifeIns: newLifeRaw, healthIns: newHealthRaw, annuity: newAnnuityRaw, pvd: newPvdRaw, rmf: newRmfRaw, ssf: newSsfRaw, donate: newDonateRaw, eduDonate: newDonateRaw });
+    const scNew = CALC.taxScope({ taxInputs: newTi }, 'cur');
+    const newDonate = scNew.eduDeduct;
+    const newTotalDeduct = scNew.totalDeduct + scNew.eduDeduct;
+    const newNetIncome = Math.max(scNew.net, 0);
+    const newTax = scNew.tax;
+    /* ยอดลดหย่อนอื่นก่อนบริจาค — ใช้กับคำแนะนำเพดานบริจาคด้านล่าง */
+    const otherDeductsBeforeDonate = scNew.totalDeduct;
     const newEffRate = income > 0 ? (newTax / income * 100).toFixed(2) : 0;
     const savings = Math.max(current.tax - newTax, 0);
 
@@ -1499,6 +1454,7 @@
       ssf:       v('d-ssf'),
       sso:       v('d-sso'),
       donate:    v('d-donate'),
+      eduDonate: v('d-donate'),   /* ช่องเดียวกับ "เงินบริจาค 2 เท่า" ในหน้าลดหย่อนภาษี — บันทึกทั้งสองชื่อให้สองหน้าตรงกัน */
       // Try-deduct comparison "+ เพิ่มเติม" inputs
       cmpAddLife:    v('cmp-add-life'),
       cmpAddHealth:  v('cmp-add-health'),
@@ -1886,7 +1842,8 @@
 
     // 5) Other
     document.getElementById('d-sso').value    = ti.sso    != null ? ti.sso    : 9000;
-    document.getElementById('d-donate').value = ti.donate != null ? ti.donate : 0;
+    /* เงินบริจาค 2 เท่า — ใช้ค่าจากหน้าลดหย่อนภาษี (eduDonate) ก่อน ไม่มีค่อยใช้ค่าที่หน้านี้เคยบันทึก (donate) */
+    document.getElementById('d-donate').value = (ti.eduDonate != null && ti.eduDonate !== '') ? ti.eduDonate : (ti.donate != null ? ti.donate : 0);
 
     // 6) Try-deduct comparison "+ เพิ่มเติม" inputs (restore so user doesn't lose values on navigate)
     const setCmp = (id, val) => {

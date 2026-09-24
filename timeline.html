@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -973,19 +973,8 @@ function fmt(n) {
   return '฿' + Math.round(n).toLocaleString('th-TH');
 }
 
-/* อายุแบบทศนิยมตามปฏิทินจริง (ปีเต็ม + เศษของปีนับจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า
-   floor() ตรงกับอายุปีเต็มในหน้าลูกค้า/หน้าแรกเสมอ (เดิมหาร 365.25 → ใกล้วันเกิดต่างกัน 1 ปี) · วันเกิดไม่ถูกต้อง → null */
-function ageNow(dob) {
-  if (!dob) return null;
-  const bd = new Date(dob);
-  if (isNaN(bd)) return null;
-  const now = new Date();
-  let years = now.getFullYear() - bd.getFullYear();
-  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
-  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
-  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
-  return years + (now - last) / (next - last);
-}
+/* อายุแบบทศนิยมตามปฏิทินจริง — สูตรกลาง calc.js (ทุกหน้าใช้ตัวเดียวกัน) · วันเกิดไม่ถูกต้อง → null */
+function ageNow(dob) { return CALC.ageYears(dob); }
 
 function escapeHtml(s) {
   return String(s == null ? '' : s)

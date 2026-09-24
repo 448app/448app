@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script>
     firebase.initializeApp({
@@ -462,96 +462,13 @@ function getCurrent() { return getClients().find(c => c.id === selectedClientId)
 
 let selectedClientId = null;
 
-const DEFAULT_PLAN = {
-  retireAge: 60, lifeExpectancy: 85, incomePctAfterRetire: 70,
-  annualSpend: 0, inflationRate: 3, expectedReturn: 5,
-  returnBefore: 4, returnAfter: 3,
-  preserveCapital: false, withdrawalRate: 4,
-  monthlyContribution: 0, note: '',
-};
-function getPlan(client) {
-  const s = (client && client.retirementPlan) || {};
-  const retireAge = s.retireAge != null ? s.retireAge :
-    (client && client.retirementAge ? Number(client.retirementAge) : DEFAULT_PLAN.retireAge);
-  const er = s.expectedReturn ?? DEFAULT_PLAN.expectedReturn;
-  return {
-    retireAge:            Number(retireAge),
-    lifeExpectancy:       Number(s.lifeExpectancy ?? DEFAULT_PLAN.lifeExpectancy),
-    incomePctAfterRetire: Number(s.incomePctAfterRetire ?? DEFAULT_PLAN.incomePctAfterRetire),
-    annualSpend:          Number(s.annualSpend ?? 0),
-    inflationRate:        Number(s.inflationRate ?? DEFAULT_PLAN.inflationRate),
-    expectedReturn:       Number(er),
-    returnBefore:         Number(s.returnBefore ?? er),
-    returnAfter:          Number(s.returnAfter ?? Math.max(er - 1, 1)),
-    preserveCapital:      !!s.preserveCapital,
-    withdrawalRate:       Number(s.withdrawalRate ?? DEFAULT_PLAN.withdrawalRate),
-    monthlyContribution:  Number(s.monthlyContribution ?? 0),
-  };
-}
-/* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า · วันเกิดไม่ถูกต้อง → null (เดิมได้ NaN แล้วผ่านการตรวจ) */
-function ageNow(dob) {
-  if (!dob) return null;
-  const bd = new Date(dob);
-  if (isNaN(bd)) return null;
-  const now = new Date();
-  let years = now.getFullYear() - bd.getFullYear();
-  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
-  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
-  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
-  return years + (now - last) / (next - last);
-}
-function annualContribOf(a) {
-  const v = Number(a.contribution || 0);
-  return a.contribFreq === 'monthly' ? v * 12 : v;
-}
-/* FV รายสินทรัพย์ (annuity-due — เงินสมทบเข้าต้นงวด)
-   คัดลอกสูตรจาก assets.html calcFV() แบบเป๊ะ ๆ เพื่อให้ "เตรียมไว้แล้ว"
-   ตรงกับคอลัมน์ "มูลค่าอนาคต" ในหน้าสินทรัพย์ทุกบาท */
-function calcFV(pv, rate, years, pmt, freq) {
-  pv = Number(pv) || 0;
-  rate = (Number(rate) || 0) / 100;
-  years = Number(years) || 0;
-  pmt = Number(pmt) || 0;
-  if (years <= 0) return pv;
-  if (freq === 'monthly' && pmt > 0) {
-    const r_m = rate / 12;
-    const n_m = years * 12;
-    const factor_m = Math.pow(1 + r_m, n_m);
-    if (r_m === 0) return pv + pmt * n_m;
-    /* ทบต้นรายเดือนทั้งเงินต้นและเงินออม (= assets.html) */
-    return pv * factor_m + pmt * (factor_m - 1) / r_m * (1 + r_m);
-  }
-  const factor = Math.pow(1 + rate, years);
-  if (rate === 0) return pv + pmt * years;
-  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
-}
-/* สินทรัพย์ที่ให้กระแสเงินสดหลังเกษียณ (ประกันบำนาญ/ค่าเช่า ที่กรอก "กระแสเงินสดรับ")
-   นับเป็น "รายได้หลังเกษียณ" ใน compute() อย่างเดียว ไม่นับมูลค่าเข้ากองทุนอีก
-   (เดิมนับทั้งสองทาง = นับซ้ำ) */
-function isIncomeAsset(a) { return Number(a.cashFlow || 0) > 0; }
-/* yearsToRetire = จำนวนปีถึงเกษียณ (ส่งมาจาก compute()) — ใช้โตทุกสินทรัพย์
-   ถ้าไม่ส่งมา (ผู้เรียกเก่า) ใช้ช่อง "ระยะเวลา" ของสินทรัพย์ตามเดิม */
-function getDerivedData(client, yearsToRetire) {
-  const annualIncome = Number(client.income) ||
-    (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
-  /* Include both retire-type assets AND assets that the user explicitly
-     tagged with appliedTo === 'retire' (via the apply-to button on the
-     assets page). ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน (v185) */
-  const retireAssets = (client.assets || []).filter(a =>
-    (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
-    && a.appliedTo !== 'education' && !isIncomeAsset(a));
-  const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  /* FV รายสินทรัพย์ = มูลค่าปัจจุบัน + เงินสมทบ (ออมเพิ่มต่อปี, annuity-due) โตด้วย return
-     ของสินทรัพย์นั้น "จนถึงวันเกษียณ" — สูตร calcFV() เดียวกับหน้าสินทรัพย์
-     (เดิมโตตามช่อง "ระยะเวลา" ของสินทรัพย์ → RMF ระยะเวลา 10 ปี หยุดโตก่อนเกษียณ 10 ปี
-      และสินทรัพย์ที่ตั้งระยะเวลายาวกว่าถูกโตเลยวันเกษียณ) */
-  const fvCurrentSavings = retireAssets.reduce((s, a) => {
-    const years = (yearsToRetire == null) ? a.term : yearsToRetire;
-    return s + calcFV(a.currentValue, a.expectedReturn, years, a.contribution, a.contribFreq || 'annual');
-  }, 0);
-  const currentMonthlyContrib = retireAssets.reduce((s,a) => s + annualContribOf(a), 0) / 12;
-  return { annualIncome, currentSavings, fvCurrentSavings, currentMonthlyContrib };
-}
+/* สูตรกลางทั้งหมดอยู่ใน calc.js (หน้านี้ / หน้าวางแผนเกษียณ / PDF / Simulator ใช้ชุดเดียวกัน) — ฟังก์ชันด้านล่างเป็นชื่อเดิมที่ส่งต่อไป */
+function getPlan(client) { return CALC.retirementPlan(client); }
+function ageNow(dob) { return CALC.ageYears(dob); }
+function annualContribOf(a) { return CALC.annualContrib(a); }
+function calcFV(pv, rate, years, pmt, freq) { return CALC.fv(pv, rate, years, pmt, freq); }
+function isIncomeAsset(a) { return CALC.isIncomeAsset(a); }
+function getDerivedData(client, yearsToRetire) { return CALC.retirementDerived(client, yearsToRetire); }
 
 /* ════════════════════════════════════════════
    FORMATTERS
@@ -573,120 +490,11 @@ function fmtPct(n) {
 /* ════════════════════════════════════════════
    CALCULATE — timeline values
 ═══════════════════════════════════════════ */
-function compute(client) {
-  const plan = getPlan(client);
-  const currentAge = ageNow(client.dob);
-  if (currentAge == null) return null;
-
-  /* ใช้อายุปีเต็ม (floor) ให้ "ระยะเวลาถึงเกษียณ" ตรงกับอายุที่แสดง + ตรงกับ sim
-     เช่น อายุ 45 (จาก 45.7), เกษียณ 60 → 15 ปี (ไม่ใช่ round(14.3)=14) */
-  const ageFloor = Math.floor(currentAge);
-  const yearsBefore = Math.max(plan.retireAge - ageFloor, 0);
-  const yearsAfter  = Math.max(plan.lifeExpectancy - plan.retireAge, 1);
-  /* โตสินทรัพย์ทุกตัวจนถึงวันเกษียณ (yearsBefore) — ดูหมายเหตุใน getDerivedData */
-  const derived = getDerivedData(client, yearsBefore);
-
-  const annualSpendNow = plan.annualSpend > 0
-    ? plan.annualSpend
-    : derived.annualIncome * (plan.incomePctAfterRetire / 100);
-
-  const annualSpendAtRetire = annualSpendNow * Math.pow(1 + plan.inflationRate/100, yearsBefore);
-
-  /* ════════════════════════════════════════════
-     ANNUAL INCOME AFTER RETIREMENT — กระแสเงินสดรับ/ปี หลังเกษียณ
-     ดึงจาก assets ที่:
-     - type ∈ ['annuity', 'realestate']  (มี cashFlow field โดยธรรมชาติ)
-     - หรือ appliedTo === 'retire'        (user tag แบบ manual)
-     cashFlow ใน assets เก็บเป็น "บาท/เดือน" → × 12 ได้รายปี
-  ═══════════════════════════════════════════ */
-  const incomeAssets = (client.assets || []).filter(a =>
-    (['annuity','realestate'].includes(a.type) || a.appliedTo === 'retire')
-    && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
-  const annualIncomeAfter = incomeAssets.reduce((s,a) => s + Number(a.cashFlow||0), 0) * 12;
-  /* กองทุนต้องรองรับเฉพาะส่วนที่รายได้หลังเกษียณ (บำนาญ/ค่าเช่า) ยังไม่ครอบคลุม
-     (เดิมคิดกองทุนจากค่าใช้จ่ายเต็ม แล้วหักรายได้เฉพาะตอนจำลองการถอน → "ต้องเตรียมเพิ่ม" สูงเกินจริง) */
-  const netSpendAtRetire = Math.max(annualSpendAtRetire - annualIncomeAfter, 0);
-  const cashFlowGap = netSpendAtRetire;
-
-  /* Target corpus at retirement (จากค่าใช้จ่ายสุทธิหลังหักรายได้หลังเกษียณ) */
-  let targetCorpus;
-  if (plan.preserveCapital && plan.withdrawalRate > 0) {
-    targetCorpus = netSpendAtRetire / (plan.withdrawalRate / 100);
-  } else {
-    const realRate = (1 + plan.returnAfter/100) / (1 + plan.inflationRate/100) - 1;
-    targetCorpus = Math.abs(realRate) < 0.0001
-      ? netSpendAtRetire * yearsAfter
-      : netSpendAtRetire * (1 - Math.pow(1 + realRate, -yearsAfter)) / realRate;
-  }
-
-  /* FV ของเงินที่เตรียมไว้ตอนเกษียณ — รวมมูลค่าปัจจุบัน + เงินสมทบของแต่ละ
-     สินทรัพย์แล้วใน derived.fvCurrentSavings (per-asset, ตรงกับหน้าสินทรัพย์)
-     v183: ยกเลิกการบวก fvContrib จาก plan.monthlyContribution แยกต่างหาก
-     (เดิมต้องกดปุ่มดึงค่า + โตด้วย plan rate) เพื่อไม่ให้นับเงินสมทบซ้ำ */
-  const rB = plan.returnBefore / 100;
-  const fvTotal = derived.fvCurrentSavings;
-  const gap = targetCorpus - fvTotal;
-
-  /* เก็บเงินเพิ่ม/ปี เพื่อปิด gap */
-  let reqAnnual = 0;
-  if (gap > 0 && yearsBefore > 0) {
-    if (Math.abs(rB) < 0.0001) {
-      reqAnnual = gap / yearsBefore;
-    } else {
-      const fvFactor = (Math.pow(1 + rB, yearsBefore) - 1) / rB;
-      reqAnnual = gap / fvFactor;
-    }
-  }
-
-  /* เงินที่เหลือตอนสิ้นสุดอายุขัย
-     ─────────────────────────────────────────────────────
-     แยก 2 mode ตาม preserveCapital (กฎ 4%):
-     • preserveCapital ON  → ใช้แค่ดอกผล เงินต้นคงเดิม → remaining = targetCorpus
-       (สมมุติว่า user ทำตามแผน คือเก็บเงินให้ถึง targetCorpus ก่อนเกษียณ)
-     • preserveCapital OFF → simulate การถอนใช้จริงปีต่อปี — ติดลบได้
-       (= กองทุนหมดก่อน lifeExpectancy)
-     เดิม simulation ทำงานเหมือนกัน 2 mode → ทำให้ remaining เป็นค่าลบหนัก
-     แม้ user เปิด preserveCapital (BUG — แก้ใน v165) */
-  const rA = plan.returnAfter / 100;
-  let remaining;
-  if (plan.preserveCapital && plan.withdrawalRate > 0) {
-    /* โหมดคงเงินต้น: targetCorpus = annualSpend / withdrawalRate (กฎ 4%)
-       ถ้าทำตามแผน → เงินต้นคงเดิม → remaining = targetCorpus */
-    remaining = targetCorpus;
-  } else {
-    /* โหมดถอนใช้เงินต้น: simulate การถอนใช้จริง */
-    let balance = fvTotal;
-    for (let y = 0; y < yearsAfter; y++) {
-      const yearSpend  = annualSpendAtRetire * Math.pow(1 + plan.inflationRate/100, y);
-      const yearIncome = annualIncomeAfter;   /* คงที่ — pension/rental ไม่ปรับ inflation */
-      const draw = yearSpend - yearIncome;
-      /* เงินโตทั้งปีก่อน แล้วค่อยถอนตอนสิ้นปี — ให้ตรงกับสูตรกองทุนเป้า (PV ของเงินถอนปลายปี)
-         เดิมถอนต้นปีแล้วค่อยโต → แผนที่เก็บได้พอดีเป้ายังขึ้นติดลบ · ไม่ clamp — ติดลบได้ */
-      balance = balance * (1 + rA) - draw;
-    }
-    remaining = balance;
-  }
-
-  const completionPct = targetCorpus > 0
-    ? Math.max(0, Math.min(100, (fvTotal / targetCorpus) * 100))
-    : 0;
-
-  return {
-    currentAge: Math.floor(currentAge),
-    retireAge: plan.retireAge,
-    lifeExpectancy: plan.lifeExpectancy,
-    yearsBefore: Math.round(yearsBefore),
-    yearsAfter: Math.round(yearsAfter),
-    annualSpendNow, annualSpendAtRetire,
-    targetCorpus, fvTotal, gap, reqAnnual, remaining,
-    annualIncomeAfter, cashFlowGap,
-    returnBefore: plan.returnBefore,
-    returnAfter: plan.returnAfter,
-    inflationRate: plan.inflationRate,
-    withdrawalRate: plan.preserveCapital ? plan.withdrawalRate : 0,
-    completionPct,
-  };
-}
+/* สูตรกลาง CALC.retirement (calc.js) — PDF ใช้ตัวเดียวกัน · ไม่มีวันเกิด → null
+   คืน { currentAge, retireAge, lifeExpectancy, yearsBefore, yearsAfter, annualSpendNow, annualSpendAtRetire, netSpendAtRetire,
+         targetCorpus, fvTotal, gap, reqAnnual, reqMonthly, remaining, annualIncomeAfter, cashFlowGap,
+         returnBefore, returnAfter, inflationRate, withdrawalRate, completionPct, currentSavings, plan, derived } */
+function compute(client) { return CALC.retirement(client); }
 
 /* ════════════════════════════════════════════
    RENDER

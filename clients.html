@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script>
     firebase.initializeApp({
@@ -1075,14 +1075,9 @@
     const initial       = (client.firstName||'?').charAt(0).toUpperCase();
     const familyTag     = family ? `🏠 ${family.name} · ` : '';
 
-    // Calc age from dob
-    let ageStr = '';
-    if (client.dob) {
-      const today = new Date(); const bd = new Date(client.dob);
-      let age = today.getFullYear() - bd.getFullYear();
-      if (today.getMonth() < bd.getMonth() || (today.getMonth() === bd.getMonth() && today.getDate() < bd.getDate())) age--;
-      ageStr = age + ' ปี';
-    }
+    // อายุปีเต็มจากวันเกิด — สูตรกลาง calc.js (ทุกหน้าใช้ตัวเดียวกัน)
+    const ageInt = CALC.ageInt(client.dob);
+    const ageStr = ageInt == null ? '' : ageInt + ' ปี';
 
     const nicknamePart = client.nickname ? ` (${client.nickname})` : '';
     /* Avatar — ใช้ <img> tag (consistent กับ list small avatar)

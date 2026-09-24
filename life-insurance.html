@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
   <script>
@@ -753,203 +753,14 @@ function getCurrentLiquidAssets() {
 }
 
 /* ════════════════════════════════════════════
-   EDUCATION COST — replicate จาก education.html เพื่อให้ DIME E ตรงกัน
-   ค่าจาก "💸 ค่าใช้จ่ายรวม (FV)" ในหน้าการศึกษาบุตร = totalFuture
+   EDUCATION COST — ใช้สูตรกลาง calc.js (ชุดเดียวกับหน้าการศึกษาบุตร / PDF / สรุปกรมธรรม์)
+   เดิมหน้านี้มีตารางค่าเทอมของตัวเองอีกชุด → ยอด "บุตร" ไม่เท่าหน้าการศึกษาบุตร
 ═══════════════════════════════════════════ */
-const EDU_STAGES = [
-  { key:'kinder',   startAge:3,  years:3 },
-  { key:'primary',  startAge:6,  years:6 },
-  { key:'mid',      startAge:12, years:3 },
-  { key:'high',     startAge:15, years:3 },
-  { key:'bachelor', startAge:18, years:4 },
-  { key:'master',   startAge:22, years:2, optional:'master' },
-  { key:'phd',      startAge:24, years:4, optional:'phd' },
-];
-const EDU_COST_TABLE = {
-  kinder:   [ 30000,  80000, 250000],
-  primary:  [ 25000, 100000, 350000],
-  mid:      [ 30000, 120000, 400000],
-  high:     [ 35000, 150000, 450000],
-  bachelor: [ 60000, 200000, 800000],
-  master:   [120000, 300000,1500000],
-  phd:      [200000, 500000,2500000],
-};
-const EDU_LEVEL_IDX = { economy:0, medium:1, premium:2 };
-const EDU_DEFAULT_INFLATION = 5;
+/* อายุแบบทศนิยม (สูตรเดียวกันทุกหน้า) · วันเกิดผิดรูปแบบ → null */
+function _ageNow(dobStr) { const a = CALC.ageYears(dobStr); return a == null ? null : Math.max(a, 0); }
 
-/* ════════════════════════════════════════════
-   COST TABLE — sync กับ education.html (9 รายการ × 3 ระดับ)
-   ใช้สำหรับ getChildTotalCost() = education + rearing (ตรงกับ "รวม" ในหน้า การศึกษาบุตร)
-═══════════════════════════════════════════ */
-const EDU_COST_KEYS = [
-  { key:'age_0_3',          ageMin:0,  ageMax:3,  category:'living' },
-  { key:'babysitter_0_3',   ageMin:0,  ageMax:3,  category:'care'   },
-  { key:'living_0_3',       ageMin:0,  ageMax:3,  category:'living' },
-  { key:'tuition_kp',       ageMin:3,  ageMax:12, category:'tuition'},
-  { key:'living_kp',        ageMin:3,  ageMax:12, category:'living' },
-  { key:'tuition_mid',      ageMin:12, ageMax:18, category:'tuition'},
-  { key:'living_mid',       ageMin:12, ageMax:18, category:'living' },
-  { key:'tuition_bachelor', ageMin:18, ageMax:22, category:'tuition'},
-  { key:'living_bachelor',  ageMin:18, ageMax:22, category:'living' },
-];
-const EDU_DEFAULT_COST_TABLE = {
-  age_0_3:           [ 40000,  75000,  110000],
-  babysitter_0_3:    [ 50000, 100000,  300000],
-  living_0_3:        [ 55000, 150000,  650000],
-  tuition_kp:        [ 17000, 175000,  800000],
-  living_kp:         [ 55000, 150000,  650000],
-  tuition_mid:       [ 19500, 200000, 1300000],
-  living_mid:        [ 55000, 150000,  650000],
-  tuition_bachelor:  [ 35000, 300000, 3000000],
-  living_bachelor:   [ 55000, 150000,  650000],
-};
-const REARING_END_AGE = 21;
-
-/* อ่าน cost table — ใช้ client.eduCostTable ถ้ามี (sync กับ modal "ตั้งค่ารายละเอียด" ในหน้า education.html) */
-function _getEduCostTable() {
-  const c = getCurrent();
-  const custom = (c && c.eduCostTable) || {};
-  const out = {};
-  EDU_COST_KEYS.forEach(k => {
-    out[k.key] = custom[k.key] || EDU_DEFAULT_COST_TABLE[k.key].slice();
-  });
-  return out;
-}
-
-/* รวมค่าใช้จ่าย/ปี ที่อายุ a ระดับ level — filter category */
-function _sumYearlyCostByCategory(age, level, categories) {
-  const costTable = _getEduCostTable();
-  const lvIdx = EDU_LEVEL_IDX[level] != null ? EDU_LEVEL_IDX[level] : 1;
-  let total = 0;
-  for (const k of EDU_COST_KEYS) {
-    if (categories.indexOf(k.category) >= 0 && age >= k.ageMin && age < k.ageMax) {
-      const row = costTable[k.key] || EDU_DEFAULT_COST_TABLE[k.key] || [0,0,0];
-      total += Number(row[lvIdx] || 0);
-    }
-  }
-  return total;
-}
-function _maxCostAge() {
-  return EDU_COST_KEYS.reduce((m, k) => Math.max(m, k.ageMax), 0);
-}
-
-/* ตรงกับ ageNow() ใน education.html — คืนค่า age เป็นทศนิยม (5.4 ปี ไม่ใช่ 5)
-   ★ Cache ผลลัพธ์ตาม dob ต่อ session — กันค่ากระเพื่อมทุก render (Date.now เปลี่ยน
-   ทุก ms → age เปลี่ยนเล็กน้อย → I/E ใน DIME ขยับหลักสิบบาท ดู "มั่ว") */
-const _ageCache = new Map();
-function _ageNow(dobStr) {
-  if (!dobStr) return null;
-  if (_ageCache.has(dobStr)) return _ageCache.get(dobStr);
-  const bd = new Date(dobStr);
-  if (isNaN(bd)) { _ageCache.set(dobStr, null); return null; }
-  /* อายุตามปฏิทินจริง: ปีเต็ม + เศษของปีนับจากวันเกิดล่าสุด — floor() ตรงกับอายุปีเต็มทุกหน้า
-     (เดิมหาร 365.25 → ใกล้วันเกิดต่างจากหน้าอื่น 1 ปี) */
-  const today = new Date();
-  let years = today.getFullYear() - bd.getFullYear();
-  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
-  if (last > today) { years--; last.setFullYear(bd.getFullYear() + years); }
-  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
-  const age = years + (today - last) / (next - last);
-  const stable = age < 0 ? 0 : age;
-  _ageCache.set(dobStr, stable);
-  return stable;
-}
-
-/* คำนวณ totalFuture (FV) ของลูก 1 คน — ตรงกับ computeChildPlan ใน education.html */
-function getChildEducationFuture(child) {
-  const age = _ageNow(child.dob || child.birthdate);
-  const level = child.level || 'medium';
-  const lvIdx = EDU_LEVEL_IDX[level] != null ? EDU_LEVEL_IDX[level] : 1;
-
-  /* fallback ถ้าไม่มี dob — ใช้ค่าเฉลี่ยรวมตาม level */
-  if (age == null) return [800000, 1500000, 3000000][lvIdx] || 1500000;
-
-  const includeMaster = !!child.includeMaster;
-  const includePhd    = !!child.includePhd;
-  const customCosts   = child.customCosts || {};
-  const inflationPct  = child.inflationRate != null ? Number(child.inflationRate) : EDU_DEFAULT_INFLATION;
-  const INFLATION     = inflationPct / 100;
-
-  let totalFuture = 0;
-  EDU_STAGES.forEach(s => {
-    if (s.optional === 'master' && !includeMaster) return;
-    if (s.optional === 'phd'    && !includePhd)    return;
-    const custKey = `${s.key}_${level}`;
-    const baseAnnualCost = customCosts[custKey] != null
-      ? Number(customCosts[custKey])
-      : EDU_COST_TABLE[s.key][lvIdx];
-    const startAge = s.startAge;
-    const endAge   = startAge + s.years;
-    let yearsLeft = 0;
-    if (age >= endAge)        yearsLeft = 0;
-    else if (age < startAge)  yearsLeft = s.years;
-    else                       yearsLeft = endAge - age;
-    yearsLeft = Math.max(yearsLeft, 0);
-    if (yearsLeft > 0) {
-      const yearOfStart = Math.max(startAge - age, 0);
-      for (let i = 0; i < Math.ceil(yearsLeft); i++) {
-        const yearFromNow = yearOfStart + i;
-        const partialYear = Math.min(1, yearsLeft - i);
-        totalFuture += baseAnnualCost * Math.pow(1 + INFLATION, yearFromNow) * partialYear;
-      }
-    }
-  });
-  return totalFuture;
-}
-
-/* รวม education + rearing — ตรงกับ "รวม" ในหน้า การศึกษาบุตร (grandTotal)
-   = computeChildPlan().totalFuture + computeRearingCost() ใน education.html
-   ใช้สำหรับ ปุ่ม 📊 "ดึงยอดรวมการศึกษาบุตร" ที่ row "บุตร" */
-function getChildTotalCost(child) {
-  const age = _ageNow(child.dob || child.birthdate);
-  const level = child.level || 'medium';
-  const lvIdx = EDU_LEVEL_IDX[level] != null ? EDU_LEVEL_IDX[level] : 1;
-  /* fallback ถ้าไม่มี dob */
-  if (age == null) return [800000, 1500000, 3000000][lvIdx] || 1500000;
-
-  const inflationPct = child.inflationRate != null ? Number(child.inflationRate) : EDU_DEFAULT_INFLATION;
-  const INFL = inflationPct / 100;
-
-  /* eduCost (category=tuition) — วิ่งจากอายุปัจจุบัน → _maxCostAge() (22) */
-  let eduTotal = 0;
-  const maxAge = _maxCostAge();
-  for (let a = Math.floor(age); a < maxAge; a++) {
-    if (a < age) continue;
-    const yearCost = _sumYearlyCostByCategory(a, level, ['tuition']);
-    const yearOffset = a - age;
-    if (yearCost > 0 && yearOffset >= 0) {
-      eduTotal += yearCost * Math.pow(1 + INFL, yearOffset);
-    }
-  }
-
-  /* ป.โท/ป.เอก ที่ติ๊กไว้ในหน้าการศึกษาบุตร — ตารางค่าเทอมมหาวิทยาลัยชุดเดียวกับหน้าการศึกษา/ค่าเล่าเรียน/PDF */
-  const eduCustom = ((getCurrent() || {}).eduCostTable) || {};
-  [ { on: child.masterLevel !== undefined ? !!child.masterLevel : !!child.includeMaster, lvl: child.masterLevel || level, key:'tuition_master',   start:22, years:2, def:[50000,500000,4750000] },
-    { on: child.doctoralLevel !== undefined ? !!child.doctoralLevel : !!child.includePhd, lvl: child.doctoralLevel || level, key:'tuition_doctoral', start:24, years:3, def:[71000,600000,5000000] } ]
-  .forEach(u => {
-    if (!u.on) return;
-    const li = EDU_LEVEL_IDX[u.lvl] != null ? EDU_LEVEL_IDX[u.lvl] : 1;
-    const base = Number((eduCustom[u.key] || u.def)[li] || 0);
-    for (let y = 0; y < u.years; y++) {
-      const a = u.start + y;
-      if (a < age) continue;
-      eduTotal += base * Math.pow(1 + INFL, a - age);
-    }
-  });
-
-  /* rearCost (category=living + care) — วิ่งถึง REARING_END_AGE (21) */
-  let rearTotal = 0;
-  for (let a = Math.floor(age); a < REARING_END_AGE; a++) {
-    if (a < age) continue;
-    const yearCost = _sumYearlyCostByCategory(a, level, ['living', 'care']);
-    const yearOffset = a - age;
-    if (yearCost > 0 && yearOffset >= 0) {
-      rearTotal += yearCost * Math.pow(1 + INFL, yearOffset);
-    }
-  }
-
-  return eduTotal + rearTotal;
-}
+/* รวมการศึกษา + เลี้ยงดู = "รวม" ในหน้าการศึกษาบุตร — ใช้กับปุ่ม 📊 "ดึงยอดรวมการศึกษาบุตร" ที่แถว "บุตร" */
+function getChildTotalCost(child) { return CALC.childTotalCost(child, getCurrent()); }
 
 /* (ตัดโหมด DIME ออก — UI บังคับวิธี "หนี้สิน + ความรับผิดชอบ" อยู่แล้ว แต่โค้ดเดิมยังคำนวณ DIME ทุกครั้งที่ render) */
 

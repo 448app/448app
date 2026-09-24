@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
   <script src="info-popup.js"></script>
@@ -361,51 +361,53 @@ let selectedClientId = null;
    cap: ฟังก์ชันคำนวณเพดาน (ส่งกลับ {amount, text})
    editable: ให้แก้ค่าได้ตรงๆ (default true)
 ═══════════════════════════════════════════ */
+/* เพดานตัวเลขอ่านจาก CALC.TAX_CAPS (calc.js) — ที่นี่เก็บเฉพาะชื่อ/คำอธิบาย/ข้อความในช่องว่าง (แก้เพดานให้แก้ที่ calc.js) */
+const _capOf = (key, text) => income => ({ amount: CALC.TAX_CAPS[key](income), text });
 const DEDUCTION_ROWS = [
   { key:'personal',   name:'ผู้มีเงินได้',                   info:'ส่วนบุคคล — 60,000 บาท (default)',
-    hint:'60,000', cap:()=>({amount:60000, text:'60,000'}), defaultVal:60000 },
+    hint:'60,000', cap:_capOf('personal', '60,000'), defaultVal:60000 },
   { key:'spouse',     name:'คู่สมรส',                       info:'คู่สมรสไม่มีเงินได้ — 60,000 บาท',
-    hint:'1 × 60,000', cap:()=>({amount:60000, text:'1 × 60,000'}) },
+    hint:'1 × 60,000', cap:_capOf('spouse', '1 × 60,000') },
   { key:'child',      name:'บุตร',                          info:'คนละ 30,000 (คนที่ 2 ขึ้นไป เกิดหลัง 2561 = 60,000)',
-    hint:'คนละ 30-60,000', cap:()=>({amount:Infinity, text:'คนละ 30-60,000'}) },
+    hint:'คนละ 30-60,000', cap:_capOf('child', 'คนละ 30-60,000') },
   { key:'parent',     name:'บิดามารดา',                     info:'4 × 30,000 บาท (พ่อแม่ + พ่อแม่คู่สมรส อายุ ≥60)',
-    hint:'4 × 30,000', cap:()=>({amount:120000, text:'4 × 30,000'}) },
+    hint:'4 × 30,000', cap:_capOf('parent', '4 × 30,000') },
   { key:'disabled',   name:'เลี้ยงดูผู้พิการหรือทุพพลภาพ', info:'คนละ 60,000 บาท',
-    hint:'N × 60,000', cap:()=>({amount:Infinity, text:'N × 60,000'}) },
+    hint:'N × 60,000', cap:_capOf('disabled', 'N × 60,000') },
   { key:'lifeIns',    name:'เบี้ยประกันชีวิต - ตนเอง',      info:'ไม่เกิน 100,000 บาท (รวมประกันสุขภาพ ≤ 100,000)',
-    hint:'ไม่เกิน 100,000', cap:()=>({amount:100000, text:'ไม่เกิน 100,000'}) },
+    hint:'ไม่เกิน 100,000', cap:_capOf('lifeIns', 'ไม่เกิน 100,000') },
   { key:'lifeInsSpouse', name:'เบี้ยประกันชีวิต - คู่สมรส', info:'ไม่เกิน 10,000 บาท (คู่สมรสไม่มีเงินได้)',
-    hint:'ไม่เกิน 10,000', cap:()=>({amount:10000, text:'ไม่เกิน 10,000'}) },
+    hint:'ไม่เกิน 10,000', cap:_capOf('lifeInsSpouse', 'ไม่เกิน 10,000') },
   { key:'healthIns',  name:'เบี้ยประกันสุขภาพตนเอง',        info:'ไม่เกิน 25,000 บาท (รวมประกันชีวิต ≤ 100,000)',
-    hint:'ไม่เกิน 25,000', cap:()=>({amount:25000, text:'ไม่เกิน 25,000'}) },
+    hint:'ไม่เกิน 25,000', cap:_capOf('healthIns', 'ไม่เกิน 25,000') },
   { key:'parentIns',  name:'เบี้ยประกันสุขภาพบิดามารดา',    info:'ไม่เกิน 15,000 บาท',
-    hint:'ไม่เกิน 15,000', cap:()=>({amount:15000, text:'ไม่เกิน 15,000'}) },
+    hint:'ไม่เกิน 15,000', cap:_capOf('parentIns', 'ไม่เกิน 15,000') },
   { key:'mortgage',   name:'ดอกเบี้ยซื้อที่อยู่อาศัย',      info:'ไม่เกิน 100,000 บาท',
-    hint:'ไม่เกิน 100,000', cap:()=>({amount:100000, text:'ไม่เกิน 100,000'}) },
+    hint:'ไม่เกิน 100,000', cap:_capOf('mortgage', 'ไม่เกิน 100,000') },
   { key:'thaiesg',    name:'กองทุนรวมไทยเพื่อความยั่งยืน (Thai ESG)', info:'ไม่เกิน 30% ของเงินได้ สูงสุด 300,000',
-    hint:'ไม่เกิน 30% ของเงินได้', cap:income=>({amount:Math.min(income*0.3, 300000), text:'ไม่เกิน 30% ของเงิน...'}) },
+    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('thaiesg', 'ไม่เกิน 30% ของเงิน...') },
   { key:'thaiesgx',   name:'กองทุนรวมไทยเพื่อความยั่งยืนแบบพิเศษ (Thai ESGX)', info:'สูงสุด 500,000 บาท',
-    hint:'สูงสุด 500,000', cap:()=>({amount:500000, text:'สูงสุด...'}) },
+    hint:'สูงสุด 500,000', cap:_capOf('thaiesgx', 'สูงสุด...') },
   { key:'ssf',        name:'กองทุนรวมเพื่อการออม (SSF)',    info:'ไม่เกิน 30% ของเงินได้ สูงสุด 200,000',
-    hint:'ไม่เกิน 30% ของเงินได้', cap:income=>({amount:Math.min(income*0.3, 200000), text:'ไม่เกิน 30% ของเงิน...'}) },
+    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('ssf', 'ไม่เกิน 30% ของเงิน...') },
   { key:'rmf',        name:'ค่าซื้อกองทุนรวมเพื่อการเลี้ยงชีพ (RMF)', info:'ไม่เกิน 30% ของเงินได้ สูงสุด 500,000',
-    hint:'ไม่เกิน 30% ของเงินได้', cap:income=>({amount:Math.min(income*0.3, 500000), text:'ไม่เกิน 30% ของเงิน...'}) },
+    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('rmf', 'ไม่เกิน 30% ของเงิน...') },
   { key:'pvd',        name:'กองทุนสำรองเลี้ยงชีพ (PVD) /กองทุนสงเคราะห์ครูโรงเรียนเอกชน', info:'ไม่เกิน 15% ของเงินได้ สูงสุด 500,000',
-    hint:'ไม่เกิน 15% ของเงินได้', cap:income=>({amount:Math.min(income*0.15, 500000), text:'ไม่เกิน 15% ของเงินได้'}) },
+    hint:'ไม่เกิน 15% ของเงินได้', cap:_capOf('pvd', 'ไม่เกิน 15% ของเงินได้') },
   { key:'gpf',        name:'กบข.',                          info:'ไม่เกิน 30% ของเงินได้ สูงสุด 500,000',
-    hint:'ไม่เกิน 30% ของเงินได้', cap:income=>({amount:Math.min(income*0.3, 500000), text:'ไม่เกิน 30% ของเงิน...'}) },
+    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('gpf', 'ไม่เกิน 30% ของเงิน...') },
   { key:'nsf',        name:'กองทุนการออมแห่งชาติ (กอช.)',  info:'ไม่เกิน 30,000 บาท',
-    hint:'ไม่เกิน 30,000', cap:()=>({amount:30000, text:'ไม่เกิน 30,000'}) },
+    hint:'ไม่เกิน 30,000', cap:_capOf('nsf', 'ไม่เกิน 30,000') },
   { key:'annuity',    name:'เบี้ยประกันชีวิตแบบบำนาญ',      info:'ไม่เกิน 15% ของเงินได้ สูงสุด 200,000',
-    hint:'ไม่เกิน 15% ของเงินได้', cap:income=>({amount:Math.min(income*0.15, 200000), text:'ไม่เกิน 15% ของเงินได้'}) },
+    hint:'ไม่เกิน 15% ของเงินได้', cap:_capOf('annuity', 'ไม่เกิน 15% ของเงินได้') },
   { key:'sso',        name:'เงินประกันสังคม',               info:'ไม่เกิน 9,000 บาท',
-    hint:'ไม่เกิน 9,000', cap:()=>({amount:9000, text:'ไม่เกิน 9,000'}), defaultVal:9000 },
+    hint:'ไม่เกิน 9,000', cap:_capOf('sso', 'ไม่เกิน 9,000'), defaultVal:9000 },
   { key:'maternity',  name:'ค่าฝากครรภ์และคลอดบุตร',       info:'ไม่เกิน 60,000 บาท ต่อครรภ์',
-    hint:'ไม่เกิน 60,000', cap:()=>({amount:60000, text:'ไม่เกิน 60,000'}) },
+    hint:'ไม่เกิน 60,000', cap:_capOf('maternity', 'ไม่เกิน 60,000') },
   { key:'politicalDonate', name:'เงินบริจาคพรรคการเมือง',   info:'ไม่เกิน 10,000 บาท',
-    hint:'ไม่เกิน 10,000', cap:()=>({amount:10000, text:'ไม่เกิน 10,000'}) },
+    hint:'ไม่เกิน 10,000', cap:_capOf('politicalDonate', 'ไม่เกิน 10,000') },
   { key:'debitFee',   name:'ค่าธรรมเนียมจากการรับชำระเงินด้วยบัตรเดบิต', info:'ตามจ่ายจริง',
-    hint:'', cap:()=>({amount:Infinity, text:''}) },
+    hint:'', cap:_capOf('debitFee', '') },
 ];
 
 const BRACKETS = [
@@ -569,106 +571,15 @@ function calcBracketBreakdown(netIncome) {
 /* ════════════════════════════════════════════
    COMPUTE — scope: 'cur' or 'imp'
 ═══════════════════════════════════════════ */
-function getValue(ti, scope, key, defaultVal) {
-  const obj = (scope === 'imp') ? (ti.improve || {}) : ti;
-  let v = obj[key];
-  /* คอลัมน์ "ปรับปรุง" ที่ยังไม่ได้แก้ → ใช้ค่าปัจจุบันของแถวนั้น (เดิมเริ่มที่ 0 ทุกแถว → ภาษีหลังปรับปรุงสูงกว่าปัจจุบัน) */
-  if (scope === 'imp' && (v == null || v === '')) v = ti[key];
-  if (v == null || v === '') return defaultVal != null ? defaultVal : 0;
-  return Number(v) || 0;
-}
+/* ค่าช่อง / เงินได้รวม — สูตรกลาง calc.js */
+function getValue(ti, scope, key, defaultVal) { return CALC.taxValue(ti, scope, key, defaultVal); }
+function getAnnualIncome(c) { return c ? CALC.taxIncome(c.taxInputs || {}) : 0; }
 
-function getAnnualIncome(c) {
-  if (!c) return 0;
-  /* รวมจาก taxInputs (40(1)-(8)) */
-  const ti = c.taxInputs || {};
-  return Number(ti.salary||0) + Number(ti.bonus||0) + Number(ti.other||0)
-       + Number(ti.inc402||0) + Number(ti.inc403||0) + Number(ti.inc404||0)
-       + Number(ti.inc405||0) + Number(ti.inc406||0) + Number(ti.inc407||0)
-       + Number(ti.inc408||0);
-}
-
-function computeScope(client, scope) {
-  const ti = client.taxInputs || {};
-  const annualIncome = getAnnualIncome(client);
-  let total = 0;
-  DEDUCTION_ROWS.forEach(row => {
-    const cap = row.cap(annualIncome);
-    const v = getValue(ti, scope, row.key, row.defaultVal);
-    /* Special: lifeIns + healthIns share 100K combined cap */
-    let capped = isFinite(cap.amount) ? Math.min(v, cap.amount) : v;
-    total += capped;
-  });
-  /* 100K shared cap for lifeIns + healthIns */
-  const lifeIns = Math.min(getValue(ti, scope, 'lifeIns', 0), 100000);
-  const healthIns = Math.min(getValue(ti, scope, 'healthIns', 0), 25000);
-  if (lifeIns + healthIns > 100000) {
-    total -= (lifeIns + healthIns - 100000);
-  }
-  /* 500K รวมกลุ่มออมเพื่อเกษียณ: SSF + RMF + PVD + กบข. + กอช. + ประกันบำนาญ (กฎกรมสรรพากร)
-     แผนภาษีใน PDF (plan_summary.html → _psTaxScope) ใช้เพดานเดียวกัน */
-  const retGroup = ['ssf','rmf','pvd','gpf','nsf','annuity'].reduce((s, k) => {
-    const row = DEDUCTION_ROWS.find(r => r.key === k);
-    return s + Math.min(getValue(ti, scope, k, 0), row.cap(annualIncome).amount);
-  }, 0);
-  const retExcess = Math.max(retGroup - 500000, 0);
-  total -= retExcess;
-
-  /* คอลัมน์ปรับปรุงที่ยังไม่แก้ → ใช้ค่าปัจจุบัน (เหมือน getValue) */
-  const impEdu = (ti.improve||{}).eduDonate;
-  const eduDonate = scope === 'imp'
-    ? Number((impEdu == null || impEdu === '') ? (ti.eduDonate || 0) : impEdu)
-    : Number(ti.eduDonate || 0);
-
-  /* รายได้หลังหักค่าใช้จ่ายและค่าลดหย่อน
-     - ค่าใช้จ่าย: ใช้ลอจิกย่อจาก tax.html (40(1)+(2)+(3) cap 100K; 40(5)-(8) ตาม % rate) */
-  const expense = computeExpense(client);
-  const afterExp = Math.max(annualIncome - expense, 0);
-  const afterDeduct = afterExp - total;
-  /* เงินบริจาคเพื่อการศึกษา ฯลฯ — หักได้ 2 เท่า ไม่เกิน 10% ของรายได้หลังหักค่าใช้จ่ายและค่าลดหย่อน */
-  const donateCap = Math.max(afterDeduct, 0) * 0.10;
-  const eduDeduct = Math.min(eduDonate * 2, donateCap);
-  const net = afterDeduct - eduDeduct;
-  const { tax: progressiveTax } = calcTax(Math.max(net, 0));
-
-  /* วิธีเหมา 0.5%: ถ้ามีเงินได้ที่ไม่ใช่เงินเดือน (40(2)–(8)) ตั้งแต่ 120,000 บาท ต้องเทียบภาษี 0.5% ของเงินได้ส่วนนั้น
-     กับภาษีอัตราก้าวหน้า แล้วเสียตามวิธีที่สูงกว่า — ยกเว้นถ้าภาษีตามวิธี 0.5% ไม่เกิน 5,000 บาท ไม่ต้องใช้วิธีนี้
-     (เดิมกล่องแสดงอย่างเดียว ใช้เกณฑ์ > 5,000 ของรายได้ ไม่รวม 40(2) และไม่เอามาเทียบกับภาษีจริง) */
-  const otherInc = Number(ti.inc402||0) + Number(ti.inc403||0) + Number(ti.inc404||0) + Number(ti.inc405||0)
-                 + Number(ti.inc406||0) + Number(ti.inc407||0) + Number(ti.inc408||0) + Number(ti.other||0);
-  const flatTax = otherInc >= 120000 ? otherInc * 0.005 : 0;
-  const flatApplies = flatTax > 5000;
-  const tax = flatApplies ? Math.max(progressiveTax, flatTax) : progressiveTax;
-
-  return {
-    annualIncome, expense,
-    totalDeduct: total, retExcess,
-    afterDeduct,
-    eduDeduct, eduDonate,
-    net,
-    tax, progressiveTax, flatTax, flatApplies, otherInc,
-  };
-}
-
-function computeExpense(client) {
-  const ti = client.taxInputs || {};
-  const inc1 = Number(ti.salary||0) + Number(ti.bonus||0);
-  const inc2 = Number(ti.inc402||0);
-  const inc3 = Number(ti.inc403||0);
-  const inc5 = Number(ti.inc405||0);
-  const inc6 = Number(ti.inc406||0);
-  const inc7 = Number(ti.inc407||0);
-  const inc8 = Number(ti.inc408||0);
-  const isMedical = !!ti.isMedical;
-  /* 40(1)+(2): 50% รวมกันไม่เกิน 100,000 · 40(3): 50% ไม่เกิน 100,000 แยกเพดานของตัวเอง (หรือตามจริงถ้าสูงกว่า)
-     เดิมเอา 40(3) มารวมเพดานเดียวกับ 40(1)+(2) → ค่าใช้จ่ายต่ำกว่าสิทธิ์ */
-  const expGrp = Math.min((inc1+inc2)*0.5, 100000) + Math.max(Number(ti.act403||0), Math.min(inc3*0.5, 100000));
-  const exp5 = Math.max(Number(ti.act405||0), inc5*0.30);
-  const exp6 = Math.max(Number(ti.act406||0), inc6*(isMedical?0.60:0.30));
-  const exp7 = Math.max(Number(ti.act407||0), inc7*0.60);
-  const exp8 = Math.max(Number(ti.act408||0), inc8*0.60);
-  return expGrp + exp5 + exp6 + exp7 + exp8;
-}
+/* ภาษีของคอลัมน์ "ปัจจุบัน" / "ปรับปรุง" — สูตรกลาง CALC.taxScope (เพดานรายช่อง · ชีวิต+สุขภาพ ≤ 100,000 · กลุ่มเกษียณ ≤ 500,000
+   · บริจาคการศึกษา 2 เท่า ≤ 10% · ขั้นภาษี · วิธีเหมา 0.5%) — หน้าคำนวณภาษี / PDF / ขั้นภาษีในสรุปกรมธรรม์ ใช้ตัวเดียวกัน
+   คืน { annualIncome, expense, totalDeduct, retExcess, afterDeduct, eduDeduct, eduDonate, net, tax, progressiveTax, flatTax, flatApplies, otherInc } */
+function computeScope(client, scope) { return CALC.taxScope(client, scope); }
+function computeExpense(client) { return CALC.taxExpense((client && client.taxInputs) || {}); }
 
 /* ════════════════════════════════════════════
    RENDER

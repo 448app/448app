@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
   <script src="info-popup.js"></script>
@@ -456,20 +456,7 @@ function updateUser(modify) {
 let selectedClientId = null;
 let showFullTable = false;
 
-const DEFAULT_PLAN = {
-  retireAge: 60,
-  lifeExpectancy: 85,
-  incomePctAfterRetire: 70,         /* legacy fallback */
-  annualSpend: 0,                    /* บาท/ปี — primary new field */
-  inflationRate: 3,
-  expectedReturn: 5,                 /* legacy single rate */
-  returnBefore: 4,                   /* % ก่อนเกษียณ (accumulation) */
-  returnAfter: 3,                    /* % หลังเกษียณ (distribution) */
-  preserveCapital: false,            /* คำนวณแบบคงเงินต้น */
-  withdrawalRate: 4,                 /* % ถอนต่อปี เมื่อ preserveCapital=true */
-  monthlyContribution: 0,
-  note: '',
-};
+/* ค่าเริ่มต้นของแผน = CALC.RET_DEFAULT ใน calc.js (ชุดเดียวกับหน้าสรุปแผนเกษียณและ PDF) */
 const LIFE_EXPECTANCY_OPTIONS = [80, 85, 90, 95, 100];
 
 function fmt(n) {
@@ -481,43 +468,13 @@ function fmtFull(n) { return '฿' + Math.round(n).toLocaleString('th-TH'); }
 
 /* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า · วันเกิดไม่ถูกต้อง → null
    (เดิมหาร 365.25 และวันเกิดผิดรูปแบบได้ NaN แล้วผ่านการตรวจ → ทั้งหน้าเป็น NaN) */
-function ageNow(dob) {
-  if (!dob) return null;
-  const bd = new Date(dob);
-  if (isNaN(bd)) return null;
-  const now = new Date();
-  let years = now.getFullYear() - bd.getFullYear();
-  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
-  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
-  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
-  return years + (now - last) / (next - last);
-}
+function ageNow(dob) { return CALC.ageYears(dob); }
 
 /* ════════════════════════════════════════════
    PLAN MANAGEMENT
 ═══════════════════════════════════════════ */
-function getPlan(client) {
-  const saved = (client && client.retirementPlan) || {};
-  /* ใช้ retirementAge จาก timeline.html ถ้ามี (เก่า) */
-  const retireAge = saved.retireAge != null ? saved.retireAge :
-    (client && client.retirementAge ? Number(client.retirementAge) : DEFAULT_PLAN.retireAge);
-  const er = saved.expectedReturn ?? DEFAULT_PLAN.expectedReturn;
-  return {
-    retireAge:            Number(retireAge),
-    lifeExpectancy:       Number(saved.lifeExpectancy ?? DEFAULT_PLAN.lifeExpectancy),
-    incomePctAfterRetire: Number(saved.incomePctAfterRetire ?? DEFAULT_PLAN.incomePctAfterRetire),
-    annualSpend:          Number(saved.annualSpend ?? DEFAULT_PLAN.annualSpend),
-    inflationRate:        Number(saved.inflationRate ?? DEFAULT_PLAN.inflationRate),
-    expectedReturn:       Number(er),
-    /* ถ้ายังไม่เคยตั้ง returnBefore/After ใช้ expectedReturn เป็นค่า default */
-    returnBefore:         Number(saved.returnBefore ?? er),
-    returnAfter:          Number(saved.returnAfter ?? Math.max(er - 1, 1)),
-    preserveCapital:      !!saved.preserveCapital,
-    withdrawalRate:       Number(saved.withdrawalRate ?? DEFAULT_PLAN.withdrawalRate),
-    monthlyContribution:  Number(saved.monthlyContribution ?? DEFAULT_PLAN.monthlyContribution),
-    note:                 String(saved.note ?? ''),
-  };
-}
+/* ค่าแผน + ค่าเริ่มต้นจาก calc.js (ชุดเดียวกับหน้าสรุปแผนเกษียณและ PDF — เดิมแต่ละหน้าตั้งค่าเริ่มต้นเอง) */
+function getPlan(client) { return CALC.retirementPlan(client); }
 
 /* Commit any dirty input BEFORE render() ทำลาย DOM.
    iPad/iOS PWA quirk: tap ปุ่มขณะ keyboard เปิด → document.activeElement อาจไม่ใช่
@@ -635,106 +592,10 @@ function updatePctFromMonthly(monthlyAmount, annualIncome) {
 /* ════════════════════════════════════════════
    AUTO-DERIVE values from client data
 ═══════════════════════════════════════════ */
-/* normalize contribution → ค่ารายปี เสมอ (รองรับ contribFreq='monthly') */
-function annualContrib(a) {
-  const v = Number(a.contribution || 0);
-  return a.contribFreq === 'monthly' ? v * 12 : v;
-}
+/* รายได้ต่อปี / เงินเกษียณที่มี / เงินสมทบต่อเดือน — สูตรกลาง calc.js (หน้านี้ใช้ annualIncome เป็นหลัก) */
+function getDerivedData(client) { return CALC.retirementDerived(client); }
 
-function getDerivedData(client) {
-  /* annual income */
-  const annualIncome = Number(client.income) ||
-    (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
-  /* current retirement savings = PVD + RMF + SSF + ThaiESG */
-  const retireAssets = (client.assets || [])
-    .filter(a => (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
-      && a.appliedTo !== 'education');   /* v185: ติ๊ก "การศึกษา" → ออกจากเกษียณ กันนับซ้ำ 2 แผน */
-  const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  /* current monthly contribution rate — normalize contribFreq ก่อนแล้ว ÷ 12 */
-  const currentMonthlyContrib = retireAssets
-    .reduce((s,a) => s + annualContrib(a), 0) / 12;
-  return { annualIncome, currentSavings, currentMonthlyContrib, retireAssets };
-}
-
-/* ════════════════════════════════════════════
-   CALCULATIONS
-═══════════════════════════════════════════ */
-function calculate(plan, derived, currentAge) {
-  const yearsToRetire = Math.max(plan.retireAge - currentAge, 0);
-  const yearsAfterRetire = Math.max(plan.lifeExpectancy - plan.retireAge, 1);
-
-  /* Annual need at retirement (ปรับ inflation) — ใช้ annualSpend ถ้าตั้งไว้, ไม่งั้น fallback % × income */
-  const annualNeedNow = plan.annualSpend > 0
-    ? Number(plan.annualSpend)
-    : derived.annualIncome * (plan.incomePctAfterRetire / 100);
-  const annualNeedAtRetire = annualNeedNow * Math.pow(1 + plan.inflationRate/100, yearsToRetire);
-
-  /* Real rate — returnAfter หักเงินเฟ้อ (ใช้ใน distribution phase + chart annotations) */
-  const realRate = (1 + plan.returnAfter/100) / (1 + plan.inflationRate/100) - 1;
-
-  /* Target corpus — 2 โหมด */
-  let targetCorpus;
-  if (plan.preserveCapital && plan.withdrawalRate > 0) {
-    /* คงเงินต้น — ใช้กฎ withdrawal rate (เช่น 4% rule) */
-    targetCorpus = annualNeedAtRetire / (plan.withdrawalRate / 100);
-  } else {
-    /* PV of annuity — ถอนใช้จนหมดที่ lifeExpectancy */
-    if (Math.abs(realRate) < 0.0001) {
-      targetCorpus = annualNeedAtRetire * yearsAfterRetire;
-    } else {
-      targetCorpus = annualNeedAtRetire * (1 - Math.pow(1 + realRate, -yearsAfterRetire)) / realRate;
-    }
-  }
-
-  /* FV of current savings + monthly contribution at retirement — ใช้ returnBefore */
-  const r = plan.returnBefore / 100;
-  const fvCurrent = derived.currentSavings * Math.pow(1 + r, yearsToRetire);
-  const monthly = plan.monthlyContribution || 0;
-  const annualContrib = monthly * 12;
-  let fvContrib = 0;
-  if (yearsToRetire > 0) {
-    if (Math.abs(r) < 0.0001) {
-      fvContrib = annualContrib * yearsToRetire;
-    } else {
-      fvContrib = annualContrib * (Math.pow(1 + r, yearsToRetire) - 1) / r;
-    }
-  }
-  const fvTotal = fvCurrent + fvContrib;
-  const gap = Math.max(targetCorpus - fvTotal, 0);
-
-  /* Required monthly contribution to close gap */
-  let requiredMonthly = 0;
-  if (gap > 0 && yearsToRetire > 0) {
-    if (Math.abs(r) < 0.0001) {
-      requiredMonthly = gap / (yearsToRetire * 12);
-    } else {
-      const fvFactor = (Math.pow(1 + r, yearsToRetire) - 1) / r;
-      requiredMonthly = (gap / fvFactor) / 12;
-    }
-  }
-
-  /* Year-by-year accumulation */
-  const yearlyData = [];
-  for (let y = 0; y <= yearsToRetire; y++) {
-    const fv = derived.currentSavings * Math.pow(1 + r, y) +
-               (annualContrib > 0 ? annualContrib * (Math.abs(r) < 0.0001 ? y : (Math.pow(1+r, y) - 1)/r) : 0);
-    yearlyData.push({
-      year: y,
-      age: Math.floor(currentAge) + y,
-      fv,
-      isRetire: y === Math.floor(yearsToRetire),
-    });
-  }
-
-  return {
-    yearsToRetire, yearsAfterRetire,
-    annualNeedNow, annualNeedAtRetire,
-    realRate, targetCorpus,
-    fvCurrent, fvContrib, fvTotal,
-    gap, requiredMonthly,
-    yearlyData,
-  };
-}
+/* (ตัด calculate() เดิมออก — ไม่มีที่เรียกใช้ และคิดคนละสูตรกับหน้าสรุปแผนเกษียณ · ผลลัพธ์ทั้งหมดอยู่ที่ CALC.retirement ใน calc.js) */
 
 /* ════════════════════════════════════════════
    RENDER

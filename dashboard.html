@@ -10,7 +10,7 @@
   <!-- Firebase Auth -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -869,42 +869,7 @@ function recommendCoverage(client) {
    · สุขภาพ (วงเงินค่ารักษาต่อครั้ง) / โรคร้ายแรง / ชดเชยรายได้: สูตรเดียวกับหน้าประกันสุขภาพ (โรงพยาบาลที่เลือก · อายุ · รายได้)
      และเคารพค่าที่ตัวแทนพิมพ์ทับในหน้านั้น
    · อุบัติเหตุ: 2× รายได้/ปี ขั้นต่ำ 500K · ทุพพลภาพ: 65% ของรายได้/เดือน ขั้นต่ำ 30,000 */
-function computeRecommendedCoverage(client) {
-  client = client || {};
-  const cf = client.cashflow || {};
-  const annualIncome = Number(client.income) || (Number(cf.income) || 0) * 12 || 0;
-  const monthlyIncome = annualIncome / 12, dailyIncome = monthlyIncome / 30;
-  let age = null;
-  const dob = client.dob || client.birthdate;
-  if (dob) { const bd = new Date(dob); if (!isNaN(bd)) { const t = new Date(); age = t.getFullYear() - bd.getFullYear(); const m = t.getMonth() - bd.getMonth(); if (m < 0 || (m === 0 && t.getDate() < bd.getDate())) age--; } }
-  const totalDebt = (client.liabilities || []).reduce((s, l) => s + Number(l.principal || l.amount || 0), 0);
-  const roundTo = (v, step) => Math.round(v / step) * step;
-  /* ชีวิต */
-  const li = client.lifeInputs || {};
-  const need = [...(li.debts || []), ...(li.responsibilities || [])]
-    .filter(r => r && r.included !== false).reduce((s, r) => s + Number(r.amount || 0), 0);
-  const life = need > 0
-    ? { value: need, basis: 'ภาระที่นับรวมในหน้าประกันชีวิต' }
-    : { value: Math.max(annualIncome * 10 + totalDebt, 1000000), basis: annualIncome > 0 ? '10× รายได้/ปี + หนี้สิน' : 'ค่าเริ่มต้น' };
-  /* สุขภาพ / โรคร้ายแรง / ชดเชยรายได้ — = computeRecommendations() ใน health-insurance.html */
-  const hi = client.healthInputs || {};
-  const custom = hi.customRecommendations || {};
-  const hosp = hi.hospital || null;
-  const vip = hi.tier === 'vip' && hosp && Number(hosp.vip) > 0;
-  const rate = (hosp ? (Number(vip ? hosp.vip : hosp.std) || 0) : 0) || 3000;
-  const ageN = age == null ? 35 : age;
-  const ageMult = ageN < 30 ? 0.85 : ageN < 45 ? 1.0 : ageN < 60 ? 1.2 : 1.4;
-  const mult = rate < 3000 ? 100 : rate < 6000 ? 130 : rate < 10000 ? 150 : 200;
-  const pick = (key, auto, autoBasis) => (custom[key] != null && Number(custom[key]) > 0)
-    ? { value: Number(custom[key]), basis: 'ค่าที่กำหนดในหน้าประกันสุขภาพ' } : { value: auto, basis: autoBasis };
-  const health = pick('perVisit', Math.max(roundTo(rate * mult * ageMult, 100000), 100000),
-    hosp ? `ตาม ${hosp.name} (${vip ? 'VIP' : 'STD'}) ในหน้าประกันสุขภาพ` : 'ค่าห้องอ้างอิง 3,000/วัน — ยังไม่เลือกโรงพยาบาล');
-  const ci = pick('ciSevere', Math.max(roundTo(annualIncome * 5, 100000), 2000000), annualIncome > 0 ? '5× รายได้/ปี' : 'ค่าเริ่มต้น');
-  const incomeRep = pick('incomeReplace', Math.max(roundTo(dailyIncome * 0.7, 500), 1500), dailyIncome > 0 ? '70% ของรายได้/วัน' : 'ค่าเริ่มต้น');
-  const pa = { value: Math.max(annualIncome * 2, 500000), basis: annualIncome > 0 ? '2× รายได้/ปี' : 'ค่าเริ่มต้น' };
-  const disability = { value: Math.max(Math.round(monthlyIncome * 0.65), 30000), basis: monthlyIncome > 0 ? '65% ของรายได้/เดือน' : 'ค่าเริ่มต้น' };
-  return { annualIncome, age, totalDebt, life, health, ci, pa, incomeRep, disability };
-}
+function computeRecommendedCoverage(client) { return CALC.recommendCoverage(client); }   /* สูตรกลาง calc.js (= สรุปกรมธรรม์ / PDF) */
 
 const TYPE_ICONS = {
   'ชีวิต':       '🛡️',
@@ -1183,15 +1148,7 @@ function renderCalendar() {
 /* ════════════════════════════════════════════════════
    Helpers
 ════════════════════════════════════════════════════ */
-function calcAge(birthdate) {
-  if (!birthdate) return '';
-  const birth = new Date(birthdate);
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
-}
+function calcAge(birthdate) { const a = CALC.ageInt(birthdate); return a == null ? '' : a; }   /* อายุปีเต็ม — สูตรกลาง calc.js */
 
 function goToFinancial() {
   const url = selectedClientId

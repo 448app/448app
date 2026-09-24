@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="info-popup.js"></script>
   <script>
@@ -556,27 +556,8 @@ function _astFmtBlur(el) {
   el.value = (raw !== '' && isFinite(n)) ? n.toLocaleString('th-TH') : '';
 }
 
-function calcFV(pv, rate, years, pmt, freq) {
-  pv = Number(pv) || 0;
-  rate = (Number(rate) || 0) / 100;
-  years = Number(years) || 0;
-  pmt = Number(pmt) || 0;
-  if (years <= 0) return pv;
-  /* ถ้าเป็นรายเดือน → ใช้ rate รายเดือน + n เป็นเดือน — ทบต้นรายเดือนทั้งเงินต้นและเงินออม
-     (เดิมเงินต้นทบต้นรายปีแต่เงินออมรายเดือน → แถวเดียวใช้สองวิธี) · สูตรเดียวกับสรุปแผนเกษียณ/PDF */
-  if (freq === 'monthly' && pmt > 0) {
-    const r_m = rate / 12;
-    const n_m = years * 12;
-    const factor_m = Math.pow(1 + r_m, n_m);
-    if (r_m === 0) return pv + pmt * n_m;
-    /* annuity-due: × (1+r) สมมติว่าจ่ายต้นงวด */
-    return pv * factor_m + pmt * (factor_m - 1) / r_m * (1 + r_m);
-  }
-  /* รายปี (default) — annuity-due */
-  const factor = Math.pow(1 + rate, years);
-  if (rate === 0) return pv + pmt * years;
-  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
-}
+/* สูตรกลางใน calc.js (หน้าสินทรัพย์ 2 / สรุปแผนเกษียณ / PDF ใช้ตัวเดียวกัน) */
+function calcFV(pv, rate, years, pmt, freq) { return CALC.fv(pv, rate, years, pmt, freq); }
 
 /* ════════════════════════════════════════════
    CLIENT SELECTOR

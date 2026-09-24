@@ -9,7 +9,7 @@
   <!-- Firebase Auth -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="money-input.js"></script>
   <script>
     firebase.initializeApp({
@@ -1108,15 +1108,7 @@ function fmtDate(d) {
   return new Date(d).toLocaleDateString('th-TH-u-ca-gregory', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-function calculateAge(birthdate) {
-  if (!birthdate) return null;
-  const today = new Date();
-  const birth = new Date(birthdate);
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
-}
+function calculateAge(birthdate) { return CALC.ageInt(birthdate); }   /* อายุปีเต็ม — สูตรกลาง calc.js · ไม่มี/ผิดรูปแบบ → null */
 
 /* ═══════════════════════════════════════════════
    VIEW 1: RENDER CLIENT SELECTION

@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
   <script src="info-popup.js"></script>
@@ -678,51 +678,9 @@ function getHospitalTier(hospitalRate) {
    แผนประกันสุขภาพใน PDF (plan_summary.html → _psHealthFromPolicies) ใช้ mapping เดียวกัน
    (เดิมอ่าน r.sumAssured ที่ฟอร์มไม่ได้บันทึก → ได้ 0 และเอาทุนประกันชีวิต p.coverage
     มานับเป็นวงเงินค่ารักษาของกรมธรรม์ที่ไม่มีสัญญาเพิ่มเติม) */
-function computeMedicalCoverageFromPolicies(client) {
-  if (!client || !client.policies) return {};
-  const out = {};
-  const add = (k, v) => { const n = Number(v || 0); if (n > 0) out[k] = (out[k] || 0) + n; };
-  client.policies.forEach(p => {
-    const riders = Array.isArray(p.riders) ? p.riders : [];
-    riders.forEach(r => {
-      if (r.type === 'medical') {
-        add('roomMeal', r.roomMeal);
-        add('perVisit', r.perVisit);
-        add('opdPerVisit', r.opdPerVisit);
-        add('opdPerYear', r.opdPerYear);
-      } else if (r.type === 'income') {
-        add('incomeReplace', r.dailyComp);
-      } else if (r.type === 'critical') {
-        add('ciEarly', r.ciEarly);
-        add('ciSevere', r.ciSevere);
-      } else if (r.type === 'accident') {
-        /* ชดเชยอุบัติเหตุต่อสัปดาห์ — จากทุพพลภาพสิ้นเชิง/บางส่วนที่กรอกเป็น "ต่อสัปดาห์" */
-        const weekly = ['disComplete','disPartial'].filter(k => (r[k + 'Freq'] || 'ต่อสัปดาห์') === 'ต่อสัปดาห์').map(k => Number(r[k] || 0));
-        add('accidentWeekly', Math.max(0, ...weekly));
-      } else if (r.type === 'disability') {
-        add('disability', r.disabilityAmt);
-      }
-    });
-    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — ช่องเดี่ยว
-       (coverage ของกรมธรรม์ประเภทสุขภาพเท่านั้น — ไม่เอาทุนชีวิตมานับเป็นวงเงินค่ารักษา) */
-    if (!riders.some(r => r.type === 'medical'))    add('perVisit', p.type === 'สุขภาพ' ? (p.coverage || p.riderHealthCov) : p.riderHealthCov);
-    if (!riders.some(r => r.type === 'critical'))   add('ciSevere', p.riderCriticalCov);
-    if (!riders.some(r => r.type === 'disability')) add('disability', p.riderDisabilityMonthly);
-  });
-  return out;
-}
+function computeMedicalCoverageFromPolicies(client) { return CALC.healthFromPolicies(client); }   /* สูตรกลาง calc.js (= PDF) */
 
-function getClientAge(client) {
-  const dob = client && (client.dob || client.birthdate);
-  if (!dob) return null;
-  const bd = new Date(dob);
-  if (isNaN(bd)) return null;
-  const today = new Date();
-  let age = today.getFullYear() - bd.getFullYear();
-  const m = today.getMonth() - bd.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
-  return age;
-}
+function getClientAge(client) { return CALC.ageInt(client && (client.dob || client.birthdate)); }
 
 function getClientMonthlyIncome(client) {
   if (!client) return 0;
@@ -738,46 +696,10 @@ function getClientMonthlyIncome(client) {
 function effectiveTier(hospital, tier) {
   return (tier === 'vip' && hospital && Number(hospital.vip) > 0) ? 'vip' : 'std';
 }
+/* วงเงินแนะนำ — สูตรกลาง calc.js (หน้าแรก / สรุปกรมธรรม์ / PDF ใช้ชุดเดียวกัน) */
 function computeRecommendations(client, hospital, tier) {
-  tier = effectiveTier(hospital, tier);
-  const hospitalRate = hospital ? (tier === 'vip' ? hospital.vip : hospital.std) : 0;
-  const tierKey = getHospitalTier(hospitalRate || 3000);
-
-  // Per-tier multipliers
-  const tierConfig = {
-    state:         { perVisitMult: 100, opdRatio: 0.25, accidentTreat: 50000  },
-    mid:           { perVisitMult: 130, opdRatio: 0.27, accidentTreat: 100000 },
-    premium:       { perVisitMult: 150, opdRatio: 0.30, accidentTreat: 200000 },
-    international: { perVisitMult: 200, opdRatio: 0.35, accidentTreat: 500000 },
-  };
-  const m = tierConfig[tierKey];
-
-  const monthlyIncome = getClientMonthlyIncome(client);
-  const annualIncome  = monthlyIncome * 12;
-  const dailyIncome   = monthlyIncome / 30;
-
-  // Age-based multiplier (older → recommend higher)
-  const age = getClientAge(client) || 35;
-  const ageMult = age < 30 ? 0.85 : age < 45 ? 1.0 : age < 60 ? 1.2 : 1.4;
-
-  // Defaults (when no income data)
-  const incomeFallback = monthlyIncome > 0 ? null : 30000;
-  const baseMonthly    = monthlyIncome || incomeFallback;
-
-  /* ใช้ floor เพื่อกันค่าต่ำหายเป็น 0 + ใช้ Math.max กับ minimum sensible value */
-  return {
-    roomMeal:          hospitalRate || 3000,
-    nursingService:    'เหมาจ่าย',
-    perVisit:          Math.max(Math.round((hospitalRate || 3000) * m.perVisitMult * ageMult / 100000) * 100000, 100000),
-    opdPerVisit:       Math.max(Math.round((hospitalRate || 3000) * m.opdRatio / 100) * 100, 500),
-    opdPerYear:        Math.max(Math.round((hospitalRate || 3000) * m.opdRatio * 20 / 1000) * 1000, 5000),
-    incomeReplace:     Math.max(Math.round(dailyIncome * 0.7 / 500) * 500, 1500),
-    ciEarly:           Math.max(Math.round(annualIncome * 2 / 100000) * 100000, 500000),
-    ciSevere:          Math.max(Math.round(annualIncome * 5 / 100000) * 100000, 2000000),
-    accidentWeekly:    Math.max(Math.round(dailyIncome * 7 / 1000) * 1000, 5000),
-    accidentTreatment: Math.max(Math.round(m.accidentTreat * ageMult / 10000) * 10000, 50000),
-    disability:        Math.max(Math.round(baseMonthly * 24 * ageMult / 100000) * 100000, 1000000),
-  };
+  const auto = CALC.healthRecommend(client, { hospital, tier }).auto;
+  return Object.assign({ roomMeal: auto.roomMeal, nursingService: 'เหมาจ่าย' }, auto);
 }
 
 /* ════════════════════════════════════════════

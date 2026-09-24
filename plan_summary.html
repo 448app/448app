@@ -9,7 +9,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script>
     firebase.initializeApp({
@@ -1732,476 +1732,57 @@ const RADAR_ICON_PATHS = {
    HELPERS — sync logic จากหน้าหลักของแต่ละหมวด
 ═══════════════════════════════════════════ */
 
-/* Cache age ตาม dob ต่อ session — กันค่ากระเพื่อมระหว่าง render */
+/* สูตรกลางทั้งหมดอยู่ใน calc.js — PDF ใช้ฟังก์ชันเดียวกับหน้าจอของแต่ละหมวด (เดิมคัดลอกสูตรมาไว้ที่นี่อีกชุด แก้ทีต้องแก้ 2 ที่)
+   ชื่อ _ps* ด้านล่างเป็น wrapper บาง ๆ ที่แปลงชื่อฟิลด์ให้ตรงกับที่ PDF ใช้ */
+
+/* อายุแบบทศนิยม — cache ต่อ dob กันค่ากระเพื่อมระหว่าง render · วันเกิดในอนาคต → 0 */
 const _PS_AGE_CACHE = new Map();
 function _psAgeNow(dobStr) {
   if (!dobStr) return null;
-  if (_PS_AGE_CACHE.has(dobStr)) return _PS_AGE_CACHE.get(dobStr);
-  const bd = new Date(dobStr);
-  if (isNaN(bd)) { _PS_AGE_CACHE.set(dobStr, null); return null; }
-  /* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า */
-  const now = new Date();
-  let years = now.getFullYear() - bd.getFullYear();
-  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
-  if (last > now) { years--; last.setFullYear(bd.getFullYear() + years); }
-  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
-  const age = years + (now - last) / (next - last);
-  const stable = age < 0 ? 0 : age;
-  _PS_AGE_CACHE.set(dobStr, stable);
-  return stable;
+  if (!_PS_AGE_CACHE.has(dobStr)) { const a = CALC.ageYears(dobStr); _PS_AGE_CACHE.set(dobStr, a == null ? null : Math.max(a, 0)); }
+  return _PS_AGE_CACHE.get(dobStr);
 }
 
-/* annualContrib — normalize contribFreq (ตรงกับ tax/policies/retirement) */
-function _psAnnualContrib(a) {
-  const v = Number(a.contribution || 0);
-  return a.contribFreq === 'monthly' ? v * 12 : v;
-}
-
-/* === RETIREMENT — คำนวณแบบเดียวกับ retirement2.html (getPlan + getDerivedData + compute)
-   แก้สูตรที่นั่นต้องแก้ที่นี่ด้วย === */
-const _PS_RET_DEFAULT = { retireAge: 60, lifeExpectancy: 85, incomePctAfterRetire: 70, inflationRate: 3, expectedReturn: 5, monthlyContribution: 0 };
-/* ค่าว่าง ('' / null / ไม่ใช่ตัวเลข) → ใช้ค่าเริ่มต้น (เดิมใช้ ?? ซึ่งไม่ดัก '' → อายุเกษียณกลายเป็น 0) */
-function _psNum(v, d) { const n = Number(v); return (v === '' || v == null || !isFinite(n)) ? d : n; }
-function _psRetirePlan(client) {
-  const saved = (client && client.retirementPlan) || {};
-  const er = _psNum(saved.expectedReturn, _PS_RET_DEFAULT.expectedReturn);
-  return {
-    retireAge:            _psNum(saved.retireAge, _psNum(client.retirementAge, _PS_RET_DEFAULT.retireAge)),
-    lifeExpectancy:       _psNum(saved.lifeExpectancy, _PS_RET_DEFAULT.lifeExpectancy),
-    incomePctAfterRetire: _psNum(saved.incomePctAfterRetire, _PS_RET_DEFAULT.incomePctAfterRetire),
-    annualSpend:          _psNum(saved.annualSpend, 0),
-    inflationRate:        _psNum(saved.inflationRate, _PS_RET_DEFAULT.inflationRate),
-    expectedReturn:       er,
-    returnBefore:         _psNum(saved.returnBefore, er),
-    returnAfter:          _psNum(saved.returnAfter, Math.max(er - 1, 1)),
-    preserveCapital:      !!saved.preserveCapital,
-    withdrawalRate:       _psNum(saved.withdrawalRate, 4),
-    monthlyContribution:  _psNum(saved.monthlyContribution, _PS_RET_DEFAULT.monthlyContribution),
-  };
-}
-/* = calcFV() ใน assets.html / retirement2.html — เงินต้น + เงินสมทบต้นงวด (annuity-due) */
-function _psAssetFV(a, years) {
-  const pv = Number(a.currentValue) || 0;
-  const rate = (Number(a.expectedReturn) || 0) / 100;
-  const pmt = Number(a.contribution) || 0;
-  years = Number(years) || 0;
-  if (years <= 0) return pv;
-  if ((a.contribFreq || 'annual') === 'monthly' && pmt > 0) {
-    const r_m = rate / 12, n_m = years * 12;
-    if (r_m === 0) return pv + pmt * n_m;
-    /* ทบต้นรายเดือนทั้งเงินต้นและเงินออม (= assets.html) */
-    return pv * Math.pow(1 + r_m, n_m) + pmt * (Math.pow(1 + r_m, n_m) - 1) / r_m * (1 + r_m);
-  }
-  const factor = Math.pow(1 + rate, years);
-  if (rate === 0) return pv + pmt * years;
-  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
-}
+/* === RETIREMENT — CALC.retirement (= หน้าสรุปแผนเกษียณ retirement2.html) · ไม่มีวันเกิด → สมมติอายุ 30 (พฤติกรรมเดิมของ PDF) === */
+function _psRetirePlan(client) { return CALC.retirementPlan(client); }
 function _psRetireCalc(client) {
-  /* เดิม PDF โตเงินที่มีตามช่อง "ระยะเวลา" ของสินทรัพย์ ไม่รวมเงินสมทบรายสินทรัพย์ (ใช้ plan rate แทน)
-     และไม่ตัดสินทรัพย์ที่ติ๊ก "การศึกษา" → "เตรียมไว้แล้ว" ใน PDF ไม่เท่าหน้าสรุปแผนเกษียณ */
-  const plan = _psRetirePlan(client);
-  const annualIncome = Number(client.income) ||
-    (client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
-  const ageRaw = _psAgeNow(client.dob);
-  const currentAge = ageRaw != null ? Math.floor(ageRaw) : 30;   /* อายุปีเต็ม เหมือน retirement2 */
-  const yearsToRetire = Math.max(plan.retireAge - currentAge, 0);
-  const yearsAfterRetire = Math.max(plan.lifeExpectancy - plan.retireAge, 1);
-
-  /* สินทรัพย์เกษียณ: PVD/RMF/SSF/ThaiESG/ประกันบำนาญ หรือติ๊ก "แผนเกษียณ" · ไม่นับที่ติ๊ก "การศึกษา"
-     · สินทรัพย์ที่ให้กระแสเงินสด (บำนาญ/ค่าเช่า) นับเป็นรายได้หลังเกษียณอย่างเดียว ไม่นับซ้ำในกองทุน */
-  const isIncomeAsset = a => Number(a.cashFlow || 0) > 0;
-  const retireAssets = (client.assets || []).filter(a =>
-    (['pvd','rmf','ssf','thaiesg','annuity'].includes(a.type) || a.appliedTo === 'retire')
-    && a.appliedTo !== 'education' && !isIncomeAsset(a));
-  const currentSavings = retireAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const annualIncomeAfter = (client.assets || []).filter(a =>
-    (['annuity','realestate'].includes(a.type) || a.appliedTo === 'retire') && a.appliedTo !== 'education')
-    .reduce((s,a) => s + Number(a.cashFlow||0), 0) * 12;
-
-  /* annualSpend → ใช้ค่าที่ user ตั้ง ถ้าไม่ตั้ง → derive จากรายได้ × % */
-  const annualNeedNow = plan.annualSpend > 0
-    ? plan.annualSpend
-    : annualIncome * (plan.incomePctAfterRetire / 100);
-  const annualNeedAtRetire = annualNeedNow * Math.pow(1 + plan.inflationRate/100, yearsToRetire);
-  /* กองทุนรองรับเฉพาะส่วนที่รายได้หลังเกษียณ (บำนาญ/ค่าเช่า) ยังไม่ครอบคลุม (= retirement2.html) */
-  const netNeedAtRetire = Math.max(annualNeedAtRetire - annualIncomeAfter, 0);
-
-  /* targetCorpus: preserveCapital ON → ใช้กฎ 4% (netNeed / withdrawalRate)
-                  preserveCapital OFF → PV of annuity (drawdown to zero) */
-  let targetCorpus;
-  if (plan.preserveCapital && plan.withdrawalRate > 0) {
-    targetCorpus = netNeedAtRetire / (plan.withdrawalRate / 100);
-  } else {
-    const realRate = (1 + plan.returnAfter/100) / (1 + plan.inflationRate/100) - 1;
-    targetCorpus = Math.abs(realRate) < 0.0001
-      ? netNeedAtRetire * yearsAfterRetire
-      : netNeedAtRetire * (1 - Math.pow(1 + realRate, -yearsAfterRetire)) / realRate;
-  }
-
-  /* เตรียมไว้แล้ว = FV รายสินทรัพย์ (เงินต้น + เงินสมทบ) โตด้วย return ของสินทรัพย์จนถึงวันเกษียณ */
-  const fvTotal = retireAssets.reduce((s, a) => s + _psAssetFV(a, yearsToRetire), 0);
-  const gap = Math.max(targetCorpus - fvTotal, 0);
-
-  /* เก็บเงินเพิ่มปีละ (sinking fund ที่ผลตอบแทนก่อนเกษียณ) = สูตรเดียวกับหน้าสรุปแผนเกษียณ
-     PDF แสดงต่อเดือน = ต่อปี ÷ 12 (เดิมหารตรง gap ÷ เดือน ไม่คิดผลตอบแทน → สูงเกินจริง) */
-  const rB = plan.returnBefore / 100;
-  let reqAnnual = 0;
-  if (gap > 0 && yearsToRetire > 0) {
-    reqAnnual = Math.abs(rB) < 0.0001
-      ? gap / yearsToRetire
-      : gap / ((Math.pow(1 + rB, yearsToRetire) - 1) / rB);
-  }
+  const r = CALC.retirement(client, { fallbackAge: 30 });
   return {
-    target: targetCorpus, have: fvTotal, gap,
-    currentSavings, reqAnnual, reqMonthly: reqAnnual / 12, annualIncomeAfter,
-    yearsToRetire, yearsAfterRetire,
-    annualNeedNow, annualNeedAtRetire,
-    preserveCapital: plan.preserveCapital,
+    target: r.targetCorpus, have: r.fvTotal, gap: Math.max(r.gap, 0),
+    currentSavings: r.currentSavings, reqAnnual: r.reqAnnual, reqMonthly: r.reqMonthly, annualIncomeAfter: r.annualIncomeAfter,
+    yearsToRetire: r.yearsBefore, yearsAfterRetire: r.yearsAfter,
+    annualNeedNow: r.annualSpendNow, annualNeedAtRetire: r.annualSpendAtRetire,
+    preserveCapital: r.preserveCapital, remaining: r.remaining, completionPct: r.completionPct,
   };
 }
 
-/* === EDUCATION — replicate computeChildPlan totalFuture + fvOfCurrentSavings === */
-const _PS_EDU_STAGES = [
-  { key:'kinder',startAge:3,years:3 },{ key:'primary',startAge:6,years:6 },
-  { key:'mid',startAge:12,years:3 }, { key:'high',startAge:15,years:3 },
-  { key:'bachelor',startAge:18,years:4 },
-  { key:'master',startAge:22,years:2,optional:'master' },
-  { key:'phd',startAge:24,years:3,optional:'phd' },   /* 3 ปี — ตรงกับหน้าค่าเล่าเรียน */
-];
-/* ค่าเทอม K-12 ต่อปี — อ่านจากตารางค่าใช้จ่ายของลูกค้า (client.eduCostTable) ชุดเดียวกับหน้าการศึกษาบุตร
-   (เดิมใช้ตารางคงที่คนละชุด → PDF ไม่เท่าหน้าจอ) */
-const _PS_K12_DEFAULT = { tuition_kp:[17000,175000,800000], tuition_mid:[19500,200000,1300000] };
-function _psK12Cost(client, stageKey, lvIdx) {
-  const key = { kinder:'tuition_kp', primary:'tuition_kp', mid:'tuition_mid', high:'tuition_mid' }[stageKey];
-  const t = client && client.eduCostTable;
-  const row = (t && Array.isArray(t[key]) && t[key][lvIdx] != null) ? t[key] : _PS_K12_DEFAULT[key];
-  return Number((row || [])[lvIdx] || 0);
-}
-const _PS_EDU_COST = {
-  kinder:[30000,80000,250000], primary:[25000,100000,350000], mid:[30000,120000,400000],
-  high:[35000,150000,450000], bachelor:[60000,200000,800000],
-  master:[120000,300000,1500000], phd:[200000,500000,2500000],
-};
-const _PS_LVL_IDX = { economy:0, medium:1, premium:2 };
-/* Sum assets tagged "นำไปใช้กับ การศึกษาบุตร" → แบ่งเท่าๆ ต่อบุตร (sync กับ education.html) */
-function _psEduAssetPerChild(client) {
-  if (!client) return { lump: 0, monthly: 0 };
-  const children = client.children || [];
-  if (children.length === 0) return { lump: 0, monthly: 0 };
-  const eduAssets = (client.assets || []).filter(a => a.appliedTo === 'education');
-  const lump = eduAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const monthly = eduAssets.reduce((s,a) => {
-    const v = Number(a.contribution||0);
-    return s + (a.contribFreq === 'monthly' ? v : v/12);
-  }, 0);
-  return { lump: lump / children.length, monthly: monthly / children.length };
-}
-
-/* อ่าน level ของแต่ละ degree พร้อม backward-compat กับ field เก่า:
-   - ป.ตรี: ใช้ bachelorLevel → fallback child.level → 'medium'
-   - ป.โท: ใช้ masterLevel → fallback (child.includeMaster ? child.level : null)
-   - ป.เอก: ใช้ doctoralLevel → fallback (child.includePhd ? child.level : null)
-   - ระดับชั้น K-12 (kinder–high): ใช้ child.level || 'medium' (เหมือนเดิม) */
-function _psGetUniLevel(child, stageKey) {
-  if (stageKey === 'bachelor') {
-    if (child.bachelorLevel !== undefined) return child.bachelorLevel;
-    return child.level || 'medium';
-  }
-  if (stageKey === 'master') {
-    if (child.masterLevel !== undefined) return child.masterLevel;
-    return child.includeMaster ? (child.level || 'medium') : null;
-  }
-  if (stageKey === 'phd') {
-    if (child.doctoralLevel !== undefined) return child.doctoralLevel;
-    return child.includePhd ? (child.level || 'medium') : null;
-  }
-  return child.level || 'medium';   /* K-12 default */
-}
-
-/* คืน table ค่าเทอมมหาวิทยาลัย — รวม override จาก client.eduCostTable
-   (sync กับ DEFAULT_HIGHER_ED ใน education2.html) */
-const _PS_UNI_DEFAULT = {
-  bachelor: [35000, 300000, 3000000],
-  master:   [50000, 500000, 4750000],
-  phd:      [71000, 600000, 5000000],
-};
-function _psUniCost(client, stageKey, lvIdx) {
-  const t = client && client.eduCostTable;
-  const map = { bachelor:'tuition_bachelor', master:'tuition_master', phd:'tuition_doctoral' };
-  const tKey = map[stageKey];
-  if (t && tKey && Array.isArray(t[tKey]) && t[tKey][lvIdx] != null) {
-    return Number(t[tKey][lvIdx]) || 0;
-  }
-  return (_PS_UNI_DEFAULT[stageKey] || [])[lvIdx] || 0;
-}
-
+/* === EDUCATION — CALC.childEducation (= หน้าการศึกษาบุตร) · ไม่มีวันเกิด → ค่าเฉลี่ยตามระดับ (พฤติกรรมเดิมของ PDF)
+   คืน { totalFuture, fvSavings (ส่วนของค่าใช้จ่ายที่เงินออมจ่ายได้), gap, surplus, k12Total, uniTotal, uniBreakdown } === */
 function _psChildEdu(child, client) {
-  const age = _psAgeNow(child.dob || child.birthdate);
-  const level = child.level || 'medium';
-  const lvIdx = _PS_LVL_IDX[level] != null ? _PS_LVL_IDX[level] : 1;
-  if (age == null) return { totalFuture: [800000,1500000,3000000][lvIdx]||1500000, fvSavings: Number(child.eduSavings||0), uniBreakdown: {} };
-  const customCosts = child.customCosts || {};
-  const inflPct = child.inflationRate != null ? Number(child.inflationRate) : 5;
-  const INFL = inflPct / 100;
-  let totalFuture = 0;
-  let k12Total = 0, uniTotal = 0;
-  const uniBreakdown = {};   /* { bachelor: cost, master: cost, phd: cost } */
-  const costByYear = [];     /* ค่าใช้จ่ายรายปีนับจากวันนี้ — ใช้จำลองเงินออมปีต่อปี (= education.html) */
-  _PS_EDU_STAGES.forEach(s => {
-    /* University stages: เคารพ bachelor/master/doctoral level ใหม่
-       — ถ้า level = null → ข้าม stage นั้น */
-    const isUni = (s.key === 'bachelor' || s.key === 'master' || s.key === 'phd');
-    let stageLevel, stageLvIdx, baseAnnual;
-    if (isUni) {
-      stageLevel = _psGetUniLevel(child, s.key);
-      if (!stageLevel) return;   /* ข้าม */
-      stageLvIdx = _PS_LVL_IDX[stageLevel] != null ? _PS_LVL_IDX[stageLevel] : 1;
-      const custKey = `${s.key}_${stageLevel}`;
-      baseAnnual = customCosts[custKey] != null
-        ? Number(customCosts[custKey])
-        : _psUniCost(client, s.key, stageLvIdx);
-    } else {
-      /* K-12 stages — ใช้ level เดียวกัน */
-      const custKey = `${s.key}_${level}`;
-      baseAnnual = customCosts[custKey] != null ? Number(customCosts[custKey]) : _psK12Cost(client, s.key, lvIdx);
-    }
-    const startAge = s.startAge, endAge = startAge + s.years;
-    let yearsLeft = age >= endAge ? 0 : (age < startAge ? s.years : endAge - age);
-    yearsLeft = Math.max(yearsLeft, 0);
-    if (yearsLeft > 0) {
-      const yearOfStart = Math.max(startAge - age, 0);
-      let stageCost = 0;
-      for (let i = 0; i < Math.ceil(yearsLeft); i++) {
-        const yearCost = baseAnnual * Math.pow(1 + INFL, yearOfStart + i) * Math.min(1, yearsLeft - i);
-        stageCost += yearCost;
-        const yb = Math.floor(yearOfStart + i);
-        costByYear[yb] = (costByYear[yb] || 0) + yearCost;
-      }
-      totalFuture += stageCost;
-      if (isUni) { uniTotal += stageCost; uniBreakdown[s.key] = { level: stageLevel, cost: stageCost }; }
-      else       { k12Total += stageCost; }
-    }
-  });
-  /* จำลองเงินออมปีต่อปี (4%/yr — ตรงกับ education.html SAVINGS_RETURN): เงินที่มีโต + ออมรายเดือน − ค่าเทอมของปีนั้น
-     "ขาดอีก" = ส่วนที่เงินไม่พอในปีที่ต้องจ่ายจริง · fvSavings = ส่วนของค่าใช้จ่ายที่เงินออมจ่ายได้
-     (เดิมโตเงินออมทั้งก้อนถึงปีเรียนจบแล้วค่อยลบค่าใช้จ่ายที่จ่ายทุกปีตั้งแต่อนุบาล → "ขาดอีก" ต่ำกว่าจริง) */
-  const _split = client ? _psEduAssetPerChild(client) : { lump:0, monthly:0 };
-  const eduSavings = Number(child.eduSavings || 0) + _split.lump;
-  const eduMonthly = Number(child.eduMonthly || 0) + _split.monthly;
-  const SR = 0.04, r_m = SR/12;
-  const yearContrib = eduMonthly > 0 ? eduMonthly * (Math.pow(1 + r_m, 12) - 1) / r_m * (1 + r_m) : 0;
-  let balance = eduSavings, shortfall = 0;
-  for (let y = 0; y < costByYear.length; y++) {
-    balance = balance * (1 + SR) + yearContrib - (costByYear[y] || 0);
-    if (balance < 0) { shortfall += -balance; balance = 0; }
-  }
-  return { totalFuture, fvSavings: Math.max(totalFuture - shortfall, 0), gap: shortfall, surplus: balance, k12Total, uniTotal, uniBreakdown };
+  const e = CALC.childEducation(child, client);
+  if (!e) return { totalFuture: [800000, 1500000, 3000000][CALC.levelIdx(child.level || 'medium')] || 1500000,
+                   fvSavings: Number(child.eduSavings || 0), gap: 0, surplus: 0, k12Total: 0, uniTotal: 0, uniBreakdown: {} };
+  return { totalFuture: e.totalFuture, fvSavings: e.covered, gap: e.gap, surplus: e.surplusAtEnd,
+           k12Total: e.k12Total, uniTotal: e.uniTotal, uniBreakdown: e.uniBreakdown };
 }
 
-/* === HEALTH — sync กับหน้า "ประกันสุขภาพ" (health-insurance.html) ===
-   แนะนำ  = สูตรเดียวกับหน้าประกันสุขภาพ (รพ.+ห้องที่เลือก · อายุ · รายได้) + ค่าที่ตัวแทนแก้เอง
-   มีแล้ว = ค่าที่กรอกในคอลัมน์ "เตรียมไว้แล้ว" · ถ้าไม่ได้กรอก → รวมจากสัญญาเพิ่มเติมในสรุปกรมธรรม์
-   (เดิมรวมจากช่อง sumAssured ที่ฟอร์มกรมธรรม์ไม่ได้บันทึก → ยอดที่มีเป็น 0 เสมอ
-    และใช้ Tier โรงพยาบาลจากช่องที่ถูกซ่อน → ติด Tier 2 ทุกคน) */
-const _PS_HEALTH_ROWS = [
-  { key:'roomMeal',          label:'ค่าห้อง ค่าอาหาร (ต่อวัน)' },
-  { key:'perVisit',          label:'วงเงินค่ารักษา (ต่อครั้ง)' },
-  { key:'opdPerVisit',       label:'ผู้ป่วยนอก (ต่อครั้ง)' },
-  { key:'opdPerYear',        label:'ผู้ป่วยนอก (ต่อปี)' },
-  { key:'incomeReplace',     label:'ชดเชยรายได้ (รายวัน)' },
-  { key:'ciEarly',           label:'โรคร้ายแรง (ระยะต้น-ปานกลาง)' },
-  { key:'ciSevere',          label:'โรคร้ายแรง (ระยะรุนแรง)' },
-  { key:'accidentWeekly',    label:'ชดเชยอุบัติเหตุ (ต่อสัปดาห์)' },
-  { key:'accidentTreatment', label:'ค่ารักษาอุบัติเหตุ (ต่อครั้ง)' },
-  { key:'disability',        label:'ทุพพลภาพ' },
-];
-function _psHealthAgeInt(client) {
-  const dob = client && (client.dob || client.birthdate);
-  if (!dob) return null;
-  const bd = new Date(dob);
-  if (isNaN(bd)) return null;
-  const today = new Date();
-  let age = today.getFullYear() - bd.getFullYear();
-  const m = today.getMonth() - bd.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
-  return age;
-}
-/* = computeRecommendations() ใน health-insurance.html — แก้สูตรที่นั่นต้องแก้ที่นี่ด้วย */
-function _psHealthRecommend(client, hi) {
-  const hospital = hi.hospital || null;
-  /* เลือก VIP แต่โรงพยาบาลไม่มีราคา VIP → ใช้ห้องมาตรฐาน (= effectiveTier ในหน้าประกันสุขภาพ) */
-  const useVip = hi.tier === 'vip' && hospital && Number(hospital.vip) > 0;
-  const hospitalRate = hospital ? Number(useVip ? hospital.vip : hospital.std) || 0 : 0;
-  const rate = hospitalRate || 3000;
-  const tierKey = rate < 3000 ? 'state' : rate < 6000 ? 'mid' : rate < 10000 ? 'premium' : 'international';
-  const m = {
-    state:         { perVisitMult: 100, opdRatio: 0.25, accidentTreat: 50000  },
-    mid:           { perVisitMult: 130, opdRatio: 0.27, accidentTreat: 100000 },
-    premium:       { perVisitMult: 150, opdRatio: 0.30, accidentTreat: 200000 },
-    international: { perVisitMult: 200, opdRatio: 0.35, accidentTreat: 500000 },
-  }[tierKey];
-  const monthlyIncome = client.income ? Number(client.income) / 12
-    : (client.cashflow && client.cashflow.income ? Number(client.cashflow.income) : 0);
-  const annualIncome = monthlyIncome * 12;
-  const dailyIncome  = monthlyIncome / 30;
-  const age = _psHealthAgeInt(client) || 35;
-  const ageMult = age < 30 ? 0.85 : age < 45 ? 1.0 : age < 60 ? 1.2 : 1.4;
-  const baseMonthly = monthlyIncome || 30000;
-  const auto = {
-    roomMeal:          rate,
-    perVisit:          Math.max(Math.round(rate * m.perVisitMult * ageMult / 100000) * 100000, 100000),
-    opdPerVisit:       Math.max(Math.round(rate * m.opdRatio / 100) * 100, 500),
-    opdPerYear:        Math.max(Math.round(rate * m.opdRatio * 20 / 1000) * 1000, 5000),
-    incomeReplace:     Math.max(Math.round(dailyIncome * 0.7 / 500) * 500, 1500),
-    ciEarly:           Math.max(Math.round(annualIncome * 2 / 100000) * 100000, 500000),
-    ciSevere:          Math.max(Math.round(annualIncome * 5 / 100000) * 100000, 2000000),
-    accidentWeekly:    Math.max(Math.round(dailyIncome * 7 / 1000) * 1000, 5000),
-    accidentTreatment: Math.max(Math.round(m.accidentTreat * ageMult / 10000) * 10000, 50000),
-    disability:        Math.max(Math.round(baseMonthly * 24 * ageMult / 100000) * 100000, 1000000),
-  };
-  const custom = hi.customRecommendations || {};
-  const rec = {};
-  Object.keys(auto).forEach(k => { rec[k] = custom[k] != null ? Number(custom[k]) || 0 : auto[k]; });
-  return { rec, hospital, rate };
-}
-/* = computeMedicalCoverageFromPolicies() ใน health-insurance.html
-   ชื่อช่องตรงกับฟอร์มสัญญาเพิ่มเติมใน policies.html (renderRiderFields) */
-function _psHealthFromPolicies(client) {
-  const out = {};
-  const add = (k, v) => { const n = Number(v || 0); if (n > 0) out[k] = (out[k] || 0) + n; };
-  (client.policies || []).forEach(p => {
-    const riders = Array.isArray(p.riders) ? p.riders : [];
-    riders.forEach(r => {
-      if (r.type === 'medical') {
-        add('roomMeal', r.roomMeal);
-        add('perVisit', r.perVisit);
-        add('opdPerVisit', r.opdPerVisit);
-        add('opdPerYear', r.opdPerYear);
-      } else if (r.type === 'income') {
-        add('incomeReplace', r.dailyComp);
-      } else if (r.type === 'critical') {
-        add('ciEarly', r.ciEarly);
-        add('ciSevere', r.ciSevere);
-      } else if (r.type === 'accident') {
-        const weekly = ['disComplete','disPartial'].filter(k => (r[k + 'Freq'] || 'ต่อสัปดาห์') === 'ต่อสัปดาห์').map(k => Number(r[k] || 0));
-        add('accidentWeekly', Math.max(0, ...weekly));
-      } else if (r.type === 'disability') {
-        add('disability', r.disabilityAmt);
-      }
-    });
-    /* กรมธรรม์รุ่นเก่าที่ยังไม่มีสัญญาเพิ่มเติมแบบใหม่ — ช่องเดี่ยว (coverage เฉพาะประเภทสุขภาพ) */
-    if (!riders.some(r => r.type === 'medical'))    add('perVisit', p.type === 'สุขภาพ' ? (p.coverage || p.riderHealthCov) : p.riderHealthCov);
-    if (!riders.some(r => r.type === 'critical'))   add('ciSevere', p.riderCriticalCov);
-    if (!riders.some(r => r.type === 'disability')) add('disability', p.riderDisabilityMonthly);
-  });
-  return out;
-}
-function _psHealthCalc(client) {
-  const hi = client.healthInputs || {};
-  const { rec, hospital, rate } = _psHealthRecommend(client, hi);
-  const fromPolicies = _psHealthFromPolicies(client);
-  const prepared = hi.prepared || {};
-  const rows = _PS_HEALTH_ROWS.map(r => {
-    const typed = prepared[r.key];
-    const have = (typed != null && typed !== '') ? (Number(typed) || 0) : Number(fromPolicies[r.key] || 0);
-    const need = Number(rec[r.key] || 0);
-    return { key: r.key, label: r.label, have, need, ok: need > 0 && have >= need };
-  });
-  const ipd = rows.find(r => r.key === 'perVisit');
-  return {
-    target: ipd.need, have: ipd.have, gap: Math.max(ipd.need - ipd.have, 0),
-    rows, okCount: rows.filter(r => r.ok).length,
-    hospital, roomType: (hi.tier === 'vip' && hospital && Number(hospital.vip) > 0) ? 'VIP' : 'STD', rate,
-  };
-}
+/* === HEALTH — CALC.healthCalc (= หน้าประกันสุขภาพ: แนะนำจาก รพ./ห้อง/อายุ/รายได้ + ค่าที่ตัวแทนแก้เอง · มีแล้วจากช่อง "เตรียมไว้แล้ว" หรือสัญญาเพิ่มเติม)
+   คืน { target, have, gap, rows[{key,label,have,need,ok}], okCount, hospital, roomType, rate, rec, auto } === */
+function _psHealthCalc(client) { return CALC.healthCalc(client); }
 
 /* === TAX — คำนวณแบบเดียวกับหน้า "ลดหย่อนภาษี" (tax2.html → computeScope) ===
    เงินได้ = ช่องรายได้ 40(1)–40(8) ในหน้าคำนวณภาษี · ค่าลดหย่อน = คอลัมน์ "ปัจจุบัน" (taxInputs)
    และ "ปรับปรุง" (taxInputs.improve) · ภาษีคิดแบบขั้นบันไดจากเงินได้สุทธิ
    (เดิมเอาเพดานทุกช่องมาบวกกันโดยไม่คิดเพดานรวม แล้วคูณอัตราภาษีที่คิดจากรายได้ก่อนหักค่าใช้จ่าย
     → "เหลือใช้สิทธิ์" และ "ประหยัดภาษีได้อีก" สูงเกินจริงมาก) */
-const _PS_TAX_BRACKETS = [
-  { lo:0,       hi:150000,   rate:0    },
-  { lo:150001,  hi:300000,   rate:0.05 },
-  { lo:300001,  hi:500000,   rate:0.10 },
-  { lo:500001,  hi:750000,   rate:0.15 },
-  { lo:750001,  hi:1000000,  rate:0.20 },
-  { lo:1000001, hi:2000000,  rate:0.25 },
-  { lo:2000001, hi:5000000,  rate:0.30 },
-  { lo:5000001, hi:Infinity, rate:0.35 },
-];
-/* เพดานรายช่อง = DEDUCTION_ROWS ใน tax2.html (แก้ที่นั่นต้องแก้ที่นี่ด้วย) */
-const _PS_TAX_CAPS = {
-  personal: () => 60000,  spouse: () => 60000,  child: () => Infinity,  parent: () => 120000,  disabled: () => Infinity,
-  lifeIns: () => 100000,  lifeInsSpouse: () => 10000,  healthIns: () => 25000,  parentIns: () => 15000,  mortgage: () => 100000,
-  thaiesg: inc => Math.min(inc * 0.30, 300000),  thaiesgx: () => 500000,
-  ssf: inc => Math.min(inc * 0.30, 200000),  rmf: inc => Math.min(inc * 0.30, 500000),
-  pvd: inc => Math.min(inc * 0.15, 500000),  gpf: inc => Math.min(inc * 0.30, 500000),  nsf: () => 30000,
-  annuity: inc => Math.min(inc * 0.15, 200000),
-  sso: () => 9000,  maternity: () => 60000,  politicalDonate: () => 10000,  debitFee: () => Infinity,
-};
-const _PS_TAX_DEFAULTS = { personal: 60000, sso: 9000 };
-const _PS_RET_GROUP = ['ssf','rmf','pvd','gpf','nsf','annuity'];   /* รวมกันไม่เกิน 500,000 (กฎกรมสรรพากร) */
-
-function _psTaxBracket(net) {   /* = calcTax() ใน tax2.html + อัตราขั้นสูงสุดที่ถึง */
-  if (net <= 0) return { tax: 0, rate: 0 };
-  let tax = 0, rate = 0;
-  for (const b of _PS_TAX_BRACKETS) {
-    if (net <= b.lo) break;
-    tax += Math.max(Math.min(net, b.hi) - b.lo + 1, 0) * b.rate;
-    rate = b.rate;
-    if (net <= b.hi) break;
-  }
-  return { tax, rate };
-}
-function _psTaxIncome(c) {      /* = getAnnualIncome() ใน tax2.html */
-  const ti = c.taxInputs || {};
-  return ['salary','bonus','other','inc402','inc403','inc404','inc405','inc406','inc407','inc408']
-    .reduce((s, k) => s + (Number(ti[k]) || 0), 0);
-}
-function _psTaxExpense(c) {     /* = computeExpense() ใน tax2.html */
-  const ti = c.taxInputs || {};
-  const n = k => Number(ti[k] || 0);
-  /* 40(1)+(2) รวมเพดาน 100,000 · 40(3) เพดาน 100,000 ของตัวเอง (หรือตามจริงถ้าสูงกว่า) */
-  return Math.min((n('salary') + n('bonus') + n('inc402')) * 0.5, 100000)
-    + Math.max(n('act403'), Math.min(n('inc403') * 0.5, 100000))
-    + Math.max(n('act405'), n('inc405') * 0.30)
-    + Math.max(n('act406'), n('inc406') * (ti.isMedical ? 0.60 : 0.30))
-    + Math.max(n('act407'), n('inc407') * 0.60)
-    + Math.max(n('act408'), n('inc408') * 0.60);
-}
-function _psTaxVal(c, scope, key) {   /* = getValue() ใน tax2.html */
-  const ti = c.taxInputs || {};
-  let v = (scope === 'imp' ? (ti.improve || {}) : ti)[key];
-  /* คอลัมน์ปรับปรุงที่ยังไม่แก้ → ใช้ค่าปัจจุบัน (= tax2.html) */
-  if (scope === 'imp' && (v == null || v === '')) v = ti[key];
-  if (v == null || v === '') return _PS_TAX_DEFAULTS[key] || 0;
-  return Number(v) || 0;
-}
-/* = computeScope() ใน tax2.html · extra = ค่าลดหย่อนที่เพิ่มเข้าไป (ใช้หาภาษีหลังใช้สิทธิ์เพิ่ม) */
-function _psTaxScope(c, scope, extra) {
-  const income = _psTaxIncome(c);
-  const used = k => Math.min(_psTaxVal(c, scope, k), _PS_TAX_CAPS[k](income));
-  let total = Object.keys(_PS_TAX_CAPS).reduce((s, k) => s + used(k), 0);
-  const lifeHealth = used('lifeIns') + used('healthIns');
-  if (lifeHealth > 100000) total -= lifeHealth - 100000;
-  const retGroup = _PS_RET_GROUP.reduce((s, k) => s + used(k), 0);
-  if (retGroup > 500000) total -= retGroup - 500000;
-  total += extra || 0;
-  const ti = c.taxInputs || {};
-  const impEdu = (ti.improve || {}).eduDonate;
-  const eduDonate = Number((scope === 'imp' && impEdu != null && impEdu !== '') ? impEdu : (ti.eduDonate || 0));
-  const expense = _psTaxExpense(c);
-  const afterDeduct = Math.max(income - expense, 0) - total;
-  const net = afterDeduct - Math.min(eduDonate * 2, Math.max(afterDeduct, 0) * 0.10);
-  const { tax: progressiveTax, rate } = _psTaxBracket(Math.max(net, 0));
-  /* วิธีเหมา 0.5% ของเงินได้ที่ไม่ใช่เงินเดือน (≥ 120,000 และภาษี > 5,000) → เสียตามวิธีที่สูงกว่า (= tax2.html) */
-  const otherInc = ['inc402','inc403','inc404','inc405','inc406','inc407','inc408','other'].reduce((s, k) => s + (Number(ti[k]) || 0), 0);
-  const flatTax = otherInc >= 120000 ? otherInc * 0.005 : 0;
-  const flatApplies = flatTax > 5000;
-  const tax = flatApplies ? Math.max(progressiveTax, flatTax) : progressiveTax;
-  return { income, expense, totalDeduct: total, net, tax, rate, progressiveTax, flatTax, flatApplies };
-}
+/* เพดาน/ค่าเริ่มต้น/กลุ่มเกษียณ และสูตร = CALC (calc.js) ชุดเดียวกับหน้าลดหย่อนภาษี */
+const _PS_TAX_CAPS = CALC.TAX_CAPS;
+const _PS_TAX_DEFAULTS = CALC.TAX_DEFAULTS;
+const _PS_RET_GROUP = CALC.TAX_RET_GROUP;
+function _psTaxIncome(c) { return CALC.taxIncome(c.taxInputs || {}); }
+function _psTaxVal(c, scope, key) { return CALC.taxValue(c.taxInputs || {}, scope, key); }
+/* extra = ค่าลดหย่อนที่เพิ่มเข้าไป (ใช้หาภาษีหลังใช้สิทธิ์เพิ่ม) · คืน { income, expense, totalDeduct, net, tax, rate, progressiveTax, flatTax, flatApplies, … } */
+function _psTaxScope(c, scope, extra) { return CALC.taxScope(c, scope, extra); }
 function _psTaxCalc(client) {
   const c = client;
   const income = _psTaxIncome(c);
@@ -2375,15 +1956,7 @@ function _pfAvailability(c) {
 ═══════════════════════════════════════════ */
 /* ทุนประกันชีวิตที่จะส่งต่อให้ทายาท = ทุนชีวิตรวมของกรมธรรม์ทุกแบบที่จ่ายเงินเมื่อเสียชีวิต
    (ไม่ใช่เฉพาะประเภท "ส่งมอบ" — ทุกแบบที่มีทุนชีวิตส่งมอบให้ผู้รับประโยชน์อยู่แล้ว · ไม่นับสุขภาพ/โรคร้ายแรง/PA/อุบัติเหตุ) */
-function _psLegacyCover(client) {
-  const lifeTypes = ['ชีวิต','ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','บำนาญ','Unit Linked','การศึกษา','เกษียณ','ลดหย่อนภาษี','ลงทุน','ส่งมอบ'];
-  const pols = (client.policies || []).filter(p => lifeTypes.includes(p.type) && Number(p.lifeCoverage || p.coverage || 0) > 0);
-  return {
-    cover: pols.reduce((s, p) => s + Number(p.lifeCoverage || p.coverage || 0), 0),
-    count: pols.length,
-    legacyTypeCount: pols.filter(p => p.type === 'ส่งมอบ').length,
-  };
-}
+function _psLegacyCover(client) { return CALC.legacyCover(client); }   /* { cover, count, legacyTypeCount } — สูตรกลาง calc.js */
 
 /* has (ไม่บังคับ) = ผลจาก _pfTopicHasData — ส่งมาจาก PDF เพื่อบอกว่าชั้นไหน "ยังไม่ได้ประเมิน"
    หน้าจอหลักเรียกแบบไม่ส่ง has → assessed เป็น true ทุกชั้น (พฤติกรรมเดิม) */

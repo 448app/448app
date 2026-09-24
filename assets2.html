@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="info-popup.js"></script>
   <script>
     firebase.initializeApp({
@@ -612,23 +612,8 @@ function _astFmtBlur(el) {
   el.value = (raw !== '' && isFinite(n)) ? n.toLocaleString('th-TH') : '';
 }
 
-function calcFV(pv, rate, years, pmt, freq) {
-  pv = Number(pv) || 0;
-  rate = (Number(rate) || 0) / 100;
-  years = Number(years) || 0;
-  pmt = Number(pmt) || 0;
-  if (years <= 0) return pv;
-  if (freq === 'monthly' && pmt > 0) {
-    const r_m = rate / 12; const n_m = years * 12;
-    const factor_m = Math.pow(1 + r_m, n_m);
-    if (r_m === 0) return pv + pmt * n_m;
-    /* ทบต้นรายเดือนทั้งเงินต้นและเงินออม (= assets.html) */
-    return pv * factor_m + pmt * (factor_m - 1) / r_m * (1 + r_m);
-  }
-  const factor = Math.pow(1 + rate, years);
-  if (rate === 0) return pv + pmt * years;
-  return pv * factor + pmt * (factor - 1) / rate * (1 + rate);
-}
+/* สูตรกลางใน calc.js */
+function calcFV(pv, rate, years, pmt, freq) { return CALC.fv(pv, rate, years, pmt, freq); }
 
 function _astParseNum(str) {
   if (str == null) return 0;

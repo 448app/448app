@@ -9,7 +9,7 @@
   <!-- Firebase Auth -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="money-input.js"></script>
   <script>
     firebase.initializeApp({
@@ -1849,15 +1849,7 @@ function getCurrentClient() {
 // ─── UTILITIES ───
 function fmt(n) { return '฿ ' + (n||0).toLocaleString('th-TH'); }
 
-function calculateAge(birthdate) {
-  if (!birthdate) return '';
-  const bd    = new Date(birthdate);
-  const today = new Date();
-  let age = today.getFullYear() - bd.getFullYear();
-  const m = today.getMonth() - bd.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < bd.getDate())) age--;
-  return age;
-}
+function calculateAge(birthdate) { const a = CALC.ageInt(birthdate); return a == null ? '' : a; }   /* อายุปีเต็ม — สูตรกลาง calc.js */
 
 function calcAgeFromBirth() {
   const bd = document.getElementById('cm-birthdate').value;
@@ -2536,42 +2528,7 @@ function renderTable(policies) {
      และเคารพค่าที่ตัวแทนพิมพ์ทับในหน้านั้น
    · อุบัติเหตุ: 2× รายได้/ปี ขั้นต่ำ 500K · ทุพพลภาพ: 65% ของรายได้/เดือน ขั้นต่ำ 30,000
    เดิมหน้าแรก / กราฟใยแมงมุม / ตารางช่องโหว่ ใช้เกณฑ์คนละชุด (10×+หนี้ / 7× / 5M คงที่) → ลูกค้าคนเดียวเห็น "แนะนำ" 3 ค่า */
-function computeRecommendedCoverage(client) {
-  client = client || {};
-  const cf = client.cashflow || {};
-  const annualIncome = Number(client.income) || (Number(cf.income) || 0) * 12 || 0;
-  const monthlyIncome = annualIncome / 12, dailyIncome = monthlyIncome / 30;
-  let age = null;
-  const dob = client.dob || client.birthdate;
-  if (dob) { const bd = new Date(dob); if (!isNaN(bd)) { const t = new Date(); age = t.getFullYear() - bd.getFullYear(); const m = t.getMonth() - bd.getMonth(); if (m < 0 || (m === 0 && t.getDate() < bd.getDate())) age--; } }
-  const totalDebt = (client.liabilities || []).reduce((s, l) => s + Number(l.principal || l.amount || 0), 0);
-  const roundTo = (v, step) => Math.round(v / step) * step;
-  /* ชีวิต */
-  const li = client.lifeInputs || {};
-  const need = [...(li.debts || []), ...(li.responsibilities || [])]
-    .filter(r => r && r.included !== false).reduce((s, r) => s + Number(r.amount || 0), 0);
-  const life = need > 0
-    ? { value: need, basis: 'ภาระที่นับรวมในหน้าประกันชีวิต' }
-    : { value: Math.max(annualIncome * 10 + totalDebt, 1000000), basis: annualIncome > 0 ? '10× รายได้/ปี + หนี้สิน' : 'ค่าเริ่มต้น' };
-  /* สุขภาพ / โรคร้ายแรง / ชดเชยรายได้ — = computeRecommendations() ใน health-insurance.html */
-  const hi = client.healthInputs || {};
-  const custom = hi.customRecommendations || {};
-  const hosp = hi.hospital || null;
-  const vip = hi.tier === 'vip' && hosp && Number(hosp.vip) > 0;
-  const rate = (hosp ? (Number(vip ? hosp.vip : hosp.std) || 0) : 0) || 3000;
-  const ageN = age == null ? 35 : age;
-  const ageMult = ageN < 30 ? 0.85 : ageN < 45 ? 1.0 : ageN < 60 ? 1.2 : 1.4;
-  const mult = rate < 3000 ? 100 : rate < 6000 ? 130 : rate < 10000 ? 150 : 200;
-  const pick = (key, auto, autoBasis) => (custom[key] != null && Number(custom[key]) > 0)
-    ? { value: Number(custom[key]), basis: 'ค่าที่กำหนดในหน้าประกันสุขภาพ' } : { value: auto, basis: autoBasis };
-  const health = pick('perVisit', Math.max(roundTo(rate * mult * ageMult, 100000), 100000),
-    hosp ? `ตาม ${hosp.name} (${vip ? 'VIP' : 'STD'}) ในหน้าประกันสุขภาพ` : 'ค่าห้องอ้างอิง 3,000/วัน — ยังไม่เลือกโรงพยาบาล');
-  const ci = pick('ciSevere', Math.max(roundTo(annualIncome * 5, 100000), 2000000), annualIncome > 0 ? '5× รายได้/ปี' : 'ค่าเริ่มต้น');
-  const incomeRep = pick('incomeReplace', Math.max(roundTo(dailyIncome * 0.7, 500), 1500), dailyIncome > 0 ? '70% ของรายได้/วัน' : 'ค่าเริ่มต้น');
-  const pa = { value: Math.max(annualIncome * 2, 500000), basis: annualIncome > 0 ? '2× รายได้/ปี' : 'ค่าเริ่มต้น' };
-  const disability = { value: Math.max(Math.round(monthlyIncome * 0.65), 30000), basis: monthlyIncome > 0 ? '65% ของรายได้/เดือน' : 'ค่าเริ่มต้น' };
-  return { annualIncome, age, totalDebt, life, health, ci, pa, incomeRep, disability };
-}
+function computeRecommendedCoverage(client) { return CALC.recommendCoverage(client); }   /* สูตรกลาง calc.js (= หน้าแรก / PDF) */
 
 // ─── SPIDER CHART ───
 function renderSpiderChart(policies) {
@@ -2819,37 +2776,10 @@ function getClientMarginalTax(client) {
     return { ...getBracketRate(netIncome), source: 'history' };
   }
 
-  // Priority 2: คำนวณจาก taxInputs ที่บันทึกไว้
+  // Priority 2: คำนวณจาก taxInputs ที่บันทึกไว้ — สูตรกลาง calc.js ชุดเดียวกับหน้าลดหย่อนภาษี/PDF (ครบทุกช่องลดหย่อน)
   if (client && client.taxInputs) {
-    const ti = client.taxInputs;
-    const inc1 = Number(ti.salary||0) + Number(ti.bonus||0);
-    const inc2 = Number(ti.inc402||0);
-    const inc3 = Number(ti.inc403||0);
-    const inc4 = Number(ti.inc404||0);
-    const inc5 = Number(ti.inc405||0);
-    const inc6 = Number(ti.inc406||0);
-    const inc7 = Number(ti.inc407||0);
-    const inc8 = Number(ti.inc408||0);
-    const totalIncome = inc1 + inc2 + inc3 + inc4 + inc5 + inc6 + inc7 + inc8 + Number(ti.other||0);
-    if (totalIncome > 0) {
-      // ค่าใช้จ่าย: 40(1)+(2) 50% ไม่เกิน 100k · 40(3) 50% ไม่เกิน 100k แยกเพดาน · 40(5)-(8) ใช้ค่าที่สูงกว่าระหว่างเหมา/ตามจริง (= tax.html/tax2.html)
-      const expense = Math.min((inc1 + inc2) * 0.5, 100000)
-                    + Math.max(Number(ti.act403||0), Math.min(inc3 * 0.5, 100000))
-                    + Math.max(Number(ti.act405||0), inc5 * 0.30)
-                    + Math.max(Number(ti.act406||0), inc6 * (ti.isMedical ? 0.60 : 0.30))
-                    + Math.max(Number(ti.act407||0), inc7 * 0.60)
-                    + Math.max(Number(ti.act408||0), inc8 * 0.60);
-      /* ค่าลดหย่อนตัดเพดานตามกฎ (taxInputs เก็บเบี้ย/ยอดจริง ไม่ตัดเพดาน) */
-      const healthIns = Math.min(Number(ti.healthIns||0), 25000);
-      const lifeIns   = Math.min(Number(ti.lifeIns||0), Math.max(100000 - healthIns, 0));
-      const retGroup  = Math.min(Number(ti.annuity||0), 200000) + Math.min(Number(ti.pvd||0), totalIncome * 0.15, 500000)
-                      + Math.min(Number(ti.rmf||0), totalIncome * 0.30, 500000) + Math.min(Number(ti.ssf||0), totalIncome * 0.30, 200000);
-      const totalDeduct = Math.min(Number(ti.personal||60000), 60000) + Math.min(Number(ti.spouse||0), 60000) + Number(ti.child||0)
-                        + lifeIns + healthIns + Math.min(Number(ti.parentIns||0), 15000)
-                        + Math.min(retGroup, 500000) + Math.min(Number(ti.sso||0), 9000) + Number(ti.donate||0);
-      const netIncome = Math.max(totalIncome - expense - totalDeduct, 0);
-      return { ...getBracketRate(netIncome), source: 'inputs' };
-    }
+    const sc = CALC.taxScope(client, 'cur');
+    if (sc.income > 0) return { ...getBracketRate(Math.max(sc.net, 0)), source: 'inputs' };
   }
 
   // Priority 3: ประมาณการจาก client.income หรือ cashflow
@@ -4854,28 +4784,7 @@ const HOSPITAL_TIERS = [
   { tier:4, name:'🌐 รพ.อินเตอร์',             desc:'รักษาเฉพาะทาง / ต่างประเทศ', dailyRoom: 15000, surgeryAvg: 800000, ipdAvg: 500000 },
 ];
 
-/* Needs Analysis (Phase 3.3) — constants ต้องประกาศก่อน init
-   เพราะ init → showDetail → renderNeedsAnalysis → getNeedsInputs → _naAgeNow ฯลฯ */
-const _NA_AGE_CACHE = new Map();
-const _NA_EDU_STAGES = [
-  { key:'kinder',   startAge:3,  years:3 },
-  { key:'primary',  startAge:6,  years:6 },
-  { key:'mid',      startAge:12, years:3 },
-  { key:'high',     startAge:15, years:3 },
-  { key:'bachelor', startAge:18, years:4 },
-  { key:'master',   startAge:22, years:2, optional:'master' },
-  { key:'phd',      startAge:24, years:4, optional:'phd' },
-];
-const _NA_EDU_COST = {
-  kinder:   [ 30000,  80000, 250000],
-  primary:  [ 25000, 100000, 350000],
-  mid:      [ 30000, 120000, 400000],
-  high:     [ 35000, 150000, 450000],
-  bachelor: [ 60000, 200000, 800000],
-  master:   [120000, 300000,1500000],
-  phd:      [200000, 500000,2500000],
-};
-const _NA_LVL_IDX = { economy:0, medium:1, premium:2 };
+/* Needs Analysis (Phase 3.3) — ตารางค่าเทอม/อายุ ย้ายไป calc.js (ชุดเดียวกับหน้าการศึกษาบุตร) */
 
 // ─── INIT ───
 (function init() {
@@ -4954,54 +4863,14 @@ function fmtShortTH(n) {
 ═══════════════════════════════════════════ */
 
 /* Cache age ตาม dob ต่อ session — กันค่ากระเพื่อมทุก render */
-function _naAgeNow(dobStr) {
-  if (!dobStr) return null;
-  if (_NA_AGE_CACHE.has(dobStr)) return _NA_AGE_CACHE.get(dobStr);
-  const bd = new Date(dobStr);
-  if (isNaN(bd)) { _NA_AGE_CACHE.set(dobStr, null); return null; }
-  /* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า */
-  const today = new Date();
-  let years = today.getFullYear() - bd.getFullYear();
-  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
-  if (last > today) { years--; last.setFullYear(bd.getFullYear() + years); }
-  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
-  const age = years + (today - last) / (next - last);
-  const stable = age < 0 ? 0 : age;
-  _NA_AGE_CACHE.set(dobStr, stable);
-  return stable;
-}
+function _naAgeNow(dobStr) { const a = CALC.ageYears(dobStr); return a == null ? null : Math.max(a, 0); }
 
-/* Education FV per child — replicate computeChildPlan.totalFuture จาก education.html */
+/* ค่าเทอมรวม (FV) ของบุตร 1 คน — สูตรกลาง calc.js ชุดเดียวกับหน้าการศึกษาบุตร
+   (เดิมหน้านี้ใช้ตารางค่าเทอมคนละชุด เช่น ป.ตรี 200,000 แทน 300,000 → ยอดขาดการศึกษาไม่ตรงกับหน้าการศึกษาบุตร) */
 function _naChildEduFuture(child) {
-  const age = _naAgeNow(child.dob || child.birthdate);
-  const level = child.level || 'medium';
-  const lvIdx = _NA_LVL_IDX[level] != null ? _NA_LVL_IDX[level] : 1;
-  /* fallback ถ้าไม่มี dob — ใช้ avg ของ level */
-  if (age == null) return [800000, 1500000, 3000000][lvIdx] || 1500000;
-  const includeMaster = !!child.includeMaster;
-  const includePhd    = !!child.includePhd;
-  const customCosts   = child.customCosts || {};
-  const inflPct       = child.inflationRate != null ? Number(child.inflationRate) : 5;
-  const INFL = inflPct / 100;
-  let totalFuture = 0;
-  _NA_EDU_STAGES.forEach(s => {
-    if (s.optional === 'master' && !includeMaster) return;
-    if (s.optional === 'phd'    && !includePhd)    return;
-    const custKey = `${s.key}_${level}`;
-    const baseAnnual = customCosts[custKey] != null ? Number(customCosts[custKey]) : _NA_EDU_COST[s.key][lvIdx];
-    const startAge = s.startAge, endAge = startAge + s.years;
-    let yearsLeft = age >= endAge ? 0 : (age < startAge ? s.years : endAge - age);
-    yearsLeft = Math.max(yearsLeft, 0);
-    if (yearsLeft > 0) {
-      const yearOfStart = Math.max(startAge - age, 0);
-      for (let i = 0; i < Math.ceil(yearsLeft); i++) {
-        const yearFromNow = yearOfStart + i;
-        const partial = Math.min(1, yearsLeft - i);
-        totalFuture += baseAnnual * Math.pow(1 + INFL, yearFromNow) * partial;
-      }
-    }
-  });
-  return totalFuture;
+  const e = CALC.childEducation(child, getCurrentClient());
+  if (e) return e.totalFuture;
+  return [800000, 1500000, 3000000][CALC.levelIdx((child && child.level) || 'medium')] || 1500000;   /* ไม่มีวันเกิด → ค่าเฉลี่ยตามระดับ */
 }
 
 /* Liquid assets sum จาก client.assets (cash + deposit + bond) */

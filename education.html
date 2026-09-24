@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
-  <script src="icons.js"></script><script src="sidebar-scroll.js"></script>
+  <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="flow-nav.js"></script>
   <script src="money-input.js"></script>
   <script src="info-popup.js"></script>
@@ -735,149 +735,23 @@ function getChildren() {
 /* ════════════════════════════════════════════
    EDUCATION COST DATA (Thailand, baseline 2024)
 ═══════════════════════════════════════════ */
-// Annual cost per stage × 3 levels (THB)
-const EDUCATION_STAGES = [
-  { key:'kinder',   label:'อนุบาล',         icon:'🧸', startAge:3,  years:3 },
-  { key:'primary',  label:'ประถม (ป.1-6)',  icon:'📚', startAge:6,  years:6 },
-  { key:'mid',      label:'มัธยมต้น',       icon:'🎒', startAge:12, years:3 },
-  { key:'high',     label:'มัธยมปลาย',     icon:'🏫', startAge:15, years:3 },
-  { key:'bachelor', label:'ปริญญาตรี',     icon:'🎓', startAge:18, years:4 },
-  { key:'master',   label:'ปริญญาโท',      icon:'📜', startAge:22, years:2, optional:'master' },
-  { key:'phd',      label:'ปริญญาเอก',     icon:'👨‍🎓', startAge:24, years:3, optional:'phd' },   /* 3 ปี — ตรงกับหน้าค่าเล่าเรียนและ PDF */
-];
+/* ตาราง/ค่าคงที่และสูตรทั้งหมดอยู่ใน calc.js (หน้านี้ / PDF / แถวบุตรในประกันชีวิต / สรุปกรมธรรม์ ใช้ชุดเดียวกัน)
+   ชื่อเดิมด้านล่างชี้ไปที่ชุดกลาง — แก้ตัวเลขให้แก้ที่ calc.js */
+const EDUCATION_STAGES   = CALC.EDU_STAGES;
+const LEVELS             = CALC.EDU_LEVELS;
+const LEVEL_INDEX        = CALC.LEVEL_INDEX;
+const DEFAULT_INFLATION  = CALC.EDU_DEFAULT_INFLATION;
+const REARING_END_AGE    = CALC.REARING_END_AGE;
+const LEVEL_NAME_TH      = CALC.EDU_LEVEL_NAME_TH;
+const COST_KEYS          = CALC.EDU_COST_KEYS;
+const DEFAULT_COST_TABLE = CALC.EDU_DEFAULT_COST_TABLE;
 
-const COST_TABLE = {
-  // [economy, medium, premium] in THB/year (baseline 2024)
-  kinder:   [ 30000,  80000, 250000],
-  primary:  [ 25000, 100000, 350000],
-  mid:      [ 30000, 120000, 400000],
-  high:     [ 35000, 150000, 450000],
-  bachelor: [ 60000, 200000, 800000],
-  master:   [120000, 300000,1500000],
-  phd:      [200000, 500000,2500000],
-};
-
-const LEVELS = [
-  { key:'economy', icon:'🏫', name:'เริ่มต้น', desc:'รัฐบาล/ทั่วไป' },
-  { key:'medium',  icon:'🏛️', name:'กลาง',    desc:'เอกชน/2-ภาษา' },
-  { key:'premium', icon:'🌐', name:'จัดเต็ม', desc:'อินเตอร์/นอก' },
-];
-const LEVEL_INDEX = { economy:0, medium:1, premium:2 };
-
-const DEFAULT_INFLATION = 5; // % per year for education (default)
-
-/* ════════════════════════════════════════════
-   CHILD REARING COST per level (บาท/เดือน)
-   — ค่าเลี้ยงดูทั่วไป นอกเหนือจากค่าการศึกษา (อาหาร/เสื้อผ้า/ของใช้/หมอ/บันเทิง)
-═══════════════════════════════════════════ */
-const REARING_COST = {
-  economy:  10000,
-  medium:   25000,
-  premium:  50000,
-};
-const REARING_END_AGE = 21;
-const LEVEL_NAME_TH = { economy: 'เริ่มต้น', medium: 'ทางสายกลาง', premium: 'จัดเต็ม' };
-
-/* ════════════════════════════════════════════
-   DEFAULT COST TABLE — ค่าใช้จ่ายต่อปี ตามอายุ × ระดับ (ต่อบุตร 1 คน)
-   [economy, medium, premium]
-═══════════════════════════════════════════ */
-const COST_KEYS = [
-  { key:'age_0_3',          label:'ช่วง 0-3 ขวบ',                  ageMin:0,  ageMax:3,  category:'living' },
-  { key:'babysitter_0_3',   label:'พี่เลี้ยงเด็กต่อปี 0-3 ขวบ',     ageMin:0,  ageMax:3,  category:'care'   },
-  { key:'living_0_3',       label:'ค่ากินอยู่+อุปกรณ์ 0-3 ขวบ',     ageMin:0,  ageMax:3,  category:'living' },
-  { key:'tuition_kp',       label:'ค่าเทอมต่อปี อนุบาล-ประถม',     ageMin:3,  ageMax:12, category:'tuition'},
-  { key:'living_kp',        label:'ค่ากินอยู่+อุปกรณ์ อนุบาล-ประถม',ageMin:3,  ageMax:12, category:'living' },
-  { key:'tuition_mid',      label:'ค่าเทอมต่อปี มัธยม',            ageMin:12, ageMax:18, category:'tuition'},
-  { key:'living_mid',       label:'ค่ากินอยู่+อุปกรณ์ มัธยม',       ageMin:12, ageMax:18, category:'living' },
-  { key:'tuition_bachelor', label:'ค่าเทอมต่อปี ปริญญาตรี',         ageMin:18, ageMax:22, category:'tuition'},
-  { key:'living_bachelor',  label:'ค่ากินอยู่+อุปกรณ์ ปริญญาตรี',    ageMin:18, ageMax:22, category:'living' },
-];
-const DEFAULT_COST_TABLE = {
-  age_0_3:           [ 40000,  75000,  110000],
-  babysitter_0_3:    [ 50000, 100000,  300000],
-  living_0_3:        [ 55000, 150000,  650000],
-  tuition_kp:        [ 17000, 175000,  800000],
-  living_kp:         [ 55000, 150000,  650000],
-  tuition_mid:       [ 19500, 200000, 1300000],
-  living_mid:        [ 55000, 150000,  650000],
-  tuition_bachelor:  [ 35000, 300000, 3000000],
-  living_bachelor:   [ 55000, 150000,  650000],
-};
-
-/* Get current cost table (from client.eduCostTable, fallback to defaults) */
-function getCostTable() {
-  const c = getCurrent();
-  const custom = (c && c.eduCostTable) || {};
-  const out = {};
-  COST_KEYS.forEach(k => {
-    out[k.key] = custom[k.key] || DEFAULT_COST_TABLE[k.key].slice();
-  });
-  return out;
-}
-
-/* Sum yearly cost (THB/year) for given age + level + category filter
-   age: integer year (e.g., 5)
-   level: 'economy' | 'medium' | 'premium'
-   categories: array of category names to include — e.g., ['living','care'] or ['tuition']
-   ─ Picks COST_KEYS where ageMin <= age < ageMax AND category in filter */
-function _sumYearlyCostByCategory(age, level, categories) {
-  const costTable = getCostTable();
-  const lvIdx = LEVEL_INDEX[level] != null ? LEVEL_INDEX[level] : 1;
-  let total = 0;
-  for (const k of COST_KEYS) {
-    if (categories.indexOf(k.category) >= 0 && age >= k.ageMin && age < k.ageMax) {
-      const row = costTable[k.key] || DEFAULT_COST_TABLE[k.key] || [0,0,0];
-      total += Number(row[lvIdx] || 0);
-    }
-  }
-  return total;
-}
-
-/* Get LAST applicable age across COST_KEYS (= the end of life-stage cost coverage) */
-function _maxCostAge() {
-  return COST_KEYS.reduce((m, k) => Math.max(m, k.ageMax), 0);
-}
-
-/* ค่าเทอมตั้งต้นต่อปีของแต่ละช่วงชั้น — อ่านจากตารางค่าใช้จ่าย (⚙ รายการค่าใช้จ่าย) ชุดเดียวกับยอดรวม
-   · อนุบาล/ประถม → ค่าเทอม อนุบาล-ประถม · มัธยมต้น/ปลาย → ค่าเทอม มัธยม · ป.ตรี → ค่าเทอม ป.ตรี
-   · ป.โท/ป.เอก → ตารางค่าเทอมมหาวิทยาลัย (ชุดเดียวกับหน้าค่าเล่าเรียนและ PDF)
-   เดิมการ์ดใช้ COST_TABLE คนละชุดกับยอดรวม → ผลบวกของการ์ดไม่เท่ายอดรวมที่แสดง */
-const HIGHER_ED_FALLBACK = { tuition_master:[50000,500000,4750000], tuition_doctoral:[71000,600000,5000000] };
-function _stageDefaultCost(stageKey, level) {
-  const lvIdx = LEVEL_INDEX[level] != null ? LEVEL_INDEX[level] : 1;
-  const k12 = { kinder:'tuition_kp', primary:'tuition_kp', mid:'tuition_mid', high:'tuition_mid', bachelor:'tuition_bachelor' };
-  if (k12[stageKey]) {
-    const row = getCostTable()[k12[stageKey]] || DEFAULT_COST_TABLE[k12[stageKey]] || [0,0,0];
-    return Number(row[lvIdx] || 0);
-  }
-  const uniKey = { master:'tuition_master', phd:'tuition_doctoral' }[stageKey];
-  const custom = ((getCurrent() || {}).eduCostTable) || {};
-  const row = (uniKey && (custom[uniKey] || HIGHER_ED_FALLBACK[uniKey])) || (COST_TABLE[stageKey] || [0,0,0]);
-  return Number(row[lvIdx] || 0);
-}
-
-/* คำนวณค่าเลี้ยงดูจนถึงอายุที่กำหนด (รวม inflation)
-   — ใช้ค่าจาก cost table (categories: living + care) — sync กับ modal "รายการค่าใช้จ่าย" */
-function computeRearingCost(child) {
-  const age = ageNow(getChildDob(child));
-  if (age == null) return 0;
-  const level = child.level || 'medium';
-  const inflPct = child.inflationRate != null ? Number(child.inflationRate) : DEFAULT_INFLATION;
-  const INFL = inflPct / 100;
-  /* sum from current age until end-of-coverage (REARING_END_AGE) */
-  let total = 0;
-  const startAge = Math.floor(age);
-  for (let a = startAge; a < REARING_END_AGE; a++) {
-    if (a < age) continue;   /* skip past years */
-    const yearCost = _sumYearlyCostByCategory(a, level, ['living', 'care']);
-    const yearOffset = a - age;   /* decimal — partial first year handled by Math.pow */
-    if (yearCost > 0 && yearOffset >= 0) {
-      total += yearCost * Math.pow(1 + INFL, yearOffset);
-    }
-  }
-  return total;
-}
+/* ตารางค่าใช้จ่ายของลูกค้าที่เลือก (รวม override) — ใช้ในหน้าต่าง ⚙ รายการค่าใช้จ่าย */
+function getCostTable() { return CALC.eduCostTable(getCurrent()); }
+/* ค่าเทอมตั้งต้นต่อปีของแต่ละช่วงชั้น — ใช้แสดงค่าเริ่มต้นในตารางรายช่วงชั้น */
+function _stageDefaultCost(stageKey, level) { return CALC.eduStageCost(getCurrent(), stageKey, level); }
+/* ค่าเลี้ยงดู (กินอยู่ + พี่เลี้ยง) จนถึงอายุ 21 */
+function computeRearingCost(child) { return CALC.childRearing(child, getCurrent()); }
 
 /* ════════════════════════════════════════════
    STATE
@@ -890,20 +764,8 @@ function fmtShort(n) {
   return '฿' + Math.round(n).toLocaleString('th-TH');
 }
 
-/* อายุตามปฏิทินจริง (ปีเต็ม + เศษปีจากวันเกิดล่าสุด) — สูตรเดียวกันทุกหน้า · วันเกิดไม่ถูกต้อง → null (เดิมได้ NaN) */
-function ageNow(birthdate) {
-  if (!birthdate) return null;
-  const bd = new Date(birthdate);
-  if (isNaN(bd)) return null;
-  const today = new Date();
-  let years = today.getFullYear() - bd.getFullYear();
-  const last = new Date(bd); last.setFullYear(bd.getFullYear() + years);
-  if (last > today) { years--; last.setFullYear(bd.getFullYear() + years); }
-  const next = new Date(last); next.setFullYear(last.getFullYear() + 1);
-  const age = years + (today - last) / (next - last);
-  /* กัน dob ในอนาคต — clamp เป็น 0 (เกิดใหม่) ไม่ให้คำนวณ inflation ปีลบ */
-  return age < 0 ? 0 : age;
-}
+/* อายุจาก calc.js (สูตรเดียวกันทุกหน้า) · วันเกิดผิดรูปแบบ → null · วันเกิดในอนาคต → 0 */
+function ageNow(birthdate) { const a = CALC.ageYears(birthdate); return a == null ? null : Math.max(a, 0); }
 
 /* helper — รองรับทั้ง field `dob` (schema กลาง) และ `birthdate` (legacy ของหน้านี้) */
 function getChildDob(c) { return c && (c.dob || c.birthdate) || null; }
@@ -918,141 +780,9 @@ function escapeHtml(s) {
 /* ════════════════════════════════════════════
    COST CALCULATION
 ═══════════════════════════════════════════ */
-/* Sum assets tagged "นำไปใช้กับ การศึกษาบุตร" → แบ่งเท่าๆ ต่อบุตร */
-function _eduAssetPerChild() {
-  const client = getCurrent();
-  if (!client) return { lump: 0, monthly: 0 };
-  const children = client.children || [];
-  if (children.length === 0) return { lump: 0, monthly: 0 };
-  const eduAssets = (client.assets || []).filter(a => a.appliedTo === 'education');
-  const lump = eduAssets.reduce((s,a) => s + Number(a.currentValue||0), 0);
-  const monthly = eduAssets.reduce((s,a) => {
-    const v = Number(a.contribution||0);
-    return s + (a.contribFreq === 'monthly' ? v : v/12);
-  }, 0);
-  return { lump: lump / children.length, monthly: monthly / children.length };
-}
-
-function computeChildPlan(child) {
-  const age = ageNow(getChildDob(child));
-  if (age == null) return null;
-  const level = child.level || 'medium';
-  const lvIdx = LEVEL_INDEX[level];
-  const includeMaster = !!child.includeMaster;
-  const includePhd    = !!child.includePhd;
-  const customCosts   = child.customCosts || {};
-  // Per-child inflation rate (% per year) — default 5%
-  const inflationPct  = child.inflationRate != null ? Number(child.inflationRate) : DEFAULT_INFLATION;
-  const INFLATION     = inflationPct / 100;
-
-  const costByYear = [];   /* ค่าใช้จ่ายรายปีนับจากวันนี้ (ปีที่ 0 = ปีนี้) — ใช้จำลองเงินออมปีต่อปี */
-  const stages = EDUCATION_STAGES
-    .filter(s => !s.optional
-      || (s.optional === 'master' && includeMaster)
-      || (s.optional === 'phd'    && includePhd))
-    .map(s => {
-      // Custom cost override (per stage, per level)
-      const custKey = `${s.key}_${level}`;
-      const baseAnnualCost = customCosts[custKey] != null
-        ? Number(customCosts[custKey])
-        : _stageDefaultCost(s.key, level);
-      const startAge = s.startAge;
-      const endAge = s.startAge + s.years;
-
-      let yearsLeft = 0;
-      if (age >= endAge) {
-        // Stage already passed
-        yearsLeft = 0;
-      } else if (age < startAge) {
-        yearsLeft = s.years;
-      } else {
-        yearsLeft = endAge - age;
-      }
-      yearsLeft = Math.max(yearsLeft, 0);
-
-      // Compute future cost with inflation
-      // Year-by-year, average year of payment ≈ start of stage relative to now
-      let futureCost = 0;
-      if (yearsLeft > 0) {
-        const yearOfStart = Math.max(startAge - age, 0);
-        for (let i = 0; i < Math.ceil(yearsLeft); i++) {
-          const yearFromNow = yearOfStart + i;
-          const partialYear = Math.min(1, yearsLeft - i);
-          const yearCost = baseAnnualCost * Math.pow(1 + INFLATION, yearFromNow) * partialYear;
-          futureCost += yearCost;
-          const yb = Math.floor(yearFromNow);
-          costByYear[yb] = (costByYear[yb] || 0) + yearCost;
-        }
-      }
-
-      const status = age >= endAge ? 'passed'
-                   : (age >= startAge ? 'current' : 'future');
-
-      return {
-        ...s,
-        baseAnnualCost,
-        yearsLeft: Math.round(yearsLeft * 10) / 10,
-        futureCost,
-        status,
-      };
-    });
-
-  /* totalFuture (ค่าเทอม) = ผลรวมของการ์ดรายช่วงชั้น (ตารางค่าใช้จ่ายชุดเดียวกัน รวม ป.โท/ป.เอก ที่ติ๊ก)
-     เดิมคิดแยกอีกสูตรจากตารางตามอายุถึง 22 ปี → ไม่เท่าผลบวกการ์ด และติ๊ก ป.โท/ป.เอก ไม่เพิ่มค่าใช้จ่าย
-     ทั้งที่ระยะเวลาออมถูกยืดออก (ยอดขาดจึงลดลง — ผิดทาง) */
-  const totalFuture = stages.reduce((s, st) => s + Number(st.futureCost || 0), 0);
-  /* รวมเงินที่มาจาก asset ที่ tag "นำไปใช้กับ การศึกษาบุตร" — แบ่งเท่าๆ ต่อบุตร */
-  const _eduSplit = _eduAssetPerChild();
-  const eduSavings = Number(child.eduSavings || 0) + _eduSplit.lump;
-  const eduMonthly = Number(child.eduMonthly || 0) + _eduSplit.monthly;
-  const yearsToFinish = Math.max(...stages.filter(s => s.status !== 'passed').map(s => s.startAge + s.years - age), 0);
-
-  /* จำลองปีต่อปี (ผลตอบแทนเงินออม 4%/ปี): เงินที่มีโต + ออมเข้ารายเดือน − จ่ายค่าเทอมของปีนั้น
-     "ขาดอีก" = ส่วนที่เงินไม่พอจ่ายในปีที่ต้องจ่ายจริง (นับตามปีที่จ่าย เทียบกับค่าใช้จ่ายรวมได้ตรง ๆ)
-     เดิมโตเงินออมทั้งก้อนไปถึงปีเรียนจบแล้วค่อยลบค่าใช้จ่ายที่จ่ายทุกปีตั้งแต่อนุบาล → "ขาดอีก" ต่ำกว่าจริง
-     (เด็ก 3 ขวบ เงิน 1 ล้าน ถูกโตเป็น 2.1 ล้านทั้งที่ต้องทยอยจ่ายตั้งแต่ปีแรก) */
-  const SAVINGS_RETURN = 0.04;
-  const sim = _simulateEduSavings(costByYear, eduSavings, eduMonthly, SAVINGS_RETURN);
-  const gap = sim.shortfall;
-  const fvOfCurrentSavings = Math.max(totalFuture - gap, 0);   /* ส่วนของค่าใช้จ่ายที่เงินออมครอบคลุมได้ */
-  /* ต้องออมเพิ่มเดือนละเท่าไร (นอกเหนือจากที่ออมอยู่) ให้จ่ายค่าเทอมได้ครบทุกปี — หาด้วย bisection บนการจำลองเดียวกัน */
-  let reqMonthly = 0;
-  if (gap > 0 && yearsToFinish > 0) {
-    let lo = 0, hi = Math.max(totalFuture / 12, 1);
-    for (let i = 0; i < 40; i++) {
-      const mid = (lo + hi) / 2;
-      if (_simulateEduSavings(costByYear, eduSavings, eduMonthly + mid, SAVINGS_RETURN).shortfall > 0) lo = mid; else hi = mid;
-    }
-    reqMonthly = hi;
-  }
-
-  return {
-    age,
-    level,
-    stages,
-    totalFuture,
-    eduSavings,
-    fvOfCurrentSavings,
-    surplusAtEnd: sim.surplus,
-    gap,
-    reqMonthly,
-    yearsToFinish,
-    inflationPct,
-  };
-}
-
-/* จำลองเงินออมปีต่อปี — costByYear = ค่าใช้จ่ายรายปีนับจากวันนี้ (สร้างใน computeChildPlan พร้อมค่าใช้จ่ายรายช่วงชั้น)
-   คืน { shortfall: ยอดที่ขาดรวม (ตามปีที่จ่าย), surplus: เงินที่เหลือเมื่อจบ } · สูตรเดียวกับ _psChildEdu ใน PDF */
-function _simulateEduSavings(costByYear, lump, monthly, rate) {
-  const r_m = rate / 12;
-  const yearContrib = monthly > 0 ? (r_m > 0 ? monthly * (Math.pow(1 + r_m, 12) - 1) / r_m * (1 + r_m) : monthly * 12) : 0;
-  let balance = Number(lump) || 0, shortfall = 0;
-  for (let y = 0; y < costByYear.length; y++) {
-    balance = balance * (1 + rate) + yearContrib - (costByYear[y] || 0);
-    if (balance < 0) { shortfall += -balance; balance = 0; }   /* ส่วนที่ขาดในปีนั้นต้องหาจากที่อื่น */
-  }
-  return { shortfall, surplus: balance };
-}
+/* แผนการศึกษาของบุตร 1 คน — สูตรกลาง CALC.childEducation (ค่าเทอมรายช่วงชั้น + จำลองเงินออมปีต่อปี)
+   ค่าที่คืน: age · level · stages[] · totalFuture · fvOfCurrentSavings (ส่วนที่เงินออมจ่ายได้) · surplusAtEnd · gap · reqMonthly · yearsToFinish · inflationPct */
+function computeChildPlan(child) { return CALC.childEducation(child, getCurrent()); }
 
 /* ════════════════════════════════════════════
    CLIENT SELECTOR

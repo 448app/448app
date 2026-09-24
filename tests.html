@@ -268,6 +268,7 @@ async function runAll() {
   rows.length = 0; document.getElementById('rows').innerHTML = '';
   renderSummary(false);
   let PS = null, PSclient = null;   /* หน้าสรุปแผน — ใช้เทียบข้ามหน้า */
+  let eduTotal = null, eduRearing = null;   /* หน้าการศึกษาบุตร — ใช้เทียบกับประกันชีวิต/สรุปกรมธรรม์ */
   try {
     seedMock();
 
@@ -306,6 +307,8 @@ async function runAll() {
       const more = W.computeChildPlan(Object.assign({}, child, { eduMonthly: plan.reqMonthly }));
       check('การศึกษาบุตร', 'ออมเพิ่มตาม "ต้องออมเพิ่ม/เดือน" → ขาด 0', Math.round(more.gap), 0, { abs: 50 });
       check('การศึกษาบุตร', 'วันเกิดผิดรูปแบบ → null', W.ageNow('xx'), null);
+      eduTotal = plan.totalFuture; eduRearing = W.computeRearingCost(child);
+      check('การศึกษาบุตร', 'ค่าเลี้ยงดูถึง 21 ปี (กินอยู่ 150,000 + พี่เลี้ยง 0–3) > 0', eduRearing > 0, true);
     });
 
     await group('ภาษี (หน้าคำนวณภาษี)', async () => {
@@ -359,7 +362,7 @@ async function runAll() {
       const withEstate = Object.assign({}, PSclient, { estatePlan: { will: true, beneficiaries: true, updatedAt: new Date().toISOString() } });
       check('สรุปแผน / PDF', 'ปิรามิด L5 ติ๊กพินัยกรรม + ผู้รับประโยชน์ → ผ่าน', PS.computePyramid(withEstate, s, has).find(l => l.layer === 5).ok, true);
       check('สรุปแผน / PDF', 'อายุลูกค้า (ปีเต็ม)', Math.floor(PS._psAgeNow(PSclient.dob)), 40);
-      check('สรุปแผน / PDF', 'FV สินทรัพย์ออมรายเดือน = หน้าสินทรัพย์', PS._psAssetFV({ currentValue: 100000, expectedReturn: 6, contribution: 5000, contribFreq: 'monthly' }, 10), 1005433);
+      check('สรุปแผน / PDF', 'FV สินทรัพย์ออมรายเดือน = หน้าสินทรัพย์ (CALC.assetFV)', PS.CALC.assetFV({ currentValue: 100000, expectedReturn: 6, contribution: 5000, contribFreq: 'monthly' }, 10), 1005433);
     });
 
     await group('สรุปกรมธรรม์', async () => {
@@ -407,6 +410,48 @@ async function runAll() {
       check('หน้าแรก', 'ตลอดชีพ 20/99 (ชำระครบแล้ว) → เฉพาะครบสัญญา', kinds(c.policies[0]), 'end');
       const pa = W.computePolicyEvents(c.policies[2], today).find(e => e.kind === 'end');
       check('หน้าแรก', 'PA ครบสัญญาใน 50 วัน', pa ? Math.round((pa.date - today) / 86400000) : null, 50, { abs: 1 });
+    });
+
+    await group('สูตรกลาง (calc.js)', async () => {
+      const T = 'สูตรกลาง (calc.js)';
+      const W = await openPage('life-insurance.html');
+      const c = W.getCurrent(); const child = c.children[0];
+      check(T, 'ประกันชีวิต: แถว "บุตร" = ค่าเทอม + ค่าเลี้ยงดู ในหน้าการศึกษาบุตร', W.getChildTotalCost(child), eduTotal + eduRearing);
+      const P = await openPage('policies.html');
+      check(T, 'สรุปกรมธรรม์: ค่าเทอมบุตร (FV) = หน้าการศึกษาบุตร', P._naChildEduFuture(child), eduTotal);
+      const H = await openPage('health-insurance.html');
+      const hc = H.getCurrent(); const hi = hc.healthInputs;
+      const rec = H.computeRecommendations(hc, hi.hospital, hi.tier);
+      check(T, 'ประกันสุขภาพ: วงเงินค่ารักษาแนะนำ = PDF / สรุปกรมธรรม์', rec.perVisit, 2300000);
+      check(T, 'ประกันสุขภาพ: โรคร้ายแรง 5 × รายได้', rec.ciSevere, 6000000);
+      const have = H.computeMedicalCoverageFromPolicies(hc);
+      check(T, 'ประกันสุขภาพ: มีแล้วจากสัญญาเพิ่มเติม — ค่ารักษา 500,000', have.perVisit, 500000);
+      check(T, 'ประกันสุขภาพ: มีแล้ว — โรคร้ายแรง 1,000,000', have.ciSevere, 1000000);
+      const D = await openPage('dashboard.html');
+      const dc = D.getClients().find(x => x.id === TEST_ID);
+      check(T, 'หน้าแรก: ทุนแนะนำสุขภาพ = สรุปกรมธรรม์', D.computeRecommendedCoverage(dc).health.value, 2300000);
+      const R = await openPage('retirement.html');
+      const rc = R.getCurrent();
+      check(T, 'วางแผนเกษียณ: อายุเกษียณจากแผน', R.getPlan(rc).retireAge, 60);
+      check(T, 'วางแผนเกษียณ: รายได้/ปี', R.getDerivedData(rc).annualIncome, 1200000);
+      const C = W.CALC;
+      check(T, 'ขั้นภาษี 1,261,000 → 180,250', C.taxBracket(1261000).tax, 180250);
+      check(T, 'อัตราขั้นสูงสุดที่ถึง 25%', C.taxBracket(1261000).rate, 0.25);
+      check(T, 'อายุปีเต็มจากวันเกิด', C.ageInt(c.dob), 40);
+      check(T, 'บุตรไม่มีวันเกิด → ค่าเฉลี่ยระดับกลาง 1,500,000', C.childTotalCost({ level: 'medium' }, c), 1500000);
+      const custom0 = Object.assign({}, c, { healthInputs: Object.assign({}, hi, { customRecommendations: { ciSevere: 0 } }) });
+      check(T, 'ค่าที่ตัวแทนกำหนดเอง = 0 → ใช้ค่านั้น (ไม่กลับไปใช้สูตร) เหมือนกันทุกหน้า', C.recommendCoverage(custom0).ci.value, 0);
+    });
+
+    await group('ภาษี — ลดหย่อนข้ามหน้า', async () => {
+      const T = 'ภาษี — ลดหย่อนข้ามหน้า';
+      patchMock(c => { c.taxInputs.mortgage = 50000; });   /* กรอกดอกเบี้ยบ้านในหน้าลดหย่อนภาษี (หน้าคำนวณภาษีไม่มีช่องนี้) */
+      const W = await openPage('tax.html');
+      const r = W.calculate();
+      check(T, 'หน้าคำนวณภาษีรวมดอกเบี้ยบ้าน 50,000 จากหน้าลดหย่อนภาษี (539,000 + 50,000)', r.totalDeduct, 589000);
+      check(T, 'ภาษี (เงินได้สุทธิ 1,211,000 → 167,750)', r.tax, 167750);
+      const W2 = await openPage('tax2.html');
+      check(T, 'หน้าลดหย่อนภาษีให้ภาษีเท่ากัน', W2.computeScope(W2.getCurrent(), 'cur').tax, 167750);
     });
 
     await group('ภาษี — กรณีวิธีเหมา 0.5%', async () => {
