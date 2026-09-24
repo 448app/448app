@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Money Match — ตรวจสูตรอัตโนมัติ</title>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&family=Prompt:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root { --navy:#1B2A5E; --gold:#C79A3F; --ink:#101A3D; --slate:#6C7490; --line:#E4E7F0; --canvas:#F6F7FB; --ok:#1F7A55; --warn:#B4761A; --danger:#B3261E; --font:'IBM Plex Sans Thai',sans-serif; --mono:'IBM Plex Mono','IBM Plex Sans Thai',monospace; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
+    h1 { font-family: 'Prompt', sans-serif; font-weight: 600; font-size: 24px; margin: 0 0 4px; color: var(--navy); }
+    .sub { color: var(--slate); font-size: 14px; margin-bottom: 16px; }
+    .bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .btn { border: 1px solid var(--navy); background: var(--navy); color: #fff; border-radius: 10px; padding: 9px 18px; font: 600 14px var(--font); cursor: pointer; }
+    .btn:disabled { opacity: .55; cursor: default; }
+    .btn.ghost { background: #fff; color: var(--navy); }
+    .btn.ghost.warn { color: var(--danger); border-color: var(--danger); }
+    .ver { font-family: var(--mono); font-size: 12px; color: var(--slate); margin-left: auto; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; }
+    .note { font-size: 13px; color: var(--slate); }
+    .note b { color: var(--ink); }
+    .summary { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; font-family: 'Prompt', sans-serif; font-weight: 500; font-size: 16px; }
+    .pill { border-radius: 999px; padding: 4px 14px; font-size: 14px; border: 1px solid var(--line); background: var(--canvas); }
+    .pill.ok { color: var(--ok); border-color: #C9E0D4; background: #EAF3EE; }
+    .pill.bad { color: var(--danger); border-color: #EBC7C4; background: #FBEAE8; }
+    .pill.err { color: var(--warn); border-color: #EBD9B8; background: #FBF2E4; }
+    .status { font-size: 13px; color: var(--slate); }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th, td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { font-weight: 600; color: var(--slate); font-size: 12px; letter-spacing: .04em; }
+    td.num { font-family: var(--mono); text-align: right; white-space: nowrap; }
+    td.res { white-space: nowrap; font-weight: 700; }
+    tr.pass td.res { color: var(--ok); }
+    tr.fail td.res { color: var(--danger); }
+    tr.fail td { background: #FFF7F6; }
+    tr.error td { background: #FFF9EC; }
+    tr.topic td { background: var(--canvas); font-family: 'Prompt', sans-serif; font-weight: 500; color: var(--navy); }
+    .hint { font-size: 12px; color: var(--slate); }
+    @media (max-width: 640px) { .wrap { padding: 16px 12px 40px; } th:nth-child(5), td:nth-child(5) { display: none; } }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🧪 ตรวจสูตรอัตโนมัติ</h1>
+  <div class="sub">รันหลังแก้โปรแกรมทุกครั้ง — ตรวจว่าตัวเลขทุกหัวข้อยังตรงกับค่าที่คำนวณมือ และหน้าจอกับ PDF ยังให้ตัวเลขชุดเดียวกัน</div>
+
+  <div class="bar">
+    <button class="btn" id="btn-run" onclick="runAll()">▶ รันทดสอบ</button>
+    <button class="btn ghost warn" id="btn-clean" onclick="cleanupMock(true)">ล้างข้อมูลทดสอบที่ค้าง</button>
+    <span class="ver" id="ver"></span>
+  </div>
+
+  <div class="card note">
+    <b>วิธีทำงาน:</b> สร้างลูกค้าจำลอง “ทดสอบ อัตโนมัติ” ชั่วคราวในเครื่องนี้ → เปิดแต่ละหน้าเบื้องหลัง → เรียกฟังก์ชันคำนวณจริงของหน้านั้น → เทียบกับค่าที่คำนวณมือ/สูตรอ้างอิง → ลบลูกค้าจำลองออกเมื่อเสร็จ ·
+    <b>ไม่แตะข้อมูลลูกค้าจริง</b> · ต้องล็อกอินก่อน · ใช้เวลาประมาณ 20–30 วินาที · ค่าที่คาดผูกกับกฎภาษี/ตารางค่าเทอมปัจจุบัน ถ้ากฎเปลี่ยนต้องแก้ค่าที่คาดในหน้านี้ด้วย
+  </div>
+
+  <div class="card">
+    <div class="summary" id="summary"><span class="status">ยังไม่ได้รัน</span></div>
+  </div>
+
+  <div class="card" style="padding:0;overflow:auto;">
+    <table>
+      <thead><tr><th style="width:120px">หัวข้อ</th><th>รายการตรวจ</th><th class="num" style="text-align:right">ค่าที่คาด</th><th class="num" style="text-align:right">ค่าที่ได้</th><th style="width:90px">ผล</th></tr></thead>
+      <tbody id="rows"><tr><td colspan="5" class="hint" style="padding:16px">กด ▶ รันทดสอบ</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   ตัวช่วยทั่วไป
+═══════════════════════════════════════════════════════════════ */
+const TEST_ID = '__test_client__';
+/* ?p=_t- → เปิดสำเนาหน้าแบบไม่มี auth (ใช้เฉพาะตอนพัฒนา) */
+const PREFIX = new URLSearchParams(location.search).get('p') || '';
+const _uid = localStorage.getItem('aia_currentUser');
+const rows = [];
+let _prevSelected = null;
+let _frames = [];
+
+const fmtV = v => {
+  if (typeof v === 'number') return isFinite(v) ? v.toLocaleString('th-TH', { maximumFractionDigits: 2 }) : String(v);
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  if (v == null) return '—';
+  return String(v);
+};
+function addRow(topic, name, expected, actual, pass, isError) {
+  rows.push({ topic, name, expected, actual, pass, isError });
+  const tb = document.getElementById('rows');
+  if (rows.length === 1) tb.innerHTML = '';
+  const last = rows[rows.length - 2];
+  if (!last || last.topic !== topic) {
+    const tr = document.createElement('tr'); tr.className = 'topic';
+    tr.innerHTML = `<td colspan="5">${topic}</td>`; tb.appendChild(tr);
+  }
+  const tr = document.createElement('tr');
+  tr.className = isError ? 'error fail' : (pass ? 'pass' : 'fail');
+  tr.innerHTML = `<td></td><td>${name}</td><td class="num">${fmtV(expected)}</td><td class="num">${fmtV(actual)}</td><td class="res">${isError ? '⚠ error' : (pass ? '✓ ผ่าน' : '✗ ไม่ผ่าน')}</td>`;
+  tb.appendChild(tr);
+  renderSummary(false);
+}
+/* เทียบค่า: ตัวเลข → ยอมคลาดเคลื่อน rel (สัดส่วน, ปกติ 0.1%) หรือ abs (ปกติ 0.5 = ปัดเศษ) · อื่น ๆ → ต้องเท่ากันเป๊ะ */
+function check(topic, name, actual, expected, tol) {
+  tol = tol || {};
+  let pass;
+  if (typeof expected === 'number' && typeof actual === 'number') {
+    const rel = tol.rel != null ? tol.rel : 0.001, abs = tol.abs != null ? tol.abs : 0.5;
+    pass = Math.abs(actual - expected) <= Math.max(abs, Math.abs(expected) * rel);
+  } else pass = actual === expected;
+  addRow(topic, name, expected, actual, pass, false);
+  return pass;
+}
+function errorRow(topic, name, e) {
+  const msg = (e && e.message) || String(e);
+  addRow(topic, name, '—', msg.slice(0, 160), false, true);
+}
+function renderSummary(done) {
+  const pass = rows.filter(r => r.pass).length, fail = rows.filter(r => !r.pass && !r.isError).length, err = rows.filter(r => r.isError).length;
+  const el = document.getElementById('summary');
+  el.innerHTML = `<span class="pill ok">✓ ผ่าน ${pass}</span><span class="pill bad">✗ ไม่ผ่าน ${fail}</span><span class="pill err">⚠ error ${err}</span>
+    <span class="status">${done ? (fail + err === 0 ? 'ทุกอย่างตรงตามที่คาด' : 'มีรายการที่ต้องตรวจ — ดูแถวสีแดง/ส้ม') : 'กำลังรัน…'} · ${new Date().toLocaleString('th-TH')}</span>`;
+}
+
+/* วันที่แบบสัมพัทธ์ (อายุลูกค้าจำลองคงที่ทุกปี → ค่าที่คาดไม่เลื่อน) */
+function localDate(d) { const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+function yearsAgo(years, months) { const t = new Date(); return localDate(new Date(t.getFullYear() - years, t.getMonth() - (months || 0), t.getDate())); }
+function daysFromNow(days) { const t = new Date(); t.setDate(t.getDate() + days); return localDate(t); }
+function yearsFromNow(years) { const t = new Date(); return localDate(new Date(t.getFullYear() + years, t.getMonth(), t.getDate())); }
+
+/* ═══════════════════════════════════════════════════════════════
+   ลูกค้าจำลอง — ค่าที่คาดด้านล่างคำนวณมือจากชุดนี้ (แก้ตัวเลขที่นี่ต้องแก้ค่าที่คาดด้วย)
+═══════════════════════════════════════════════════════════════ */
+function buildMock() {
+  return {
+    id: TEST_ID, firstName: 'ทดสอบ', lastName: 'อัตโนมัติ', gender: 'male',
+    dob: yearsAgo(40, 3),                                  /* อายุ 40 ปี 3 เดือน เสมอ */
+    income: 1200000,
+    cashflow: { income: 100000, expFixed: 30000, expVariable: 20000, expDebt: 15000, expSavings: 10000 },
+    assets: [
+      { id: 't-a1', type: 'deposit', currentValue: 600000, expectedReturn: 1.5, term: 0, contribution: 0 },
+      { id: 't-a2', type: 'pvd', currentValue: 1000000, contribution: 120000, contribFreq: 'annual', expectedReturn: 5, term: 20 },
+      { id: 't-a3', type: 'rmf', currentValue: 400000, contribution: 100000, contribFreq: 'annual', expectedReturn: 6, term: 10 },
+      { id: 't-a4', type: 'mutual', currentValue: 100000, contribution: 5000, contribFreq: 'monthly', expectedReturn: 6, term: 10 },
+      { id: 't-a5', type: 'annuity', currentValue: 500000, cashFlow: 10000, contribution: 0, term: 0 },
+    ],
+    liabilities: [ { id: 't-l1', type: 'home', name: 'บ้าน', term: 'long', principal: 3000000, interestRate: 5, monthlyPayment: 15000, remainingMonths: 240 } ],
+    children: [ { id: 't-ch1', name: 'น้องทดสอบ', gender: 'ชาย', dob: yearsAgo(3, 0), level: 'medium', eduSavings: 1000000, eduMonthly: 0, includeMaster: false, includePhd: false, inflationRate: 5 } ],
+    lifeInputs: { debts: [ { id: 't-d1', name: 'บ้าน', amount: 3000000, included: true } ], responsibilities: [ { id: 't-r1', name: 'ดูแลพ่อแม่', amount: 1200000, included: true } ] },
+    healthInputs: { hospital: { name: 'โรงพยาบาลกรุงเทพ', region: 'กรุงเทพและปริมณฑล', std: 11300, vip: 0 }, tier: 'std', premium: 40000 },
+    policies: [
+      { id: 't-p1', name: 'ตลอดชีพ 20/99', company: 'AIA', type: 'ตลอดชีพ', number: 'T001', start: '2006-11-01', end: '2085-11-01', lifeCoverage: 2000000, premium: 50000, payYearsMain: 20,
+        riders: [ { type: 'medical', name: 'H&S', premium: 18000, perVisit: 500000 }, { type: 'critical', name: 'CI', premium: 8000, ciSevere: 1000000 } ] },
+      { id: 't-p2', name: 'ส่งมอบ', company: 'AIA', type: 'ส่งมอบ', number: 'T002', start: '2020-01-15', end: '2080-01-15', lifeCoverage: 3000000, premium: 80000, payYearsMain: 10, riders: [] },
+      { id: 't-p3', name: 'PA', company: 'AIA', type: 'PA', number: 'T003', start: yearsAgo(1, 0), end: daysFromNow(50), lifeCoverage: 1000000, premium: 5000, riders: [] },
+      { id: 't-p4', name: 'บำนาญ', company: 'AIA', type: 'บำนาญ', number: 'T004', start: '2021-03-01', end: '2071-03-01', lifeCoverage: 0, premium: 60000, payYearsMain: 10, riders: [] },
+    ],
+    taxInputs: { salary: 1200000, bonus: 0, other: 0, inc402: 0, inc403: 300000, inc404: 0, inc405: 600000, inc406: 0, inc407: 0, inc408: 200000,
+      act403: 0, act405: 50000, act406: 0, act407: 0, act408: 0,
+      personal: 60000, spouse: 60000, child: 30000, lifeIns: 138000, healthIns: 58000, parentIns: 0, annuity: 60000, pvd: 120000, rmf: 100000, ssf: 0, sso: 9000, donate: 0 },
+    retirementPlan: { retireAge: 60, lifeExpectancy: 85, annualSpend: 600000, inflationRate: 3, returnBefore: 6, returnAfter: 4, preserveCapital: false, withdrawalRate: 4, incomePctAfterRetire: 70 },
+    lifeGoals: [ { id: 't-g1', type: 'home', name: 'บ้านหลังแรก', targetAmount: 3000000, currentSaved: 500000, currentAmount: 500000, monthlyContribution: 10000, expectedReturn: 6, inflationRate: 0, deadline: yearsFromNow(10), note: '', createdAt: new Date().toISOString() } ],
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   จัดการข้อมูลจำลองใน localStorage (เพิ่ม/ลบเฉพาะลูกค้า id = __test_client__)
+═══════════════════════════════════════════════════════════════ */
+function readUsers() { return JSON.parse(localStorage.getItem('aia_users') || '[]'); }
+function writeUsers(users) { localStorage.setItem('aia_users', JSON.stringify(users)); }
+function currentUser(users) { return users.find(u => u.id === _uid); }
+function seedMock() {
+  const users = readUsers(); const u = currentUser(users);
+  if (!u) throw new Error('ไม่พบผู้ใช้ที่ล็อกอิน');
+  if (!u.data) u.data = {}; if (!u.data.clients) u.data.clients = [];
+  u.data.clients = u.data.clients.filter(c => c.id !== TEST_ID);
+  u.data.clients.push(buildMock());
+  writeUsers(users);
+  _prevSelected = localStorage.getItem('aia_selectedClient');
+  localStorage.setItem('aia_selectedClient', TEST_ID);
+}
+function patchMock(fn) {
+  const users = readUsers(); const u = currentUser(users);
+  const c = u && u.data && (u.data.clients || []).find(x => x.id === TEST_ID);
+  if (!c) throw new Error('ไม่พบลูกค้าจำลอง');
+  fn(c); writeUsers(users);
+}
+function cleanupMock(manual) {
+  try {
+    const users = readUsers(); const u = currentUser(users);
+    if (u && u.data && u.data.clients) {
+      const before = u.data.clients.length;
+      u.data.clients = u.data.clients.filter(c => c.id !== TEST_ID);
+      if (u.data.clients.length !== before) writeUsers(users);
+      const sel = localStorage.getItem('aia_selectedClient');
+      if (sel === TEST_ID) {
+        const prevOk = _prevSelected && u.data.clients.some(c => c.id === _prevSelected);
+        if (prevOk) localStorage.setItem('aia_selectedClient', _prevSelected);
+        else if (u.data.clients.length) localStorage.setItem('aia_selectedClient', u.data.clients[0].id);
+        else localStorage.removeItem('aia_selectedClient');
+      }
+      if (manual) alert(before === u.data.clients.length ? 'ไม่มีข้อมูลทดสอบค้างอยู่' : 'ลบลูกค้าจำลองแล้ว');
+    }
+  } catch (e) { if (manual) alert('ล้างไม่สำเร็จ: ' + e.message); }
+  _frames.forEach(f => { try { f.remove(); } catch (e) {} });
+  _frames = [];
+}
+window.addEventListener('beforeunload', () => cleanupMock(false));
+
+/* เปิดหน้าจริงใน iframe ซ่อน แล้วคืน window ของหน้านั้น */
+function openPage(name) {
+  return new Promise((resolve, reject) => {
+    const fr = document.createElement('iframe');
+    fr.style.cssText = 'position:fixed;left:-10000px;top:0;width:1200px;height:900px;visibility:hidden;';
+    fr.src = PREFIX + name + (name.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    const timer = setTimeout(() => reject(new Error('โหลด ' + name + ' ไม่เสร็จใน 20 วินาที')), 20000);
+    fr.onload = () => {
+      clearTimeout(timer);
+      setTimeout(() => {
+        let path = '';
+        try { path = fr.contentWindow.location.pathname; } catch (e) {}
+        if (/login\.html/.test(path)) reject(new Error('หน้าถูกส่งไปล็อกอิน — กรุณาล็อกอินก่อนรันทดสอบ'));
+        else resolve(fr.contentWindow);
+      }, 900);
+    };
+    fr.onerror = () => { clearTimeout(timer); reject(new Error('โหลด ' + name + ' ไม่ได้')); };
+    _frames.push(fr);
+    document.body.appendChild(fr);
+  });
+}
+async function group(topic, fn) {
+  try { await fn(); } catch (e) { errorRow(topic, 'ทำงานไม่สำเร็จ', e); }
+}
+
+/* สูตรอ้างอิง (เขียนแยกจากโค้ดในหน้า) */
+const refFVAnnual = (pv, ratePct, years, pmt) => { const r = ratePct / 100, f = Math.pow(1 + r, years); return pv * f + pmt * (f - 1) / r * (1 + r); };
+const refFVMonthly = (pv, ratePct, years, pmt) => { const r = ratePct / 1200, n = years * 12, f = Math.pow(1 + r, n); return pv * f + pmt * (f - 1) / r * (1 + r); };
+/* การศึกษาบุตร ระดับ "ทางสายกลาง" ตารางค่าเทอมมาตรฐาน: อนุบาล–ประถม 175,000 · มัธยม 200,000 · ป.ตรี 300,000 ต่อปี · เงินเฟ้อ 5% · เงินออมโต 4% */
+function refEducation(age, lump, monthly) {
+  const stages = [ { s: 3, y: 3, c: 175000 }, { s: 6, y: 6, c: 175000 }, { s: 12, y: 3, c: 200000 }, { s: 15, y: 3, c: 200000 }, { s: 18, y: 4, c: 300000 } ];
+  const costByYear = []; let total = 0;
+  stages.forEach(st => {
+    const end = st.s + st.y;
+    const left = age >= end ? 0 : (age < st.s ? st.y : end - age);
+    if (left <= 0) return;
+    const y0 = Math.max(st.s - age, 0);
+    for (let i = 0; i < Math.ceil(left); i++) {
+      const yc = st.c * Math.pow(1.05, y0 + i) * Math.min(1, left - i);
+      total += yc;
+      const yb = Math.floor(y0 + i); costByYear[yb] = (costByYear[yb] || 0) + yc;
+    }
+  });
+  const rm = 0.04 / 12, yc = monthly > 0 ? monthly * (Math.pow(1 + rm, 12) - 1) / rm * (1 + rm) : 0;
+  let bal = lump, short = 0;
+  for (let y = 0; y < costByYear.length; y++) { bal = bal * 1.04 + yc - (costByYear[y] || 0); if (bal < 0) { short += -bal; bal = 0; } }
+  return { total, gap: short, surplus: bal };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ชุดทดสอบ
+═══════════════════════════════════════════════════════════════ */
+async function runAll() {
+  if (!_uid) { alert('กรุณาล็อกอินก่อน'); return; }
+  const btn = document.getElementById('btn-run'); btn.disabled = true;
+  rows.length = 0; document.getElementById('rows').innerHTML = '';
+  renderSummary(false);
+  let PS = null, PSclient = null;   /* หน้าสรุปแผน — ใช้เทียบข้ามหน้า */
+  try {
+    seedMock();
+
+    await group('สินทรัพย์', async () => {
+      const W = await openPage('assets.html');
+      check('สินทรัพย์', 'FV ออมรายเดือน 100,000 + 5,000/เดือน 6% 10 ปี (ทบต้นรายเดือน)', W.calcFV(100000, 6, 10, 5000, 'monthly'), 1005433);
+      check('สินทรัพย์', 'FV ออมรายปี 1,000,000 + 120,000/ปี 5% 20 ปี', W.calcFV(1000000, 5, 20, 120000, 'annual'), refFVAnnual(1000000, 5, 20, 120000));
+      check('สินทรัพย์', 'ประกันบำนาญ/อสังหาฯ ไม่คิดมูลค่าอนาคต', W._rowFields('annuity').fv === false && W._rowFields('realestate').fv === false, true);
+    });
+
+    await group('เกษียณ', async () => {
+      const W = await openPage('retirement2.html');
+      const c = W.getCurrent(); const r = W.compute(c);
+      check('เกษียณ', 'ระยะเวลาถึงเกษียณ (อายุ 40 → 60)', r.yearsBefore, 20);
+      check('เกษียณ', 'ค่าใช้จ่ายปีเกษียณ 600,000 × 1.03^20', r.annualSpendAtRetire, 1083667);
+      check('เกษียณ', 'รายได้หลังเกษียณ/ปี (บำนาญ 10,000/เดือน)', r.annualIncomeAfter, 120000);
+      check('เกษียณ', 'กองทุนเกษียณที่ต้องมี (หลังหักรายได้หลังเกษียณ)', r.targetCorpus, 21299577);
+      check('เกษียณ', 'เตรียมไว้แล้ว (PVD + RMF โตถึงวันเกษียณ)', r.fvTotal, 12001735);
+      check('เกษียณ', 'ต้องเตรียมเพิ่ม', r.gap, 9297842);
+      check('เกษียณ', 'เก็บเงินเพิ่มปีละ', r.reqAnnual, 252758);
+      check('เกษียณ', 'อายุจากวันเกิด (ปีเต็ม)', Math.floor(W.ageNow(c.dob)), 40);
+      check('เกษียณ', 'วันเกิดผิดรูปแบบ → null', W.ageNow('not-a-date'), null);
+    });
+
+    await group('การศึกษาบุตร', async () => {
+      const W = await openPage('education.html');
+      const c = W.getCurrent(); const child = c.children[0];
+      const plan = W.computeChildPlan(child);
+      const ref = refEducation(plan.age, 1000000, 0);
+      check('การศึกษาบุตร', 'อายุบุตร (ปีเต็ม)', Math.floor(plan.age), 3);
+      check('การศึกษาบุตร', 'ค่าใช้จ่ายรวม (FV) = สูตรอ้างอิง', plan.totalFuture, ref.total, { rel: 0.005 });
+      check('การศึกษาบุตร', 'ค่าใช้จ่ายรวม = ผลบวกการ์ดรายช่วงชั้น', plan.totalFuture, plan.stages.reduce((s, st) => s + st.futureCost, 0));
+      check('การศึกษาบุตร', 'ขาดอีก (จำลองปีต่อปี) = สูตรอ้างอิง', plan.gap, ref.gap, { rel: 0.005 });
+      const zero = W.computeChildPlan(Object.assign({}, child, { eduSavings: 0, eduMonthly: 0 }));
+      check('การศึกษาบุตร', 'ไม่มีเงินออม → ขาด = ค่าใช้จ่ายรวม', zero.gap, zero.totalFuture);
+      const more = W.computeChildPlan(Object.assign({}, child, { eduMonthly: plan.reqMonthly }));
+      check('การศึกษาบุตร', 'ออมเพิ่มตาม "ต้องออมเพิ่ม/เดือน" → ขาด 0', Math.round(more.gap), 0, { abs: 50 });
+      check('การศึกษาบุตร', 'วันเกิดผิดรูปแบบ → null', W.ageNow('xx'), null);
+    });
+
+    await group('ภาษี (หน้าคำนวณภาษี)', async () => {
+      const W = await openPage('tax.html');
+      const r = W.calculate();
+      check('ภาษี (หน้าคำนวณภาษี)', 'เงินได้รวม', r.income, 2300000);
+      check('ภาษี (หน้าคำนวณภาษี)', 'ค่าใช้จ่าย (100k + 100k + 180k + 120k)', r.expense, 500000);
+      check('ภาษี (หน้าคำนวณภาษี)', 'ค่าลดหย่อนรวม (ตัดเพดานแล้ว)', r.totalDeduct, 539000);
+      check('ภาษี (หน้าคำนวณภาษี)', 'เงินได้สุทธิ', r.netIncome, 1261000);
+      check('ภาษี (หน้าคำนวณภาษี)', 'ภาษี (อัตราก้าวหน้า)', r.tax, 180250);
+    });
+
+    await group('ภาษี (หน้าลดหย่อนภาษี)', async () => {
+      const W = await openPage('tax2.html');
+      const cur = W.computeScope(W.getCurrent(), 'cur'), imp = W.computeScope(W.getCurrent(), 'imp');
+      check('ภาษี (หน้าลดหย่อนภาษี)', 'เงินได้รวม', cur.annualIncome, 2300000);
+      check('ภาษี (หน้าลดหย่อนภาษี)', 'ค่าใช้จ่าย', cur.expense, 500000);
+      check('ภาษี (หน้าลดหย่อนภาษี)', 'ค่าลดหย่อนรวม', cur.totalDeduct, 539000);
+      check('ภาษี (หน้าลดหย่อนภาษี)', 'เงินได้สุทธิ', cur.net, 1261000);
+      check('ภาษี (หน้าลดหย่อนภาษี)', 'ภาษี', cur.tax, 180250);
+      check('ภาษี (หน้าลดหย่อนภาษี)', 'วิธีเหมา 0.5% ของ 1,100,000 = 5,500 (ต่ำกว่า → ไม่ใช้)', cur.flatTax, 5500);
+      check('ภาษี (หน้าลดหย่อนภาษี)', 'คอลัมน์ปรับปรุงยังไม่แก้ = ปัจจุบัน', imp.tax, cur.tax);
+    });
+
+    await group('สรุปแผน / PDF', async () => {
+      PS = await openPage('plan_summary.html');
+      PSclient = PS.getCurrent();
+      const rt = PS._psRetireCalc(PSclient);
+      check('สรุปแผน / PDF', 'เกษียณ: กองทุนที่ต้องมี = หน้าสรุปแผนเกษียณ', rt.target, 21299577);
+      check('สรุปแผน / PDF', 'เกษียณ: เตรียมไว้แล้ว', rt.have, 12001735);
+      check('สรุปแผน / PDF', 'เกษียณ: ต้องเตรียมเพิ่ม', rt.gap, 9297842);
+      const ed = PS._psChildEdu(PSclient.children[0], PSclient);
+      const ref = refEducation(PS._psAgeNow(PSclient.children[0].dob), 1000000, 0);
+      check('สรุปแผน / PDF', 'การศึกษา: ค่าใช้จ่ายรวม = สูตรอ้างอิง', ed.totalFuture, ref.total, { rel: 0.005 });
+      check('สรุปแผน / PDF', 'การศึกษา: ขาดอีก = สูตรอ้างอิง', ed.gap, ref.gap, { rel: 0.005 });
+      const tx = PS._psTaxScope(PSclient, 'cur', 0);
+      check('สรุปแผน / PDF', 'ภาษี: เงินได้สุทธิ', tx.net, 1261000);
+      check('สรุปแผน / PDF', 'ภาษี: ภาษี = หน้าลดหย่อนภาษี', tx.tax, 180250);
+      const s = PS.computeSummary(PSclient);
+      check('สรุปแผน / PDF', 'ประกันชีวิต: ทุนที่ต้องการ (หนี้ 3M + ภาระ 1.2M)', s.lifeIns.target, 4200000);
+      check('สรุปแผน / PDF', 'ประกันชีวิต: มีแล้ว (ทุน 5M + เงินฝาก 0.6M)', s.lifeIns.have, 5600000);
+      const h = PS._psHealthCalc(PSclient);
+      check('สรุปแผน / PDF', 'สุขภาพ: วงเงินค่ารักษาแนะนำ (11,300 × 200 × 1.0 → 2.3M)', h.target, 2300000);
+      check('สรุปแผน / PDF', 'สุขภาพ: ห้องมาตรฐาน', h.roomType, 'STD');
+      const has = PS._pfTopicHasData(PSclient, s);
+      const layers = PS.computePyramid(PSclient, s, has);
+      const L = n => layers.find(l => l.layer === n);
+      check('สรุปแผน / PDF', 'ปิรามิด L1 เงินสำรอง 600k ≥ 3 × 65k → ผ่าน', L(1).ok, true);
+      check('สรุปแผน / PDF', 'ปิรามิด L2 ประเมินได้ (มีชีวิต+สุขภาพ)', L(2).assessed, true);
+      check('สรุปแผน / PDF', 'ปิรามิด L5 ยังไม่ติ๊กเช็กลิสต์ → ยังไม่ประเมิน', L(5).assessed, false);
+      const withEstate = Object.assign({}, PSclient, { estatePlan: { will: true, beneficiaries: true, updatedAt: new Date().toISOString() } });
+      check('สรุปแผน / PDF', 'ปิรามิด L5 ติ๊กพินัยกรรม + ผู้รับประโยชน์ → ผ่าน', PS.computePyramid(withEstate, s, has).find(l => l.layer === 5).ok, true);
+      check('สรุปแผน / PDF', 'อายุลูกค้า (ปีเต็ม)', Math.floor(PS._psAgeNow(PSclient.dob)), 40);
+      check('สรุปแผน / PDF', 'FV สินทรัพย์ออมรายเดือน = หน้าสินทรัพย์', PS._psAssetFV({ currentValue: 100000, expectedReturn: 6, contribution: 5000, contribFreq: 'monthly' }, 10), 1005433);
+    });
+
+    await group('สรุปกรมธรรม์', async () => {
+      const W = await openPage('policies.html');
+      const c = W.getCurrentClient ? W.getCurrentClient() : PSclient;
+      const rec = W.computeRecommendedCoverage(c);
+      check('สรุปกรมธรรม์', 'แนะนำทุนชีวิต = ภาระในหน้าประกันชีวิต', rec.life.value, 4200000);
+      check('สรุปกรมธรรม์', 'แนะนำวงเงินสุขภาพ = PDF', rec.health.value, 2300000);
+      check('สรุปกรมธรรม์', 'แนะนำโรคร้ายแรง 5 × รายได้', rec.ci.value, 6000000);
+      check('สรุปกรมธรรม์', 'แนะนำอุบัติเหตุ 2 × รายได้', rec.pa.value, 2400000);
+      const b = W.computePolicyTaxBreakdown(c.policies, c);
+      check('สรุปกรมธรรม์', 'ลดหย่อนสุขภาพ (สัญญาเพิ่มเติม 18,000)', b.healthDeduct, 18000);
+      check('สรุปกรมธรรม์', 'ลดหย่อนชีวิต (143,000 → เพดาน 100,000 − สุขภาพ)', b.lifeDeduct, 82000);
+      check('สรุปกรมธรรม์', 'ลดหย่อนบำนาญ', b.annuityDeduct, 60000);
+      check('สรุปกรมธรรม์', 'ลดหย่อนรวมประกัน + กองทุน (160,000 + 220,000)', b.totalDeduct, 380000);
+      check('สรุปกรมธรรม์', 'ขั้นภาษีจากข้อมูลภาษี', W.getClientMarginalTax(c).label, '25%');
+    });
+
+    await group('อัตราส่วนการเงิน', async () => {
+      const W = await openPage('ratios.html');
+      const d = W.computeData();
+      check('อัตราส่วนการเงิน', 'สภาพคล่อง 600,000 ÷ 65,000 (เดือน)', W.ratioLiquidity(d).value, 9.23, { abs: 0.01 });
+      check('อัตราส่วนการเงิน', 'หนี้สิน 3,000,000 ÷ 2,600,000 (%)', W.ratioDebtAsset(d).value, 115.38, { abs: 0.01 });
+      check('อัตราส่วนการเงิน', 'ชำระหนี้ 15,000 ÷ 100,000 (%)', W.ratioDebtService(d).value, 15, { abs: 0.01 });
+      check('อัตราส่วนการเงิน', 'ความมั่งคั่ง (2.6M − 3M) ÷ 2.6M (%)', W.ratioNetWorth(d).value, -15.38, { abs: 0.01 });
+      check('อัตราส่วนการเงิน', 'การออม 10,000 ÷ 100,000 (%)', W.ratioSavings(d).value, 10, { abs: 0.01 });
+    });
+
+    await group('เป้าหมายชีวิต', async () => {
+      const W = await openPage('goals.html');
+      check('เป้าหมายชีวิต', 'FV 1,000,000 6% 10 ปี (ทบต้นรายเดือน)', W.calcFV(1000000, 6, 10, 0), 1819397);
+      check('เป้าหมายชีวิต', 'ควรออม/เดือน ให้ถึง 3M จาก 500k 6% 10 ปี', W.calcRequiredPMT(3000000, 500000, 6, 10), 12755, { abs: 1 });
+      const a = W.analyzeGoal(W.getGoals()[0]);
+      check('เป้าหมายชีวิต', 'เวลาเหลือ (ปี)', a.years, 10, { abs: 0.02 });
+      check('เป้าหมายชีวิต', 'FV ตามแผน (500k + 10k/เดือน)', a.fv, 2548443, { rel: 0.003 });
+      check('เป้าหมายชีวิต', 'เป้าหมายที่เลยกำหนด → ข้อความ "เลยกำหนด"', W.yearsLabel(-1.5).indexOf('เลยกำหนด') === 0, true);
+    });
+
+    await group('หน้าแรก', async () => {
+      const W = await openPage('dashboard.html');
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const c = W.getClients().find(x => x.id === TEST_ID);
+      const kinds = p => W.computePolicyEvents(p, today).map(e => e.kind).sort().join(',');
+      check('หน้าแรก', 'ส่งมอบ (ชำระ 10 ปี ตั้งแต่ 2020) → เตือนชำระเบี้ย + ครบสัญญา', kinds(c.policies[1]), 'end,premium');
+      check('หน้าแรก', 'ตลอดชีพ 20/99 (ชำระครบแล้ว) → เฉพาะครบสัญญา', kinds(c.policies[0]), 'end');
+      const pa = W.computePolicyEvents(c.policies[2], today).find(e => e.kind === 'end');
+      check('หน้าแรก', 'PA ครบสัญญาใน 50 วัน', pa ? Math.round((pa.date - today) / 86400000) : null, 50, { abs: 1 });
+    });
+
+    await group('ภาษี — กรณีวิธีเหมา 0.5%', async () => {
+      patchMock(c => Object.assign(c.taxInputs, { salary: 0, inc403: 0, inc405: 0, act405: 0, inc408: 3000000, act408: 2950000 }));
+      const W = await openPage('tax2.html');
+      const cur = W.computeScope(W.getCurrent(), 'cur');
+      check('ภาษี — กรณีวิธีเหมา 0.5%', 'อัตราก้าวหน้า = 0 (เงินได้สุทธิติดลบ)', cur.progressiveTax, 0);
+      check('ภาษี — กรณีวิธีเหมา 0.5%', 'ภาษี = 0.5% × 3,000,000', cur.tax, 15000);
+      const P2 = await openPage('plan_summary.html');
+      check('ภาษี — กรณีวิธีเหมา 0.5%', 'PDF ให้ภาษีเท่ากัน', P2._psTaxScope(P2.getCurrent(), 'cur', 0).tax, 15000);
+    });
+  } catch (e) {
+    errorRow('ระบบ', 'รันไม่สำเร็จ', e);
+  } finally {
+    cleanupMock(false);
+    btn.disabled = false;
+    renderSummary(true);
+  }
+}
+
+/* เวอร์ชันแอป (จาก sw.js) */
+fetch('sw.js?_v=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).then(t => {
+  const m = t.match(/SW_VERSION\s*=\s*['"]([^'"]+)['"]/);
+  document.getElementById('ver').textContent = m ? m[1] : '';
+}).catch(() => {});
+if (!_uid) document.getElementById('summary').innerHTML = '<span class="status">กรุณาล็อกอินก่อน (เปิดหน้าอื่นของแอปแล้วกลับมา)</span>';
+</script>
+</body>
+</html>
