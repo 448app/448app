@@ -322,6 +322,10 @@
         <div class="client-pick">
           <div class="cp-mini-avatar" id="cp-mini-avatar">👤</div>
           <select id="client-select" onchange="onClientChange(this.value)"></select>
+          <!-- ปีภาษี — กำหนดเพดานที่ผูกกับปี (ประกันสังคม · SSF · Thai ESG/ESGX · โครงการรัฐ) บันทึกต่อลูกค้า -->
+          <select id="tax-year" title="ปีภาษี" onchange="saveField('cur','taxYear',this.value); render()" style="margin-left:6px;">
+            <option value="2567">ปีภาษี 2567</option><option value="2568">ปีภาษี 2568</option><option value="2569">ปีภาษี 2569</option><option value="2570">ปีภาษี 2570</option>
+          </select>
         </div>
       </div>
     </div>
@@ -361,8 +365,11 @@ let selectedClientId = null;
    cap: ฟังก์ชันคำนวณเพดาน (ส่งกลับ {amount, text})
    editable: ให้แก้ค่าได้ตรงๆ (default true)
 ═══════════════════════════════════════════ */
-/* เพดานตัวเลขอ่านจาก CALC.TAX_CAPS (calc.js) — ที่นี่เก็บเฉพาะชื่อ/คำอธิบาย/ข้อความในช่องว่าง (แก้เพดานให้แก้ที่ calc.js) */
-const _capOf = (key, text) => income => ({ amount: CALC.TAX_CAPS[key](income), text });
+/* เพดานตัวเลขอ่านจาก CALC.TAX_CAPS (calc.js) — ที่นี่เก็บเฉพาะชื่อ/คำอธิบาย/ข้อความในช่องว่าง (แก้เพดานให้แก้ที่ calc.js)
+   cap(ctx): ctx = CALC.taxCapCtx(taxInputs) = { income, wages, year, ssoType } · text เป็นฟังก์ชันได้เมื่อข้อความขึ้นกับปีภาษี */
+const _capOf = (key, text) => ctx => { const amount = CALC.TAX_CAPS[key](ctx); return { amount, text: typeof text === 'function' ? text(ctx, amount) : text }; };
+const _fmtCap = n => Math.round(n).toLocaleString('th-TH');
+const _noRight = (c) => 'ไม่มีสิทธิ์ปีภาษี ' + c.year;
 const DEDUCTION_ROWS = [
   { key:'personal',   name:'ผู้มีเงินได้',                   info:'ส่วนบุคคล — 60,000 บาท (default)',
     hint:'60,000', cap:_capOf('personal', '60,000'), defaultVal:60000 },
@@ -384,31 +391,46 @@ const DEDUCTION_ROWS = [
     hint:'ไม่เกิน 15,000', cap:_capOf('parentIns', 'ไม่เกิน 15,000') },
   { key:'mortgage',   name:'ดอกเบี้ยซื้อที่อยู่อาศัย',      info:'ไม่เกิน 100,000 บาท',
     hint:'ไม่เกิน 100,000', cap:_capOf('mortgage', 'ไม่เกิน 100,000') },
-  { key:'thaiesg',    name:'กองทุนรวมไทยเพื่อความยั่งยืน (Thai ESG)', info:'ไม่เกิน 30% ของเงินได้ สูงสุด 300,000',
-    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('thaiesg', 'ไม่เกิน 30% ของเงิน...') },
-  { key:'thaiesgx',   name:'กองทุนรวมไทยเพื่อความยั่งยืนแบบพิเศษ (Thai ESGX)', info:'สูงสุด 500,000 บาท',
-    hint:'สูงสุด 500,000', cap:_capOf('thaiesgx', 'สูงสุด...') },
-  { key:'ssf',        name:'กองทุนรวมเพื่อการออม (SSF)',    info:'ไม่เกิน 30% ของเงินได้ สูงสุด 200,000',
-    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('ssf', 'ไม่เกิน 30% ของเงิน...') },
+  { key:'thaiesg',    name:'กองทุนรวมไทยเพื่อความยั่งยืน (Thai ESG)', info:'ซื้อปี 2567–2569: ไม่เกิน 30% ของเงินได้ สูงสุด 300,000 ถือ 5 ปี · ตั้งแต่ปี 2570 กลับเป็นสูงสุด 100,000 ถือ 8 ปี (ยังไม่มีมติต่ออายุ) · ไม่รวมกลุ่มเกษียณ 500,000',
+    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('thaiesg', (c, a) => 'ไม่เกิน 30% ≤ ' + _fmtCap((c.year >= 2567 && c.year <= 2569) ? 300000 : 100000)) },
+  { key:'thaiesgx',   name:'Thai ESGX — เงินใหม่ (ปีภาษี 2568)', info:'ซื้อ 2 พ.ค. – 30 มิ.ย. 2568 เท่านั้น · ไม่เกิน 30% ของเงินได้ สูงสุด 300,000 แยกจาก Thai ESG · ถือ 5 ปี',
+    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('thaiesgx', (c, a) => a > 0 ? 'ไม่เกิน 30% ≤ 300,000' : _noRight(c)) },
+  { key:'thaiesgxLtf', name:'Thai ESGX — สับเปลี่ยนจาก LTF', info:'สับเปลี่ยน LTF ทั้งหมด 2 พ.ค. – 30 มิ.ย. 2568 · ลดหย่อนรวมไม่เกิน 500,000 โดยหักปีภาษี 2568 ไม่เกิน 300,000 และปี 2569–2572 ปีละไม่เกิน 50,000 · ถือ 5 ปี',
+    hint:'ไม่เกิน 300,000 / 50,000 ต่อปี', cap:_capOf('thaiesgxLtf', (c, a) => a > 0 ? 'ไม่เกิน ' + _fmtCap(a) + ' (ปี ' + c.year + ')' : _noRight(c)) },
+  { key:'ssf',        name:'กองทุนรวมเพื่อการออม (SSF)',    info:'ได้สิทธิ์เฉพาะหน่วยที่ซื้อปีภาษี 2563–2567 (ไม่ต่ออายุ) · ไม่เกิน 30% ของเงินได้ สูงสุด 200,000 · หน่วยที่ซื้อแล้วถือต่อจนครบ 10 ปี',
+    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('ssf', (c, a) => a > 0 ? 'ไม่เกิน 30% ≤ 200,000' : 'ไม่มีสิทธิ์ตั้งแต่ปีภาษี 2568') },
   { key:'rmf',        name:'ค่าซื้อกองทุนรวมเพื่อการเลี้ยงชีพ (RMF)', info:'ไม่เกิน 30% ของเงินได้ สูงสุด 500,000',
     hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('rmf', 'ไม่เกิน 30% ของเงิน...') },
-  { key:'pvd',        name:'กองทุนสำรองเลี้ยงชีพ (PVD) /กองทุนสงเคราะห์ครูโรงเรียนเอกชน', info:'ไม่เกิน 15% ของเงินได้ สูงสุด 500,000',
-    hint:'ไม่เกิน 15% ของเงินได้', cap:_capOf('pvd', 'ไม่เกิน 15% ของเงินได้') },
-  { key:'gpf',        name:'กบข.',                          info:'ไม่เกิน 30% ของเงินได้ สูงสุด 500,000',
-    hint:'ไม่เกิน 30% ของเงินได้', cap:_capOf('gpf', 'ไม่เกิน 30% ของเงิน...') },
+  { key:'pvd',        name:'กองทุนสำรองเลี้ยงชีพ (PVD) /กองทุนสงเคราะห์ครูโรงเรียนเอกชน', info:'ไม่เกิน 15% ของค่าจ้าง (เงินเดือน + โบนัส 40(1)) สูงสุด 500,000 · เฉพาะส่วนที่ลูกจ้างจ่าย ไม่รวมส่วนนายจ้าง',
+    hint:'ไม่เกิน 15% ของค่าจ้าง', cap:_capOf('pvd', 'ไม่เกิน 15% ของค่าจ้าง') },
+  { key:'gpf',        name:'กบข.',                          info:'ไม่เกิน 15% ของเงินเดือน สูงสุด 500,000',
+    hint:'ไม่เกิน 15% ของเงินเดือน', cap:_capOf('gpf', 'ไม่เกิน 15% ของเงินเดือน') },
   { key:'nsf',        name:'กองทุนการออมแห่งชาติ (กอช.)',  info:'ไม่เกิน 30,000 บาท',
     hint:'ไม่เกิน 30,000', cap:_capOf('nsf', 'ไม่เกิน 30,000') },
-  { key:'annuity',    name:'เบี้ยประกันชีวิตแบบบำนาญ',      info:'ไม่เกิน 15% ของเงินได้ สูงสุด 200,000',
+  { key:'annuity',    name:'เบี้ยประกันชีวิตแบบบำนาญ',      info:'ไม่เกิน 15% ของเงินได้ สูงสุด 200,000 · ถ้าประกันชีวิต+สุขภาพยังไม่ถึง 100,000 เบี้ยบำนาญจะถูกใช้เติมส่วนนั้นก่อนโดยอัตโนมัติ · รวมกลุ่มเกษียณไม่เกิน 500,000 · ต้องเป็นแบบบำนาญที่บริษัทออกหนังสือรับรอง',
     hint:'ไม่เกิน 15% ของเงินได้', cap:_capOf('annuity', 'ไม่เกิน 15% ของเงินได้') },
-  { key:'sso',        name:'เงินประกันสังคม',               info:'ไม่เกิน 9,000 บาท',
-    hint:'ไม่เกิน 9,000', cap:_capOf('sso', 'ไม่เกิน 9,000'), defaultVal:9000 },
+  { key:'sso',        name:'เงินประกันสังคม',               info:'ตามที่จ่ายจริง · ม.33 สูงสุด 9,000 (ปีภาษี 2568) / 10,500 (ปีภาษี 2569 เพดานค่าจ้าง 17,500) · ม.39 สูงสุด 5,184 · ม.40 สูงสุด 3,600 · ไม่ได้ส่ง = 0',
+    hint:'ตามที่จ่ายจริง', cap:_capOf('sso', (c, a) => a > 0 ? 'ตามจ่ายจริง ≤ ' + _fmtCap(a) : 'ไม่ได้ส่งเงินสมทบ') },
   { key:'maternity',  name:'ค่าฝากครรภ์และคลอดบุตร',       info:'ไม่เกิน 60,000 บาท ต่อครรภ์',
     hint:'ไม่เกิน 60,000', cap:_capOf('maternity', 'ไม่เกิน 60,000') },
   { key:'politicalDonate', name:'เงินบริจาคพรรคการเมือง',   info:'ไม่เกิน 10,000 บาท',
     hint:'ไม่เกิน 10,000', cap:_capOf('politicalDonate', 'ไม่เกิน 10,000') },
+  { key:'easyReceipt', name:'Easy E-Receipt (ปีภาษี 2567–2568)', info:'ค่าซื้อสินค้า/บริการที่มี e-Tax Invoice ในช่วงที่รัฐกำหนด ไม่เกิน 50,000 · ปี 2568: 16 ม.ค. – 28 ก.พ. 2568 · ปีภาษี 2569 ยังไม่มีมาตรการนี้',
+    hint:'ไม่เกิน 50,000', cap:_capOf('easyReceipt', (c, a) => a > 0 ? 'ไม่เกิน 50,000' : _noRight(c)) },
+  { key:'solar',      name:'ติดตั้งโซลาร์เซลล์บ้านอยู่อาศัย (3 มี.ค. 2569 – 31 ธ.ค. 2571)', info:'ค่าอุปกรณ์และค่าติดตั้งตามจ่ายจริง ไม่เกิน 200,000 · ต้องมี e-Tax Invoice · พระราชกฤษฎีกา (ฉบับที่ 805) พ.ศ. 2569',
+    hint:'ไม่เกิน 200,000', cap:_capOf('solar', (c, a) => a > 0 ? 'ไม่เกิน 200,000' : _noRight(c)) },
   { key:'debitFee',   name:'ค่าธรรมเนียมจากการรับชำระเงินด้วยบัตรเดบิต', info:'ตามจ่ายจริง',
     hint:'', cap:_capOf('debitFee', '') },
 ];
+/* ช่องข้อความ (ไม่ใช่ตัวเลข) เช่น มาตราประกันสังคม */
+function saveTextField(key, value) {
+  updateUser(u => {
+    const c = (u.data.clients||[]).find(x => x.id === selectedClientId);
+    if (!c) return;
+    if (!c.taxInputs) c.taxInputs = {};
+    c.taxInputs[key] = String(value);
+  });
+}
 
 const BRACKETS = [
   { lo:0,       hi:150000,  rate:0 },
@@ -642,6 +664,8 @@ function buildTaxHTML() {
   const ti = client.taxInputs || {};
   const cur = computeScope(client, 'cur');
   const imp = computeScope(client, 'imp');
+  /* ตัวเลือกปีภาษีที่หัวหน้า — ให้ตรงกับที่บันทึกของลูกค้าคนนี้ */
+  const ySel = document.getElementById('tax-year'); if (ySel) ySel.value = String(cur.year);
 
   return `
     <div class="t3-wrap">
@@ -663,7 +687,7 @@ function buildTaxHTML() {
       <div id="t3-after">
       <!-- Summary rows -->
       <div class="t3-sum">
-        <div class="t3-sum-lbl">รวมค่าลดหย่อน${(cur.retExcess || imp.retExcess) ? '<div style="font-size:.72rem;font-weight:500;color:var(--gray-500);margin-top:2px;">หักส่วนที่เกินเพดานรวมกลุ่มเกษียณ 500,000 แล้ว</div>' : ''}</div>
+        <div class="t3-sum-lbl">รวมค่าลดหย่อน <span style="font-size:.72rem;font-weight:500;color:var(--gray-500);">(ปีภาษี ${cur.year})</span>${(cur.retExcess || imp.retExcess) ? '<div style="font-size:.72rem;font-weight:500;color:var(--gray-500);margin-top:2px;">หักส่วนที่เกินเพดานรวมกลุ่มเกษียณ 500,000 แล้ว</div>' : ''}${(cur.used.annuityToLife || imp.used.annuityToLife) ? `<div style="font-size:.72rem;font-weight:500;color:var(--gray-500);margin-top:2px;">เบี้ยบำนาญ ${fmt(cur.used.annuityToLife)}${imp.used.annuityToLife !== cur.used.annuityToLife ? ' / ' + fmt(imp.used.annuityToLife) : ''} ใช้เติมสิทธิ์ประกันชีวิตที่ยังไม่ถึง 100,000</div>` : ''}</div>
         <div class="t3-cell"><div class="t3-sum-pill">${fmt(cur.totalDeduct)}</div></div>
         <div class="t3-cell"><div class="t3-sum-pill">${fmt(imp.totalDeduct)}</div></div>
       </div>
@@ -684,6 +708,20 @@ function buildTaxHTML() {
           oninput="saveExtraDonate('imp', taxFmtInput(this))"
           onblur="commitExtraDonate('imp', this.value)"
           onchange="commitExtraDonate('imp', this.value)"
+          style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
+      </div>
+      <div class="t3-sum">
+        <div class="t3-sum-lbl">เงินบริจาคทั่วไป (หัก 1 เท่า)${cur.year >= 2569 ? '<div style="font-size:.72rem;font-weight:500;color:var(--gray-500);margin-top:2px;">ปีภาษี 2569 ขึ้นไป ต้องบริจาคผ่านระบบ e-Donation เท่านั้น</div>' : ''} <button class="t3-info" type="button" aria-label="ดูรายละเอียด"
+          onclick="openInfoPopup('เงินบริจาคทั่วไป (หัก 1 เท่า)','บริจาคให้วัด มูลนิธิ สมาคม องค์กรสาธารณกุศล — หักได้ตามจ่ายจริง ไม่เกิน 10% ของเงินได้หลังหักค่าใช้จ่าย ค่าลดหย่อน และเงินบริจาค 2 เท่าแล้ว · ตั้งแต่ 1 ม.ค. 2569 ใช้สิทธิ์ได้เฉพาะที่บริจาคผ่านระบบ e-Donation ของกรมสรรพากร','🧾')">i</button></div>
+        <div class="t3-cell"><div class="t3-sum-pill"><input type="text" inputmode="numeric" value="${cur.donateGeneral ? fmt(cur.donateGeneral) : ''}" placeholder="0"
+          oninput="saveField('cur','donateGeneral', taxFmtInput(this))"
+          onblur="commitField('cur','donateGeneral', this.value)"
+          onchange="commitField('cur','donateGeneral', this.value)"
+          style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
+        <div class="t3-cell"><div class="t3-sum-pill"><input type="text" inputmode="numeric" value="${imp.donateGeneral ? fmt(imp.donateGeneral) : ''}" placeholder="0"
+          oninput="saveField('imp','donateGeneral', taxFmtInput(this))"
+          onblur="commitField('imp','donateGeneral', this.value)"
+          onchange="commitField('imp','donateGeneral', this.value)"
           style="width:100%;border:none;outline:none;background:transparent;font-family:var(--font);font-weight:700;text-align:right;color:var(--t3-indigo);"></div></div>
       </div>
       <div class="t3-sum">
@@ -809,13 +847,17 @@ function buildTaxHTML() {
 }
 
 function renderRow(row, ti, cur, imp, num) {
-  const annualIncome = cur.annualIncome;
-  const cap = row.cap(annualIncome);
+  const ctx = CALC.taxCapCtx(ti);   /* เงินได้ · ค่าจ้าง · ปีภาษี · มาตราประกันสังคม */
+  const cap = row.cap(ctx);
   const valCur = getValue(ti, 'cur', row.key, row.defaultVal);
   const valImp = getValue(ti, 'imp', row.key, row.defaultVal);
   /* Show readonly gray pill (with hint text) if value is 0; editable pill if user has entered a value.
-     oninput = save-only (no render → focus preserved); onblur/onchange = commit (save + render). */
+     oninput = save-only (no render → focus preserved); onblur/onchange = commit (save + render).
+     เพดาน 0 ในปีภาษีนี้ (เช่น SSF ตั้งแต่ 2568) → ล็อกช่อง แสดงเหตุผล (ค่าที่เคยบันทึกยังอยู่แต่ไม่ถูกนับ) */
   const renderCell = (scope, v) => {
+    if (cap.amount === 0) {
+      return `<div class="t3-pill readonly" title="${v > 0 ? 'บันทึกไว้ ' + fmt(v) + ' — ไม่นับในปีภาษีนี้' : ''}"><span>${cap.text || '—'}</span></div>`;
+    }
     if (v > 0) {
       return `<div class="t3-pill"><input type="text" inputmode="numeric" value="${fmt(v)}"
         oninput="saveField('${scope}','${row.key}',taxFmtInput(this))"
@@ -830,11 +872,15 @@ function renderRow(row, ti, cur, imp, num) {
   const escAttr = (s) => String(s == null ? '' : s)
     .replace(/&/g,'&amp;').replace(/'/g,'&#39;').replace(/"/g,'&quot;')
     .replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  /* แถวประกันสังคม: เลือกมาตราผู้ประกันตน (กำหนดเพดาน 9,000–10,500 / 5,184 / 3,600) */
+  const ssoSel = row.key === 'sso' ? `<select onchange="saveTextField('ssoType', this.value); render()" style="font-size:.74rem;margin-left:6px;font-family:var(--font);">
+      ${[['33','ม.33 ลูกจ้าง'],['39','ม.39'],['40','ม.40'],['none','ไม่ได้ส่ง']].map(([v, l]) => `<option value="${v}"${ctx.ssoType === v ? ' selected' : ''}>${l}</option>`).join('')}
+    </select>` : '';
   return `<tr>
     <td class="col-name">
       <span class="t3-row-num">${num}</span> ${row.name}
       <button class="t3-info" type="button" aria-label="ดูรายละเอียด"
-              onclick="openInfoPopup('${escAttr(row.name)}','${escAttr(row.info||'')}','🧾')">i</button>
+              onclick="openInfoPopup('${escAttr(row.name)}','${escAttr(row.info||'')}','🧾')">i</button>${ssoSel}
     </td>
     <td class="t3-cell">${renderCell('cur', valCur)}</td>
     <td class="t3-cell">${renderCell('imp', valImp)}</td>

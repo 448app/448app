@@ -518,6 +518,10 @@
     <div class="client-pick">
       <div class="cp-mini-avatar" id="cp-mini-avatar">👤</div>
       <select id="client-select" onchange="onClientChange(this.value)"></select>
+      <!-- ปีภาษี — กำหนดเพดานที่ผูกกับปี (ประกันสังคม · SSF · Thai ESG/ESGX · โครงการรัฐ) บันทึกต่อลูกค้า -->
+      <select id="tax-year" title="ปีภาษี" onchange="calculate()" style="margin-left:6px;">
+        <option value="2567">ปีภาษี 2567</option><option value="2568">ปีภาษี 2568</option><option value="2569">ปีภาษี 2569</option><option value="2570">ปีภาษี 2570</option>
+      </select>
     </div>
   </div>
   <div class="content-area">
@@ -675,13 +679,13 @@
             <input id="d-parent-ins" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="calculate()">
           </div>
           <div class="input-row">
-            <label>ประกันชีวิตแบบบำนาญ (RMF ผ่านประกัน) <span>สูงสุด 200,000 บาท</span></label>
+            <label>ประกันชีวิตแบบบำนาญ <span>15% ของเงินได้ สูงสุด 200,000 · เติมสิทธิ์ชีวิตที่เหลือได้ก่อน</span></label>
             <input id="d-annuity" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="calculate()">
           </div>
 
           <div class="section-label">การออมและลงทุน</div>
           <div class="input-row">
-            <label>กองทุนสำรองเลี้ยงชีพ (PVD) <span>ไม่เกิน 15% ของรายได้ สูงสุด 500,000</span></label>
+            <label>กองทุนสำรองเลี้ยงชีพ (PVD) <span>ไม่เกิน 15% ของค่าจ้าง 40(1) สูงสุด 500,000</span></label>
             <input id="d-pvd" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="calculate()">
           </div>
           <div class="input-row">
@@ -689,17 +693,18 @@
             <input id="d-rmf" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="calculate()">
           </div>
           <div class="input-row">
-            <label>กองทุน SSF <span>ไม่เกิน 30% ของรายได้ สูงสุด 200,000</span></label>
+            <label>กองทุน SSF <span id="d-ssf-cap">ไม่เกิน 30% ของรายได้ สูงสุด 200,000</span></label>
             <input id="d-ssf" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="calculate()">
           </div>
 
           <div class="section-label">อื่นๆ</div>
           <div class="input-row">
-            <label>เงินประกันสังคม <span>สูงสุด 9,000 บาท</span></label>
-            <input id="d-sso" class="money-fmt" inputmode="decimal" value="9000" min="0" oninput="calculate()">
+            <label>เงินประกันสังคม <span id="d-sso-cap">ตามที่จ่ายจริง</span>
+              <select id="sso-type" onchange="calculate()" title="มาตราผู้ประกันตน" style="font-size:.78rem;margin-left:6px;"><option value="33">ม.33 ลูกจ้าง</option><option value="39">ม.39</option><option value="40">ม.40</option><option value="none">ไม่ได้ส่ง</option></select></label>
+            <input id="d-sso" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="_autoKeys.delete('sso'); calculate()">
           </div>
           <div class="input-row">
-            <label>เงินบริจาค <span>ลดหย่อนได้ 2 เท่า สูงสุด 10% ของรายได้หลังหัก</span></label>
+            <label>เงินบริจาค 2 เท่า <span id="d-donate-note">การศึกษา กีฬา รพ.รัฐ · สูงสุด 10% ของรายได้หลังหัก</span></label>
             <input id="d-donate" class="money-fmt" inputmode="decimal" value="0" min="0" oninput="calculate()">
           </div>
 
@@ -1061,18 +1066,15 @@
     const sc = CALC.taxScope({ taxInputs: Object.assign({}, savedTi, ti) }, 'cur');
     const extraDeduct = Math.max(sc.totalDeduct - CALC.taxScope({ taxInputs: ti }, 'cur').totalDeduct, 0);
 
-    // ค่าที่ตัดเพดานแล้วรายช่อง — ใช้กับคำแนะนำ "ยังลดหย่อนได้อีก" และตารางเปรียบเทียบด้านล่าง
-    const cap = k => CALC.TAX_CAPS[k](income);
-    const healthIns = Math.min(ti.healthIns, cap('healthIns'));
-    const lifeIns   = Math.min(ti.lifeIns, Math.max(100000 - healthIns, 0));
-    const parentIns = Math.min(ti.parentIns, cap('parentIns'));
-    const annuity   = Math.min(ti.annuity, cap('annuity'));
-    const pvd       = Math.min(ti.pvd, cap('pvd'));
-    const rmf       = Math.min(ti.rmf, cap('rmf'));
-    const ssf       = Math.min(ti.ssf, cap('ssf'));
+    // ยอดที่ใช้สิทธิ์ได้จริงรายช่อง (หลังตัดเพดานทุกชั้น รวมบำนาญเติมชีวิตและกลุ่มเกษียณ) — ใช้กับคำแนะนำและตารางเปรียบเทียบด้านล่าง
+    const ctx = sc.ctx;
+    const cap = k => CALC.TAX_CAPS[k](ctx);
+    const healthIns = sc.used.healthIns, lifeIns = sc.used.lifeIns, parentIns = sc.used.parentIns;
+    const annuity   = sc.used.annuity + sc.used.annuityToLife;
+    const pvd = sc.used.pvd, rmf = sc.used.rmf, ssf = sc.used.ssf;
     const donate    = sc.eduDeduct;   /* เงินบริจาค 2 เท่า หลังตัดเพดาน 10% */
 
-    const totalDeduct = sc.totalDeduct + sc.eduDeduct;
+    const totalDeduct = sc.totalDeduct + sc.eduDeduct + sc.generalDeduct;
     const netIncome   = Math.max(sc.net, 0);
     const { breakdown } = calcTax(netIncome);   /* ตารางขั้นภาษี (แสดงผล) */
     const progressiveTax = sc.progressiveTax, flatTax = sc.flatTax, tax = sc.tax;
@@ -1080,6 +1082,11 @@
     /* ค่าลดหย่อนจากหน้าลดหย่อนภาษีที่ไม่มีช่องในหน้านี้ — บอกให้รู้ว่ายอดรวมมาจากไหน */
     const extraEl = document.getElementById('res-deduct-extra');
     if (extraEl) { extraEl.textContent = extraDeduct > 0 ? `รวมค่าลดหย่อนอื่นจากหน้าลดหย่อนภาษี ${fmt(extraDeduct)}` : ''; extraEl.style.display = extraDeduct > 0 ? '' : 'none'; }
+    /* ป้ายเพดานที่ขึ้นกับปีภาษี/มาตรา */
+    const setTxt = (id, t) => { const el = document.getElementById(id); if (el) el.textContent = t; };
+    setTxt('d-sso-cap', ctx.ssoType === 'none' ? 'ไม่ได้ส่งเงินสมทบ' : `ตามที่จ่ายจริง สูงสุด ${CALC.ssoCap(ctx.year, ctx.ssoType).toLocaleString('th-TH')} บาท (ปีภาษี ${ctx.year})`);
+    setTxt('d-ssf-cap', ctx.year <= 2567 ? 'ไม่เกิน 30% ของรายได้ สูงสุด 200,000' : 'ไม่มีสิทธิ์ตั้งแต่ปีภาษี 2568 (ซื้อได้สิทธิ์ถึงปี 2567)');
+    setTxt('d-donate-note', (ctx.year >= 2569 ? 'ต้องบริจาคผ่าน e-Donation · ' : '') + 'การศึกษา กีฬา รพ.รัฐ · สูงสุด 10% ของรายได้หลังหัก');
 
     document.getElementById('res-income').textContent  = fmt(income);
     document.getElementById('res-expense').textContent = '- ' + fmt(expense);
@@ -1132,15 +1139,14 @@
       }
     }
 
-    // Tips — สุขภาพเหลือจาก cap รวม 100,000 หลังหักชีวิตแล้ว
-    const remainLife      = Math.max(100000 - lifeIns, 0);
-    const healthCap       = Math.min(25000, remainLife);          // เพดานสุขภาพที่แท้จริง
-    const remainHealth    = Math.max(healthCap - val('d-health-ins'), 0);
-    const remainAnnuity   = Math.max(200000 - val('d-annuity'), 0);
+    // Tips — สิทธิ์ที่ยังเหลือ: ชีวิต+สุขภาพ+บำนาญที่เติมชีวิต ≤ 100,000 · สุขภาพ ≤ 25,000 · บำนาญ 15% ของเงินได้ ≤ 200,000
+    const lhRoom          = Math.max(100000 - lifeIns - healthIns - sc.used.annuityToLife, 0);
+    const remainHealth    = Math.max(Math.min(25000 - healthIns, lhRoom), 0);
+    const remainAnnuity   = Math.max(cap('annuity') - sc.used.annuity, 0);
     const tips = [];
-    if (remainLife > 0)    tips.push(`เบี้ยประกันชีวิตยังลดหย่อนได้อีก ฿${remainLife.toLocaleString('th-TH')}`);
+    if (lhRoom > 0)        tips.push(`เบี้ยประกันชีวิตยังลดหย่อนได้อีก ฿${lhRoom.toLocaleString('th-TH')} (หรือใช้เบี้ยบำนาญเติมได้)`);
     if (remainHealth > 0)  tips.push(`เบี้ยประกันสุขภาพยังลดหย่อนได้อีก ฿${remainHealth.toLocaleString('th-TH')} (รวมชีวิตไม่เกิน 100,000)`);
-    if (remainAnnuity > 0) tips.push(`ประกันบำนาญยังลดหย่อนได้อีก ฿${remainAnnuity.toLocaleString('th-TH')} (สูงสุด 200,000)`);
+    if (remainAnnuity > 0) tips.push(`ประกันบำนาญยังลดหย่อนได้อีก ฿${Math.round(remainAnnuity).toLocaleString('th-TH')} (15% ของเงินได้ สูงสุด 200,000)`);
 
     const tipBox = document.getElementById('saving-tip');
     if (tips.length > 0 && income > 0) {
@@ -1214,29 +1220,18 @@
     const newSsfRaw     = rawSsf + addSsf;
     const newDonateRaw  = rawDonate + addDonate;
 
-    // Apply caps (ตามกฎภาษีไทย)
-    const newHealth  = Math.min(newHealthRaw, 25000);
-    const newLife    = Math.min(newLifeRaw, Math.max(100000 - newHealth, 0));
-    const newAnnuity = Math.min(newAnnuityRaw, 200000);
-    const newPvd     = income > 0 ? Math.min(newPvdRaw, income * 0.15, 500000) : Math.min(newPvdRaw, 500000);
-    const newRmf     = income > 0 ? Math.min(newRmfRaw, income * 0.30, 500000) : Math.min(newRmfRaw, 500000);
-    const newSsf     = income > 0 ? Math.min(newSsfRaw, income * 0.30, 200000) : Math.min(newSsfRaw, 200000);
-    // เพดานรวม PVD+RMF+บำนาญ ≤ 500K
-    let newPvdAdj = newPvd, newRmfAdj = newRmf, newAnnuityAdj = newAnnuity;
-    const combined = newPvd + newRmf + newAnnuity;
-    if (combined > 500000 && combined > 0) {
-      const r = 500000 / combined;
-      newPvdAdj     = newPvd * r;
-      newRmfAdj     = newRmf * r;
-      newAnnuityAdj = newAnnuity * r;
-    }
     /* ภาษีหลังปรับปรุง — CALC.taxScope ชุดเดียวกับตอนกด "นำไปใช้จริง" และหน้าลดหย่อนภาษี
        (เดิมคิดเองอีกชุด → ตัวเลข "หลังปรับปรุง" กับตัวเลขหลังนำไปใช้จริงอาจไม่เท่ากัน) */
     const newTi = Object.assign({}, current.savedTi || {}, current.ti || {},
       { lifeIns: newLifeRaw, healthIns: newHealthRaw, annuity: newAnnuityRaw, pvd: newPvdRaw, rmf: newRmfRaw, ssf: newSsfRaw, donate: newDonateRaw, eduDonate: newDonateRaw });
     const scNew = CALC.taxScope({ taxInputs: newTi }, 'cur');
+    /* ยอดที่ใช้สิทธิ์ได้จริงรายช่อง (หลังตัดเพดานทุกชั้น รวมบำนาญเติมชีวิตและกลุ่มเกษียณ 500,000) — ชุดเดียวกับ CALC */
+    const newHealth = scNew.used.healthIns, newLife = scNew.used.lifeIns;
+    const newAnnuityAdj = scNew.used.annuity + scNew.used.annuityToLife;
+    const newPvdAdj = scNew.used.pvd, newRmfAdj = scNew.used.rmf, newSsf = scNew.used.ssf;
+    const cctx = scNew.ctx, ccap = k => CALC.TAX_CAPS[k](cctx);
     const newDonate = scNew.eduDeduct;
-    const newTotalDeduct = scNew.totalDeduct + scNew.eduDeduct;
+    const newTotalDeduct = scNew.totalDeduct + scNew.eduDeduct + scNew.generalDeduct;
     const newNetIncome = Math.max(scNew.net, 0);
     const newTax = scNew.tax;
     /* ยอดลดหย่อนอื่นก่อนบริจาค — ใช้กับคำแนะนำเพดานบริจาคด้านล่าง */
@@ -1276,30 +1271,28 @@
     if (remainHealth > 1000)
       suggestions.push(`ประกันสุขภาพ ยังเพิ่มได้อีก ฿${remainHealth.toLocaleString('th-TH')} (เพดาน ฿25K)`);
 
-    // 2) Life (cap = 100K - health ที่ใช้จริง [capped]) — Fix Bug 1
-    const healthUsed = Math.min(newHealthRaw, 25000);
-    const remainLife = Math.max(100000 - healthUsed - newLifeRaw, 0);
+    // 2) Life (cap = 100K − สุขภาพ − บำนาญที่เติมชีวิต)
+    const remainLife = Math.max(100000 - newHealth - newLife - scNew.used.annuityToLife, 0);
     if (remainLife > 1000)
       suggestions.push(`ประกันชีวิต ยังเพิ่มได้อีก ฿${remainLife.toLocaleString('th-TH')} (เพดานรวมกับสุขภาพ ฿100K)`);
 
-    // 3) เพดานรวม PVD + RMF + บำนาญ ≤ 500K — Fix Bug 2
-    const combinedRetirement = newPvdRaw + newRmfRaw + newAnnuityRaw;
-    const combinedRoom = Math.max(500000 - combinedRetirement, 0);
+    // 3) เพดานรวมกลุ่มเกษียณ ≤ 500K — ใช้แล้วจาก CALC (ไม่รวมส่วนบำนาญที่เติมช่องชีวิต)
+    const combinedRoom = Math.max(500000 - scNew.groupUsed, 0);
 
-    // ประกันบำนาญ (cap ส่วนตัว 200K) — แสดงเฉพาะที่เพิ่มได้จริง
-    const remainAnnuityIndiv = Math.max(200000 - newAnnuityRaw, 0);
+    // ประกันบำนาญ (15% ของเงินได้ ≤ 200K) — แสดงเฉพาะที่เพิ่มได้จริง
+    const remainAnnuityIndiv = Math.max(ccap('annuity') - scNew.used.annuity, 0);
     const remainAnnuityActual = Math.min(remainAnnuityIndiv, combinedRoom);
     if (remainAnnuityActual > 1000)
-      suggestions.push(`ประกันบำนาญ ยังเพิ่มได้อีก ฿${Math.round(remainAnnuityActual).toLocaleString('th-TH')} (เพดาน ฿200K)`);
+      suggestions.push(`ประกันบำนาญ ยังเพิ่มได้อีก ฿${Math.round(remainAnnuityActual).toLocaleString('th-TH')} (15% ของเงินได้ ไม่เกิน ฿200K)`);
 
-    // PVD/RMF (cap ตามรายได้ + รวม)
+    // PVD/RMF (เพดานตามค่าจ้าง/รายได้ + รวม) · SSF เฉพาะปีที่ยังมีสิทธิ์ (ถึงปีภาษี 2567)
     if (income > 0) {
-      const remainPvdIndiv = Math.max(Math.min(income * 0.15, 500000) - newPvdRaw, 0);
-      const remainRmfIndiv = Math.max(Math.min(income * 0.30, 500000) - newRmfRaw, 0);
-      const remainSsf      = Math.max(Math.min(income * 0.30, 200000) - newSsfRaw, 0);
+      const remainPvdIndiv = Math.max(ccap('pvd') - newPvdRaw, 0);
+      const remainRmfIndiv = Math.max(ccap('rmf') - newRmfRaw, 0);
+      const remainSsf      = Math.max(ccap('ssf') - newSsfRaw, 0);
       const remainPvd = Math.min(remainPvdIndiv, combinedRoom);
       const remainRmf = Math.min(remainRmfIndiv, combinedRoom);
-      if (remainPvd > 1000) suggestions.push(`PVD ยังเพิ่มได้อีก ~฿${Math.round(remainPvd).toLocaleString('th-TH')} (15% รายได้)`);
+      if (remainPvd > 1000) suggestions.push(`PVD ยังเพิ่มได้อีก ~฿${Math.round(remainPvd).toLocaleString('th-TH')} (15% ของค่าจ้าง)`);
       if (remainRmf > 1000) suggestions.push(`RMF ยังเพิ่มได้อีก ~฿${Math.round(remainRmf).toLocaleString('th-TH')} (30% รายได้)`);
       if (remainSsf > 1000) suggestions.push(`SSF ยังเพิ่มได้อีก ~฿${Math.round(remainSsf).toLocaleString('th-TH')} (30% รายได้, สูงสุด ฿200K)`);
 
@@ -1455,6 +1448,9 @@
       sso:       v('d-sso'),
       donate:    v('d-donate'),
       eduDonate: v('d-donate'),   /* ช่องเดียวกับ "เงินบริจาค 2 เท่า" ในหน้าลดหย่อนภาษี — บันทึกทั้งสองชื่อให้สองหน้าตรงกัน */
+      /* ปีภาษีและมาตราประกันสังคม — กำหนดเพดานที่ผูกกับปี (ใช้ร่วมกับหน้าลดหย่อนภาษีและ PDF) */
+      taxYear:   (() => { const el = document.getElementById('tax-year'); return el ? Number(el.value) : undefined; })(),
+      ssoType:   (() => { const el = document.getElementById('sso-type'); return el ? el.value : '33'; })(),
       // Try-deduct comparison "+ เพิ่มเติม" inputs
       cmpAddLife:    v('cmp-add-life'),
       cmpAddHealth:  v('cmp-add-health'),
@@ -1644,49 +1640,11 @@
      รวมเบี้ยจาก policies main type + riders[]
   ═══════════════════════════════════════════ */
   function computeInsurancePremiumsFromPolicies(policies) {
-    const annuityTypes = ['บำนาญ','เกษียณ','ลดหย่อนภาษี'];
-    const healthTypes  = ['สุขภาพ'];
-    // Life insurance types ที่ใช้ลดหย่อนได้ (฿100K cap)
-    const lifeMainTypes = [
-      'ชีวิต','ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','Unit Linked',
-      'การศึกษา','ส่งมอบ','ลงทุน','โรคร้ายแรง'
-      // หมายเหตุ: PA / อุบัติเหตุ ไม่นำมาลดหย่อนภาษี
-    ];
-
-    let lifePrem = 0, healthPrem = 0, annuityPrem = 0;
-
-    (policies || []).forEach(p => {
-      const prem = Number(p.premium || 0);
-
-      // จัดประเภทตาม main policy type
-      if (annuityTypes.includes(p.type)) {
-        annuityPrem += prem;
-      } else if (healthTypes.includes(p.type)) {
-        healthPrem += prem;
-      } else if (lifeMainTypes.includes(p.type)) {
-        lifePrem += prem;
-      }
-      // PA / อุบัติเหตุ → ไม่นำมาคำนวณภาษี
-
-      // รวม Phase 3.3 riders[] premium ตามประเภท
-      (p.riders || []).forEach(r => {
-        const rPrem = Number(r.premium || 0);
-        if (r.type === 'medical')        healthPrem += rPrem;        // ค่ารักษาพยาบาล → สุขภาพ
-        else if (r.type === 'critical')  lifePrem   += rPrem;        // โรคร้ายแรง → ใช้ slot ชีวิต
-        else if (r.type === 'income')    lifePrem   += rPrem;        // ชดเชยรายได้ → slot ชีวิต
-        else if (r.type === 'disability') lifePrem  += rPrem;        // ทุพพลภาพ → slot ชีวิต
-        // accident rider → ไม่นำมาลดหย่อน
-      });
-
-      // Legacy rider fields (สำหรับกรมธรรม์เก่าก่อน Phase 3.3)
-      if (Number(p.riderHealthPrem) > 0)        healthPrem += Number(p.riderHealthPrem);
-      if (Number(p.riderCriticalPrem) > 0)      lifePrem   += Number(p.riderCriticalPrem);
-      if (Number(p.riderIncomePrem) > 0)        lifePrem   += Number(p.riderIncomePrem);
-      if (Number(p.riderDisabilityPrem) > 0)    lifePrem   += Number(p.riderDisabilityPrem);
-      // riderAccidentPrem → ไม่นำมาลดหย่อน
-    });
-
-    return { lifePrem, healthPrem, annuityPrem };
+    /* สูตรกลาง CALC.policyPremiums (= สรุปกรมธรรม์/PDF): ค่ารักษา/โรคร้ายแรง/ทุพพลภาพ → สุขภาพ · ชดเชยรายได้/อุบัติเหตุ → ไม่นับ
+       · PA/อุบัติเหตุ ไม่นับ (เว้นแต่ยอดที่บริษัทรับรองเป็นสุขภาพ) · บำนาญ (หรือติ๊กแบบบำนาญ) → บำนาญ · ที่เหลือ → ชีวิต เมื่อคุ้มครอง ≥ 10 ปี
+       (เดิมหน้านี้นับโรคร้ายแรง/ชดเชยรายได้/ทุพพลภาพเป็นชีวิต และไม่ตรงกับหน้าสรุปกรมธรรม์) */
+    const pp = CALC.policyPremiums(policies || []);
+    return { lifePrem: pp.life, healthPrem: pp.health, annuityPrem: pp.annuity, excludedPrem: pp.excluded, notes: pp.notes };
   }
 
   /* normalize contribution → ค่ารายปี เสมอ (รองรับ contribFreq='monthly') */
@@ -1721,6 +1679,13 @@
     document.getElementById('d-rmf').value        = rmfContrib;
     document.getElementById('d-ssf').value        = ssfContrib;
     ['lifeIns','healthIns','annuity','pvd','rmf','ssf'].forEach(k => _autoKeys.add(k));
+    /* ประกันสังคม: ยังไม่ได้กรอกและมีเงินเดือน → แนะนำเพดานตามปีภาษี/มาตรา (ยอดจริงดูจากสลิป แก้ได้) */
+    const yearEl = document.getElementById('tax-year'), ssoTypeEl = document.getElementById('sso-type');
+    const wagesNow = parseMoney(document.getElementById('i-salary')) + parseMoney(document.getElementById('i-bonus'));
+    if (parseMoney(document.getElementById('d-sso')) === 0 && wagesNow > 0) {
+      document.getElementById('d-sso').value = CALC.ssoCap(Number(yearEl && yearEl.value) || CALC.taxYearNow(), ssoTypeEl ? ssoTypeEl.value : '33');
+      _autoKeys.add('sso');
+    }
 
     if (window.refreshAllMoneyInputs) refreshAllMoneyInputs();
     calculate();
@@ -1729,6 +1694,7 @@
     if (ins.lifePrem > 0)    breakdown.push(`ชีวิต ฿${ins.lifePrem.toLocaleString('th-TH')}`);
     if (ins.healthPrem > 0)  breakdown.push(`สุขภาพ ฿${ins.healthPrem.toLocaleString('th-TH')}`);
     if (ins.annuityPrem > 0) breakdown.push(`บำนาญ ฿${ins.annuityPrem.toLocaleString('th-TH')}`);
+    if (ins.excludedPrem > 0) breakdown.push(`ไม่นับ ฿${ins.excludedPrem.toLocaleString('th-TH')} (${[...new Set(ins.notes.map(n => n.reason))].join(', ')})`);
     if (pvdContrib > 0)      breakdown.push(`PVD ฿${pvdContrib.toLocaleString('th-TH')}`);
     if (rmfContrib > 0)      breakdown.push(`RMF ฿${rmfContrib.toLocaleString('th-TH')}`);
     if (ssfContrib > 0)      breakdown.push(`SSF ฿${ssfContrib.toLocaleString('th-TH')}`);
@@ -1841,7 +1807,13 @@
     document.getElementById('d-ssf').value = pick('ssf', ti.ssf, ssfContrib);
 
     // 5) Other
-    document.getElementById('d-sso').value    = ti.sso    != null ? ti.sso    : 9000;
+    /* ปีภาษี / มาตราประกันสังคม (ค่าเริ่มต้น: ปีปัจจุบัน · ม.33) — บันทึกต่อลูกค้าใน taxInputs */
+    const yearSel = document.getElementById('tax-year'); if (yearSel) yearSel.value = String(CALC.taxYearOf(ti));
+    const ssoSel = document.getElementById('sso-type');  if (ssoSel) ssoSel.value = String(ti.ssoType || '33');
+    /* ประกันสังคม = ยอดที่จ่ายจริง (ไม่มีค่าเริ่มต้น 9,000 ให้ทุกคน) · ไม่เคยกรอกและมีเงินเดือน → แนะนำเพดานของปีภาษี/มาตราเป็นค่าดึงอัตโนมัติ */
+    const wagesNow = Number(ti.salary != null ? ti.salary : annualIncome) + Number(ti.bonus || 0);
+    const ssoDerived = wagesNow > 0 ? CALC.ssoCap(CALC.taxYearOf(ti), ti.ssoType || '33') : 0;
+    document.getElementById('d-sso').value    = pick('sso', ti.sso, ssoDerived);
     /* เงินบริจาค 2 เท่า — ใช้ค่าจากหน้าลดหย่อนภาษี (eduDonate) ก่อน ไม่มีค่อยใช้ค่าที่หน้านี้เคยบันทึก (donate) */
     document.getElementById('d-donate').value = (ti.eduDonate != null && ti.eduDonate !== '') ? ti.eduDonate : (ti.donate != null ? ti.donate : 0);
 
@@ -1865,6 +1837,8 @@
     if (lifePrem > 0    && _autoKeys.has('lifeIns')) autoFilled.push(`เบี้ยประกันชีวิต ฿${lifePrem.toLocaleString('th-TH')}`);
     if (healthPrem > 0  && _autoKeys.has('healthIns')) autoFilled.push(`เบี้ยสุขภาพ ฿${healthPrem.toLocaleString('th-TH')}`);
     if (annuityPrem > 0 && _autoKeys.has('annuity')) autoFilled.push(`เบี้ยบำนาญ ฿${annuityPrem.toLocaleString('th-TH')}`);
+    if (ssoDerived > 0 && _autoKeys.has('sso')) autoFilled.push(`ประกันสังคม ฿${ssoDerived.toLocaleString('th-TH')} (เพดาน ม.${ti.ssoType || '33'} ปี ${CALC.taxYearOf(ti)})`);
+    if (insBreakdown.excludedPrem > 0) autoFilled.push(`ไม่นับ ฿${insBreakdown.excludedPrem.toLocaleString('th-TH')} (${[...new Set(insBreakdown.notes.map(n => n.reason))].join(', ')})`);
     if ((pvdContrib + rmfContrib + ssfContrib + thaiesgContrib) > 0 && (_autoKeys.has('pvd') || _autoKeys.has('rmf') || _autoKeys.has('ssf')))
       autoFilled.push(`PVD/RMF/SSF จากสินทรัพย์`);
 
@@ -1904,7 +1878,9 @@
     ['cmp-add-life','cmp-add-health','cmp-add-annuity','cmp-add-pvd','cmp-add-rmf','cmp-add-ssf','cmp-add-donate']
       .forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     document.getElementById('d-personal').value = 60000;
-    document.getElementById('d-sso').value      = 9000;
+    document.getElementById('d-sso').value      = 0;
+    const ySel = document.getElementById('tax-year'); if (ySel) ySel.value = String(CALC.taxYearNow());
+    const sSel = document.getElementById('sso-type'); if (sSel) sSel.value = '33';
     const med = document.getElementById('i-40-6-medical'); if (med) med.checked = false;
     const rateMethod = document.querySelector('input[name="exp-method"][value="rate"]');
     if (rateMethod) rateMethod.checked = true;

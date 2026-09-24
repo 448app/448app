@@ -10,7 +10,7 @@
      1. ทั่วไป      ageYears · ageInt · incomeAnnual · annualContrib · fv · assetFV
      2. เกษียณ      retirementPlan · retirementAssets · retirementDerived · retirementIncomeAfter · retirement
      3. การศึกษา    EDU_* · eduCostTable · eduStageCost · eduUniLevel · childEducation · childRearing · childTotalCost
-     4. ภาษี        TAX_* · taxIncome · taxExpenseDetail · taxExpense · taxBracket · taxValue · taxScope
+     4. ภาษี        TAX_* · taxIncome · taxWages · taxYearOf · taxCapCtx · taxExpenseDetail · taxExpense · taxBracket · taxValue · taxScope · policyPremiums
      5. สุขภาพ/ทุน  HEALTH_ROWS · healthRecommend · healthFromPolicies · healthCalc · recommendCoverage · legacyCover
 */
 (function () {
@@ -399,21 +399,50 @@
     { lo: 2000001, hi: 5000000,  rate: 0.30 },
     { lo: 5000001, hi: Infinity, rate: 0.35 },
   ];
-  /* เพดานรายช่อง (key = ชื่อช่องใน client.taxInputs) — แถวใน tax2.html อ่านเพดานจากที่นี่ */
+  const TAX_INCOME_KEYS = ['salary', 'bonus', 'other', 'inc402', 'inc403', 'inc404', 'inc405', 'inc406', 'inc407', 'inc408'];
+  function taxIncome(ti) { ti = ti || {}; return TAX_INCOME_KEYS.reduce((s, k) => s + (Number(ti[k]) || 0), 0); }
+  /* ค่าจ้าง 40(1) = เงินเดือน + โบนัส — ฐานของ PVD / กบข. / กองทุนสงเคราะห์ครู (กฎใช้ "ค่าจ้าง" ไม่ใช่เงินได้รวม) */
+  function taxWages(ti) { ti = ti || {}; return (Number(ti.salary) || 0) + (Number(ti.bonus) || 0); }
+  /* ปีภาษี (พ.ศ.) ของลูกค้า — ไม่ได้เลือกใช้ปีปัจจุบัน */
+  const taxYearNow = () => new Date().getFullYear() + 543;
+  function taxYearOf(ti) { const y = Number(ti && ti.taxYear); return (y >= 2560 && y <= 2600) ? y : taxYearNow(); }
+  /* เงินสมทบประกันสังคมสูงสุดต่อปี ตามมาตราและปีภาษี
+     ม.33: เพดานค่าจ้าง 15,000 (750/เดือน) → 17,500 (875) ตั้งแต่ 1 ม.ค. 2569 → 20,000 (1,000) ปี 2572 → 23,000 (1,150) ปี 2575
+     ม.39: 432/เดือน = 5,184 · ม.40: สูงสุด 300/เดือน = 3,600 · ไม่ได้ส่ง = 0 */
+  function ssoCap(year, type) {
+    type = String(type || '33');
+    if (type === 'none') return 0;
+    if (type === '39') return 5184;
+    if (type === '40') return 3600;
+    return year >= 2575 ? 13800 : year >= 2572 ? 12000 : year >= 2569 ? 10500 : 9000;
+  }
+  /* บริบทเพดาน { income, wages, year, ssoType } — ฟังก์ชันเพดานรับตัวเลขเงินได้อย่างเดียวได้ด้วย (ผู้เรียกเก่า) */
+  function taxCapCtx(ti) { ti = ti || {}; return { income: taxIncome(ti), wages: taxWages(ti), year: taxYearOf(ti), ssoType: String(ti.ssoType || '33') }; }
+  const ctxOf = x => (x && typeof x === 'object') ? x : { income: Number(x) || 0, wages: Number(x) || 0, year: taxYearNow(), ssoType: '33' };
+  /* เพดานรายช่อง (key = ชื่อช่องใน client.taxInputs) — แถวใน tax2.html อ่านเพดานจากที่นี่ · รายการที่ผูกกับปีภาษีระบุปีไว้ */
   const TAX_CAPS = {
     personal: () => 60000,  spouse: () => 60000,  child: () => Infinity,  parent: () => 120000,  disabled: () => Infinity,
     lifeIns: () => 100000,  lifeInsSpouse: () => 10000,  healthIns: () => 25000,  parentIns: () => 15000,  mortgage: () => 100000,
-    thaiesg: inc => Math.min(inc * 0.30, 300000),  thaiesgx: () => 500000,
-    ssf: inc => Math.min(inc * 0.30, 200000),  rmf: inc => Math.min(inc * 0.30, 500000),
-    pvd: inc => Math.min(inc * 0.15, 500000),  gpf: inc => Math.min(inc * 0.30, 500000),  nsf: () => 30000,
-    annuity: inc => Math.min(inc * 0.15, 200000),
-    sso: () => 9000,  maternity: () => 60000,  politicalDonate: () => 10000,  debitFee: () => Infinity,
+    /* Thai ESG: ซื้อปี 2567–2569 30% ≤ 300,000 ถือ 5 ปี · ปีอื่น 30% ≤ 100,000 ถือ 8 ปี (ยังไม่มีมติต่ออายุ) */
+    thaiesg: c => { c = ctxOf(c); return Math.min(c.income * 0.30, (c.year >= 2567 && c.year <= 2569) ? 300000 : 100000); },
+    /* Thai ESGX (ปีภาษี 2568): เงินใหม่ 30% ≤ 300,000 · สับเปลี่ยนจาก LTF ≤ 500,000 รวม โดยหัก 2568 ≤ 300,000 และ 2569–2572 ≤ 50,000/ปี */
+    thaiesgx: c => { c = ctxOf(c); return c.year === 2568 ? Math.min(c.income * 0.30, 300000) : 0; },
+    thaiesgxLtf: c => { c = ctxOf(c); return c.year === 2568 ? 300000 : ((c.year >= 2569 && c.year <= 2572) ? 50000 : 0); },
+    /* SSF: ได้สิทธิ์เฉพาะหน่วยที่ซื้อปีภาษี 2563–2567 (ไม่ต่ออายุ) */
+    ssf: c => { c = ctxOf(c); return (c.year >= 2563 && c.year <= 2567) ? Math.min(c.income * 0.30, 200000) : 0; },
+    rmf: c => Math.min(ctxOf(c).income * 0.30, 500000),
+    pvd: c => Math.min(ctxOf(c).wages * 0.15, 500000),
+    gpf: c => Math.min(ctxOf(c).wages * 0.15, 500000),
+    nsf: () => 30000,
+    annuity: c => Math.min(ctxOf(c).income * 0.15, 200000),
+    sso: c => { c = ctxOf(c); return ssoCap(c.year, c.ssoType); },
+    maternity: () => 60000,  politicalDonate: () => 10000,  debitFee: () => Infinity,
+    /* โครงการรัฐ: Easy E-Receipt ปี 2567–2568 ≤ 50,000 · ติดตั้งโซลาร์บ้านอยู่อาศัย 3 มี.ค. 2569 – 31 ธ.ค. 2571 ≤ 200,000 (พ.ร.ฎ. 805/2569) */
+    easyReceipt: c => { const y = ctxOf(c).year; return (y === 2567 || y === 2568) ? 50000 : 0; },
+    solar: c => { const y = ctxOf(c).year; return (y >= 2569 && y <= 2571) ? 200000 : 0; },
   };
-  const TAX_DEFAULTS = { personal: 60000, sso: 9000 };
-  const TAX_RET_GROUP = ['ssf', 'rmf', 'pvd', 'gpf', 'nsf', 'annuity'];   /* รวมกันไม่เกิน 500,000 */
-  const TAX_INCOME_KEYS = ['salary', 'bonus', 'other', 'inc402', 'inc403', 'inc404', 'inc405', 'inc406', 'inc407', 'inc408'];
-
-  function taxIncome(ti) { ti = ti || {}; return TAX_INCOME_KEYS.reduce((s, k) => s + (Number(ti[k]) || 0), 0); }
+  const TAX_DEFAULTS = { personal: 60000 };   /* ประกันสังคมไม่มีค่าเริ่มต้น — ใช้ยอดที่จ่ายจริง */
+  const TAX_RET_GROUP = ['ssf', 'rmf', 'pvd', 'gpf', 'nsf', 'annuity'];   /* รวมกันไม่เกิน 500,000 (Thai ESG/ESGX ไม่รวม) */
   /* ค่าใช้จ่ายรายประเภท: 40(1)+(2) 50% รวมไม่เกิน 100,000 · 40(3) 50% ไม่เกิน 100,000 แยกเพดาน
      40(5) 30% · 40(6) 30% (แพทย์ 60%) · 40(7) 60% · 40(8) 60% — ใช้ค่าที่สูงกว่าระหว่างเหมากับ "ตามจริง" */
   function taxExpenseDetail(ti) {
@@ -452,19 +481,26 @@
     if (v == null || v === '') { const d = defaultVal != null ? defaultVal : TAX_DEFAULTS[key]; return d || 0; }
     return Number(v) || 0;
   }
-  /* extra = ค่าลดหย่อนที่เพิ่มเข้าไป (ใช้หาภาษีหลังใช้สิทธิ์เพิ่มใน PDF) */
+  /* extra = ค่าลดหย่อนที่เพิ่มเข้าไป (ใช้หาภาษีหลังใช้สิทธิ์เพิ่มใน PDF)
+     คืน used = ยอดที่ใช้สิทธิ์ได้จริงรายช่องหลังตัดเพดานทุกชั้น (รวม annuityToLife = เบี้ยบำนาญส่วนที่ไปเติมช่องชีวิต) */
   function taxScope(client, scope, extra) {
     const ti = (client && client.taxInputs) || {};
-    const income = taxIncome(ti);
-    const used = k => Math.min(taxValue(ti, scope, k), TAX_CAPS[k](income));
-    let total = Object.keys(TAX_CAPS).reduce((s, k) => s + used(k), 0);
-    /* ประกันชีวิต + สุขภาพ รวมไม่เกิน 100,000 */
-    const lifeHealth = used('lifeIns') + used('healthIns');
-    if (lifeHealth > 100000) total -= lifeHealth - 100000;
-    /* กลุ่มออมเพื่อเกษียณ รวมไม่เกิน 500,000 */
-    const retGroup = TAX_RET_GROUP.reduce((s, k) => s + used(k), 0);
-    const retExcess = Math.max(retGroup - 500000, 0);
-    total -= retExcess;
+    const ctx = taxCapCtx(ti);
+    const income = ctx.income;
+    const raw = k => taxValue(ti, scope, k);
+    const used = {};
+    Object.keys(TAX_CAPS).forEach(k => { used[k] = Math.min(raw(k), TAX_CAPS[k](ctx)); });
+    /* ประกันชีวิต + สุขภาพ รวมไม่เกิน 100,000 (สุขภาพมีเพดานย่อย 25,000 — ตัดที่ชีวิตก่อน) */
+    if (used.lifeIns + used.healthIns > 100000) used.lifeIns = Math.max(100000 - used.healthIns, 0);
+    /* เบี้ยบำนาญ: เติมส่วนที่ชีวิต+สุขภาพยังไม่ถึง 100,000 ก่อน แล้วส่วนที่เหลือใช้เพดานบำนาญ 15% ของเงินได้ ≤ 200,000 (ประกาศอธิบดีฯ 194) */
+    const annuityRaw = raw('annuity');
+    used.annuityToLife = Math.min(annuityRaw, Math.max(100000 - used.lifeIns - used.healthIns, 0));
+    used.annuity = Math.min(annuityRaw - used.annuityToLife, TAX_CAPS.annuity(ctx));
+    /* กลุ่มออมเพื่อเกษียณ รวมไม่เกิน 500,000 (ส่วนของบำนาญที่ไปเติมช่องชีวิตไม่นับในกลุ่ม) */
+    const retGroupRaw = TAX_RET_GROUP.reduce((s, k) => s + used[k], 0);
+    const retExcess = Math.max(retGroupRaw - 500000, 0);
+    const groupUsed = retGroupRaw - retExcess;
+    let total = Object.keys(used).reduce((s, k) => s + used[k], 0) - retExcess;
     total += extra || 0;
 
     /* เงินบริจาค 2 เท่า: หน้าลดหย่อนภาษีเก็บใน eduDonate · หน้าคำนวณภาษีเก็บใน donate (ช่องเดียวกันคนละชื่อ) → ใช้ eduDonate ก่อน ไม่มีค่อยใช้ donate */
@@ -474,9 +510,12 @@
     const expense = taxExpense(ti);
     const afterExp = Math.max(income - expense, 0);
     const afterDeduct = afterExp - total;
-    /* เงินบริจาคเพื่อการศึกษา ฯลฯ หัก 2 เท่า ไม่เกิน 10% ของเงินได้หลังหักค่าใช้จ่ายและค่าลดหย่อน */
+    /* เงินบริจาคเพื่อการศึกษา ฯลฯ หัก 2 เท่า ไม่เกิน 10% ของเงินได้หลังหักค่าใช้จ่ายและค่าลดหย่อน
+       บริจาคทั่วไป หัก 1 เท่า ไม่เกิน 10% ของเงินได้หลังหักบริจาค 2 เท่าแล้ว (ตั้งแต่ปีภาษี 2569 ต้องบริจาคผ่าน e-Donation) */
     const eduDeduct = Math.min(eduDonate * 2, Math.max(afterDeduct, 0) * 0.10);
-    const net = afterDeduct - eduDeduct;
+    const donateGeneral = raw('donateGeneral');
+    const generalDeduct = Math.min(donateGeneral, Math.max(afterDeduct - eduDeduct, 0) * 0.10);
+    const net = afterDeduct - eduDeduct - generalDeduct;
     const { tax: progressiveTax, rate } = taxBracket(Math.max(net, 0));
     /* วิธีเหมา 0.5%: เงินได้ที่ไม่ใช่เงินเดือน (40(2)–(8)) ตั้งแต่ 120,000 → เทียบกับอัตราก้าวหน้า เสียตามวิธีที่สูงกว่า
        ยกเว้นภาษีตามวิธีนี้ไม่เกิน 5,000 */
@@ -484,7 +523,67 @@
     const flatTax = otherInc >= 120000 ? otherInc * 0.005 : 0;
     const flatApplies = flatTax > 5000;
     const tax = flatApplies ? Math.max(progressiveTax, flatTax) : progressiveTax;
-    return { annualIncome: income, income, expense, totalDeduct: total, retExcess, afterDeduct, eduDonate, eduDeduct, net, tax, rate, progressiveTax, flatTax, flatApplies, otherInc };
+    return { annualIncome: income, income, wages: ctx.wages, year: ctx.year, ctx, expense, totalDeduct: total, used, groupUsed, retExcess,
+             afterDeduct, eduDonate, eduDeduct, donateGeneral, generalDeduct, net, tax, rate, progressiveTax, flatTax, flatApplies, otherInc };
+  }
+
+  /* ═══════════════════════════════════════════════
+     4b. จัดประเภทเบี้ยประกันเพื่อลดหย่อน  (หน้าคำนวณภาษี 🔄 ดึงข้อมูล · สรุปกรมธรรม์ · PDF ใช้ตัวเดียวกัน)
+     นิยาม "ประกันสุขภาพ" ประกาศอธิบดีฯ ฉบับที่ 315: รักษาพยาบาล · ชดเชยทุพพลภาพ/สูญเสียอวัยวะจากเจ็บป่วย-บาดเจ็บ ·
+     อุบัติเหตุเฉพาะส่วนรักษา/ทุพพลภาพ/สูญเสียอวัยวะ/กระดูกหัก · โรคร้ายแรง · การดูแลระยะยาว
+     → สัญญาเพิ่มเติม ค่ารักษา/โรคร้ายแรง/ทุพพลภาพ = สุขภาพ · ชดเชยรายได้ (HB) และอุบัติเหตุ = ลดหย่อนไม่ได้
+       (AIA และเมืองไทยฯ ระบุว่าเบี้ย HB ไม่ได้สิทธิ์) เว้นแต่กรอกยอดที่บริษัทรับรองเป็นสุขภาพ (taxCertHealth)
+     กรมธรรม์หลัก: สุขภาพ/โรคร้ายแรง = สุขภาพ · บำนาญ (หรือติ๊ก taxAnnuity) = บำนาญ · PA/อุบัติเหตุ = ไม่นับ ·
+       อื่น ๆ = ชีวิต เมื่อกำหนดเวลาคุ้มครอง ≥ 10 ปี (ไม่มีวันสิ้นสุด = ถือว่าผ่าน)
+  ═══════════════════════════════════════════════ */
+  const TAX_HEALTH_TYPES = ['สุขภาพ', 'โรคร้ายแรง'];
+  const TAX_EXCLUDED_TYPES = ['PA', 'อุบัติเหตุ'];
+  const RIDER_TAX_CLASS = { medical: 'health', critical: 'health', disability: 'health', income: null, accident: null };
+  const RIDER_TAX_LABEL = { medical: 'ค่ารักษาพยาบาล', critical: 'โรคร้ายแรง', disability: 'ทุพพลภาพ', income: 'ชดเชยรายได้', accident: 'อุบัติเหตุ' };
+  function policyTermYears(p) {
+    if (!p || !p.start || !p.end) return null;
+    const s = new Date(p.start), e = new Date(p.end);
+    if (isNaN(s) || isNaN(e)) return null;
+    return (e - s) / (365.25 * 86400000);
+  }
+  function policyPremiums(policies) {
+    const out = { life: 0, health: 0, annuity: 0, excluded: 0, total: 0, notes: [], byPolicy: [] };
+    (policies || []).forEach((p, i) => {
+      const d = { life: 0, health: 0, annuity: 0, excluded: 0, reasons: [] };
+      const note = r => { if (!d.reasons.includes(r)) d.reasons.push(r); };
+      const mainPrem = Number(p.premium || 0);
+      const name = p.name || p.type || ('กรมธรรม์ ' + (i + 1));
+      if (mainPrem > 0) {
+        if (p.type === 'บำนาญ' || p.taxAnnuity) d.annuity += mainPrem;
+        else if (TAX_HEALTH_TYPES.includes(p.type)) d.health += mainPrem;
+        else if (TAX_EXCLUDED_TYPES.includes(p.type)) { d.excluded += mainPrem; note('เบี้ย PA/อุบัติเหตุ ลดหย่อนไม่ได้ (ยกเว้นส่วนที่บริษัทรับรองเป็นสุขภาพ)'); }
+        else {
+          const term = policyTermYears(p);
+          if (term != null && term < 10) { d.excluded += mainPrem; note('กำหนดเวลาคุ้มครองไม่ถึง 10 ปี ลดหย่อนไม่ได้'); }
+          else d.life += mainPrem;
+        }
+      }
+      const riders = Array.isArray(p.riders) ? p.riders : [];
+      riders.forEach(r => {
+        const prem = Number(r.premium || 0);
+        if (prem <= 0) return;
+        if (RIDER_TAX_CLASS[r.type] === 'health') d.health += prem;
+        else { d.excluded += prem; note((RIDER_TAX_LABEL[r.type] || r.type) + ' ลดหย่อนไม่ได้'); }
+      });
+      if (!riders.length) {   /* กรมธรรม์รุ่นเก่า (ช่องเดี่ยว) */
+        d.health += Number(p.riderHealthPrem || 0) + Number(p.riderCriticalPrem || 0) + Number(p.riderDisabilityPrem || 0);
+        const ex = Number(p.riderIncomePrem || 0) + Number(p.riderAccidentPrem || 0);
+        if (ex > 0) { d.excluded += ex; note('ชดเชยรายได้/อุบัติเหตุ ลดหย่อนไม่ได้'); }
+      }
+      /* ยอดที่บริษัทรับรองเป็นเบี้ยสุขภาพ (เช่น ส่วนรักษาพยาบาลของ PA) — กรอกจากหนังสือรับรอง */
+      const cert = Number(p.taxCertHealth || 0);
+      if (cert > 0) { d.health += cert; d.excluded = Math.max(d.excluded - cert, 0); }
+      d.reasons.forEach(r => out.notes.push({ name, reason: r }));
+      out.byPolicy.push(d);
+      out.life += d.life; out.health += d.health; out.annuity += d.annuity; out.excluded += d.excluded;
+    });
+    out.total = out.life + out.health + out.annuity + out.excluded;
+    return out;
   }
 
   /* ═══════════════════════════════════════════════
@@ -626,7 +725,9 @@
     EDU_STAGES, EDU_LEVELS, LEVEL_INDEX, EDU_LEVEL_NAME_TH, EDU_DEFAULT_INFLATION, EDU_SAVINGS_RETURN, REARING_END_AGE,
     EDU_COST_KEYS, EDU_DEFAULT_COST_TABLE, EDU_HIGHER_FALLBACK, levelIdx,
     eduCostTable, eduStageCost, eduUniLevel, eduAssetPerChild, simulateEduSavings, childEducation, sumYearlyCostByCategory, childRearing, childTotalCost,
-    TAX_BRACKETS, TAX_CAPS, TAX_DEFAULTS, TAX_RET_GROUP, TAX_INCOME_KEYS, taxIncome, taxExpenseDetail, taxExpense, taxBracket, taxValue, taxScope,
+    TAX_BRACKETS, TAX_CAPS, TAX_DEFAULTS, TAX_RET_GROUP, TAX_INCOME_KEYS, taxIncome, taxWages, taxYearNow, taxYearOf, ssoCap, taxCapCtx,
+    taxExpenseDetail, taxExpense, taxBracket, taxValue, taxScope,
+    TAX_HEALTH_TYPES, TAX_EXCLUDED_TYPES, RIDER_TAX_CLASS, RIDER_TAX_LABEL, policyTermYears, policyPremiums,
     HEALTH_ROWS, HEALTH_TIER, hospitalTier, healthRecommend, healthFromPolicies, healthCalc, recommendCoverage, LIFE_TYPES, legacyCover,
   };
 })();

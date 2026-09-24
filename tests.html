@@ -374,8 +374,8 @@ async function runAll() {
       check('สรุปกรมธรรม์', 'แนะนำโรคร้ายแรง 5 × รายได้', rec.ci.value, 6000000);
       check('สรุปกรมธรรม์', 'แนะนำอุบัติเหตุ 2 × รายได้', rec.pa.value, 2400000);
       const b = W.computePolicyTaxBreakdown(c.policies, c);
-      check('สรุปกรมธรรม์', 'ลดหย่อนสุขภาพ (สัญญาเพิ่มเติม 18,000)', b.healthDeduct, 18000);
-      check('สรุปกรมธรรม์', 'ลดหย่อนชีวิต (143,000 → เพดาน 100,000 − สุขภาพ)', b.lifeDeduct, 82000);
+      check('สรุปกรมธรรม์', 'ลดหย่อนสุขภาพ (ค่ารักษา 18,000 + โรคร้ายแรง 8,000 → เพดาน 25,000)', b.healthDeduct, 25000);
+      check('สรุปกรมธรรม์', 'ลดหย่อนชีวิต (50,000 + 80,000 · PA ไม่นับ → เพดาน 100,000 − สุขภาพ)', b.lifeDeduct, 75000);
       check('สรุปกรมธรรม์', 'ลดหย่อนบำนาญ', b.annuityDeduct, 60000);
       check('สรุปกรมธรรม์', 'ลดหย่อนรวมประกัน + กองทุน (160,000 + 220,000)', b.totalDeduct, 380000);
       check('สรุปกรมธรรม์', 'ขั้นภาษีจากข้อมูลภาษี', W.getClientMarginalTax(c).label, '25%');
@@ -441,6 +441,46 @@ async function runAll() {
       check(T, 'บุตรไม่มีวันเกิด → ค่าเฉลี่ยระดับกลาง 1,500,000', C.childTotalCost({ level: 'medium' }, c), 1500000);
       const custom0 = Object.assign({}, c, { healthInputs: Object.assign({}, hi, { customRecommendations: { ciSevere: 0 } }) });
       check(T, 'ค่าที่ตัวแทนกำหนดเอง = 0 → ใช้ค่านั้น (ไม่กลับไปใช้สูตร) เหมือนกันทุกหน้า', C.recommendCoverage(custom0).ci.value, 0);
+    });
+
+    await group('ภาษี — ชุด 5 (กฎปี 2568–2569)', async () => {
+      const T = 'ภาษี — ชุด 5 (กฎปี 2568–2569)';
+      const W = await openPage('tax.html');
+      const c = W.getCurrentClient();
+      const ins = W.computeInsurancePremiumsFromPolicies(c.policies);
+      check(T, 'ดึงเบี้ยจากกรมธรรม์: ชีวิต 50,000 + 80,000 (PA ไม่นับ)', ins.lifePrem, 130000);
+      check(T, 'ดึงเบี้ยจากกรมธรรม์: สุขภาพ = ค่ารักษา 18,000 + โรคร้ายแรง 8,000', ins.healthPrem, 26000);
+      check(T, 'ดึงเบี้ยจากกรมธรรม์: บำนาญ 60,000', ins.annuityPrem, 60000);
+      check(T, 'ดึงเบี้ยจากกรมธรรม์: PA 5,000 อยู่ในยอด "ไม่นับ"', ins.excludedPrem, 5000);
+      const C = W.CALC;
+      const hb = C.policyPremiums([{ type: 'ตลอดชีพ', premium: 10000, start: '2010-01-01', end: '2099-01-01', riders: [{ type: 'income', premium: 3000 }, { type: 'disability', premium: 2000 }] }]);
+      check(T, 'ชดเชยรายได้ (HB) ไม่นับ · ทุพพลภาพเป็นสุขภาพ', hb.life === 10000 && hb.health === 2000 && hb.excluded === 3000, true);
+      check(T, 'กรมธรรม์คุ้มครองไม่ถึง 10 ปี ไม่นับเป็นชีวิต', C.policyPremiums([{ type: 'สะสมทรัพย์', premium: 50000, start: '2020-01-01', end: '2028-01-01' }]).life, 0);
+      check(T, 'ประเภท "ลดหย่อนภาษี" นับเป็นชีวิต เว้นแต่ติ๊กแบบบำนาญ', C.policyPremiums([{ type: 'ลดหย่อนภาษี', premium: 20000 }]).life === 20000 && C.policyPremiums([{ type: 'ลดหย่อนภาษี', premium: 20000, taxAnnuity: true }]).annuity === 20000, true);
+      check(T, 'PA ที่กรอกยอดรับรองสุขภาพ 2,000 → สุขภาพ 2,000', C.policyPremiums([{ type: 'PA', premium: 5000, taxCertHealth: 2000 }]).health, 2000);
+      const ti = c.taxInputs;
+      const fill = C.taxScope({ taxInputs: Object.assign({}, ti, { lifeIns: 20000, healthIns: 0, annuity: 150000 }) }, 'cur');
+      check(T, 'บำนาญเติมสิทธิ์ชีวิต: ชีวิต 20,000 + บำนาญ 150,000 → เติมชีวิต 80,000', fill.used.annuityToLife, 80000);
+      check(T, 'บำนาญเติมสิทธิ์ชีวิต: ส่วนที่เหลือเข้าช่องบำนาญ 70,000', fill.used.annuity, 70000);
+      check(T, 'บำนาญเติมสิทธิ์ชีวิต: ค่าลดหย่อนรวม 549,000', fill.totalDeduct, 549000);
+      check(T, 'PVD ฐานค่าจ้าง: เงินเดือน 600,000 → เพดาน 90,000', C.taxScope({ taxInputs: Object.assign({}, ti, { salary: 600000 }) }, 'cur').used.pvd, 90000);
+      check(T, 'SSF ปีภาษี 2569 ไม่มีสิทธิ์', C.taxScope({ taxInputs: Object.assign({}, ti, { ssf: 100000, taxYear: 2569 }) }, 'cur').used.ssf, 0);
+      check(T, 'SSF ปีภาษี 2567 ยังใช้ได้', C.taxScope({ taxInputs: Object.assign({}, ti, { ssf: 100000, taxYear: 2567 }) }, 'cur').used.ssf, 100000);
+      check(T, 'ประกันสังคม ม.33 ปี 2568 = 9,000 · 2569 = 10,500 · ม.39 5,184 · ม.40 3,600', C.ssoCap(2568, '33') === 9000 && C.ssoCap(2569, '33') === 10500 && C.ssoCap(2569, '39') === 5184 && C.ssoCap(2569, '40') === 3600, true);
+      check(T, 'ประกันสังคมไม่กรอก = 0 (ไม่มีค่าเริ่มต้น 9,000)', C.taxScope({ taxInputs: Object.assign({}, ti, { sso: undefined }) }, 'cur').used.sso, 0);
+      const esgx68 = C.taxScope({ taxInputs: Object.assign({}, ti, { taxYear: 2568, thaiesgx: 400000, thaiesgxLtf: 500000 }) }, 'cur').used;
+      check(T, 'Thai ESGX ปี 2568: เงินใหม่ 400,000 → 300,000 · LTF 500,000 → 300,000', esgx68.thaiesgx === 300000 && esgx68.thaiesgxLtf === 300000, true);
+      const esgx69 = C.taxScope({ taxInputs: Object.assign({}, ti, { taxYear: 2569, thaiesgx: 400000, thaiesgxLtf: 500000 }) }, 'cur').used;
+      check(T, 'Thai ESGX ปี 2569: เงินใหม่ 0 · LTF 50,000', esgx69.thaiesgx === 0 && esgx69.thaiesgxLtf === 50000, true);
+      check(T, 'Thai ESG ปี 2570 กลับเป็นเพดาน 100,000', C.taxScope({ taxInputs: Object.assign({}, ti, { taxYear: 2570, thaiesg: 300000 }) }, 'cur').used.thaiesg, 100000);
+      check(T, 'โซลาร์บ้าน 250,000: ปี 2569 → 200,000 · ปี 2568 → 0', C.taxScope({ taxInputs: Object.assign({}, ti, { taxYear: 2569, solar: 250000 }) }, 'cur').used.solar === 200000 && C.taxScope({ taxInputs: Object.assign({}, ti, { taxYear: 2568, solar: 250000 }) }, 'cur').used.solar === 0, true);
+      const gd = C.taxScope({ taxInputs: Object.assign({}, ti, { donateGeneral: 200000 }) }, 'cur');
+      check(T, 'บริจาคทั่วไป 200,000 → หักได้ 10% ของ 1,261,000 = 126,100', gd.generalDeduct, 126100);
+      check(T, 'ภาษีหลังบริจาคทั่วไป (เงินได้สุทธิ 1,134,900 → 148,725)', gd.tax, 148725);
+      check(T, 'ปีภาษีตั้งต้น = ปีปัจจุบัน', C.taxYearOf({}), new Date().getFullYear() + 543);
+      const r = W.calculate();
+      check(T, 'หน้าคำนวณภาษี: ค่าลดหย่อนรวมของลูกค้าจำลองยังเท่าเดิม (539,000)', r.totalDeduct, 539000);
+      check(T, 'PDF: กลุ่มชีวิต+สุขภาพ (รวมบำนาญที่เติม) ใช้แล้ว 100,000', PS._psTaxCalc(PSclient).groups.lhUsed, 100000);
     });
 
     await group('ภาษี — ลดหย่อนข้ามหน้า', async () => {

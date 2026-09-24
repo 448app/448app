@@ -1219,6 +1219,15 @@
               <label>ระยะเวลาชำระเบี้ย</label>
               <input id="p-pay-main" type="number" placeholder="ปี" min="1" max="99">
             </div>
+            <!-- 10b. การลดหย่อนภาษี — แบบบำนาญต้องมีหนังสือรับรอง (ประกาศอธิบดีฯ 194) · PA/อุบัติเหตุ ลดหย่อนได้เฉพาะส่วนที่บริษัทรับรองเป็นสุขภาพ -->
+            <div class="pf-row">
+              <label>ลดหย่อนแบบบำนาญ</label>
+              <select id="p-tax-annuity" title="ประเภทอื่นที่ไม่ใช่ “บำนาญ” แต่บริษัทออกหนังสือรับรองว่าเป็นแบบบำนาญ"><option value="">ตามประเภทกรมธรรม์</option><option value="1">ใช่ — มีหนังสือรับรองแบบบำนาญ</option></select>
+            </div>
+            <div class="pf-row">
+              <label>เบี้ยที่รับรองเป็นสุขภาพ (฿/ปี)</label>
+              <input id="p-tax-cert-health" class="money-fmt" inputmode="decimal" placeholder="เฉพาะ PA/อุบัติเหตุ ตามหนังสือรับรอง" min="0">
+            </div>
             <!-- 11. วันที่ชำระเบี้ยครั้งสุดท้าย -->
             <div class="pf-row">
               <label>วันที่ชำระเบี้ยครั้งสุดท้าย</label>
@@ -1560,6 +1569,8 @@
           <div class="fg"><label>ทุนประกันชีวิต (฿)</label><input id="ep-life-cov" class="money-fmt" inputmode="decimal" placeholder="เช่น 1000000" min="0"></div>
           <div class="fg"><label>เบี้ยสัญญาหลักรายปี (฿) *</label><input id="ep-premium" class="money-fmt" inputmode="decimal" placeholder="เช่น 20000" min="0"></div>
           <div class="fg"><label>สัญญาหลัก ชำระ (ปี)</label><input id="ep-pay-main" type="number" placeholder="เช่น 20" min="1" max="99"></div>
+          <div class="fg"><label>ลดหย่อนแบบบำนาญ (มีหนังสือรับรอง)</label><select id="ep-tax-annuity"><option value="">ตามประเภทกรมธรรม์</option><option value="1">ใช่</option></select></div>
+          <div class="fg"><label>เบี้ยที่รับรองเป็นสุขภาพ (฿) — PA/อุบัติเหตุ</label><input id="ep-tax-cert-health" class="money-fmt" inputmode="decimal" placeholder="ตามหนังสือรับรอง" min="0"></div>
           <div class="fg"><label>สัญญาเพิ่มเติม ชำระ (ปี)</label><input id="ep-pay-rider" type="number" placeholder="เช่น 10" min="1" max="99"></div>
           <div class="fg"><label>วางแผนชำระอีก (ปี)</label><input id="ep-plan-years" type="number" placeholder="เช่น 15" min="0"></div>
           <div class="fg"><label>ลดทุนประกันเหลือ (฿)</label><input id="ep-paid-up" class="money-fmt" inputmode="decimal" placeholder="กรณีหยุดชำระก่อนครบ" min="0"></div>
@@ -2799,94 +2810,54 @@ function getClientMarginalTax(client) {
    SHARED — คำนวณภาษีของกรมธรรม์ + per-policy
 ═══════════════════════════════════════════ */
 function computePolicyTaxBreakdown(policies, client) {
-  // ─── 1. แยกเบี้ยตามหมวด — รวม riders premium ตามประเภท rider ───
-  const annuityTypes = ['บำนาญ','เกษียณ','ลดหย่อนภาษี'];
-  const healthTypes  = ['สุขภาพ'];
+  // ─── 1. แยกเบี้ยตามหมวด — สูตรกลาง CALC.policyPremiums (ชุดเดียวกับหน้าคำนวณภาษี 🔄 ดึงข้อมูล)
+  //        ค่ารักษา/โรคร้ายแรง/ทุพพลภาพ → สุขภาพ · ชดเชยรายได้/อุบัติเหตุ/PA → ไม่นับ (เว้นแต่ยอดที่บริษัทรับรอง)
+  //        บำนาญ (หรือติ๊กแบบบำนาญ) → บำนาญ · ที่เหลือ → ชีวิต เมื่อคุ้มครอง ≥ 10 ปี ───
+  const pp = CALC.policyPremiums(policies || []);
+  const annuityPrem = pp.annuity, healthPrem = pp.health, lifePrem = pp.life;
+  const totalPremium = pp.total;
 
-  /* helper: แยก premium ของ riders ตามประเภท
-     - medical/income/disability riders → health
-     - critical illness rider → ใช้ slot life ตามกฎ RD (ไม่ใช่ health)
-     - accident rider → life slot */
-  const policyPremDist = (p) => {
-    const mainPrem = Number(p.premium || 0);
-    let life = 0, health = 0, annuity = 0;
-    if (annuityTypes.includes(p.type)) annuity += mainPrem;
-    else if (healthTypes.includes(p.type)) health += mainPrem;
-    else life += mainPrem;
-    /* บวกเบี้ย rider เข้าหมวดที่เหมาะสม */
-    const riders = Array.isArray(p.riders) ? p.riders : [];
-    riders.forEach(r => {
-      const rPrem = Number(r.premium || 0);
-      if (rPrem <= 0) return;
-      if (r.type === 'medical' || r.type === 'income' || r.type === 'disability') health += rPrem;
-      else life += rPrem; // critical, accident → life slot
-    });
-    /* legacy fields (สำหรับกรมธรรม์เก่าที่ไม่มี riders[]) */
-    if (!riders.length) {
-      health += Number(p.riderHealthPrem || 0) + Number(p.riderIncomePrem || 0) + Number(p.riderDisabilityPrem || 0);
-      life   += Number(p.riderCriticalPrem || 0) + Number(p.riderAccidentPrem || 0);
-    }
-    return { life, health, annuity };
-  };
+  // ─── 2. เพดาน — บริบทจากข้อมูลภาษีที่บันทึก (ปีภาษี · ค่าจ้าง 40(1)) ไม่มีใช้รายได้ต่อปีของลูกค้าแทน ───
+  const ti = (client && client.taxInputs) || {};
+  const tiIncome = CALC.taxIncome(ti);
+  const annualIncome = tiIncome > 0 ? tiIncome : CALC.incomeAnnual(client);
+  const ctx = { income: annualIncome, wages: tiIncome > 0 ? CALC.taxWages(ti) : annualIncome, year: CALC.taxYearOf(ti), ssoType: '33' };
+  const cap = k => CALC.TAX_CAPS[k](ctx);
+  const healthDeduct  = Math.min(healthPrem, cap('healthIns'));
+  const lifeDeduct    = Math.min(lifePrem, Math.max(100000 - healthDeduct, 0));
+  /* เบี้ยบำนาญเติมสิทธิ์ชีวิต+สุขภาพส่วนที่ยังไม่ถึง 100,000 ก่อน แล้วส่วนที่เหลือใช้เพดานบำนาญ 15% ของเงินได้ ≤ 200,000 */
+  const annuityToLife = Math.min(annuityPrem, Math.max(100000 - lifeDeduct - healthDeduct, 0));
+  let   annuityDeduct = Math.min(annuityPrem - annuityToLife, cap('annuity'));
 
-  let annuityPrem = 0, healthPrem = 0, lifePrem = 0;
-  policies.forEach(p => {
-    const d = policyPremDist(p);
-    annuityPrem += d.annuity; healthPrem += d.health; lifePrem += d.life;
-  });
-  const totalPremium = annuityPrem + healthPrem + lifePrem;
-
-  // ─── 2. เพดานเบี้ยประกัน ───
-  const healthDeduct  = Math.min(healthPrem, 25000);
-  const lifeDeduct    = Math.min(lifePrem, 100000 - healthDeduct);
-  let   annuityDeduct = Math.min(annuityPrem, 200000);
-
-  // ─── 3. ลดหย่อนสินทรัพย์ (PVD/RMF/SSF/ThaiESG) ───
-  const annualIncome = Number(client && client.income) ||
-    (client && client.cashflow && Number(client.cashflow.income) ? Number(client.cashflow.income) * 12 : 0);
+  // ─── 3. ลดหย่อนสินทรัพย์ (PVD/RMF/SSF/ThaiESG) — เพดานตามปีภาษี ───
   const assets = (client && client.assets) || [];
+  const sumType = t => assets.filter(a => a.type === t).reduce((s, a) => s + CALC.annualContrib(a), 0);
+  const pvdContrib = sumType('pvd'), rmfContrib = sumType('rmf'), ssfContrib = sumType('ssf'), thaiesgContrib = sumType('thaiesg');
+  let pvdDeduct       = Math.min(pvdContrib, cap('pvd'));         /* 15% ของค่าจ้าง ≤ 500,000 */
+  let rmfDeduct       = Math.min(rmfContrib, cap('rmf'));
+  let ssfDeduct       = Math.min(ssfContrib, cap('ssf'));         /* 0 ตั้งแต่ปีภาษี 2568 */
+  const thaiesgDeduct = Math.min(thaiesgContrib, cap('thaiesg'));
 
-  /* normalize contribution → ค่ารายปี เสมอ (รองรับ contribFreq='monthly') */
-  const annualContrib = (a) => {
-    const v = Number(a.contribution || 0);
-    return a.contribFreq === 'monthly' ? v * 12 : v;
-  };
-  const pvdContrib     = assets.filter(a => a.type === 'pvd').reduce((s,a) => s + annualContrib(a), 0);
-  const rmfContrib     = assets.filter(a => a.type === 'rmf').reduce((s,a) => s + annualContrib(a), 0);
-  const ssfContrib     = assets.filter(a => a.type === 'ssf').reduce((s,a) => s + annualContrib(a), 0);
-  const thaiesgContrib = assets.filter(a => a.type === 'thaiesg').reduce((s,a) => s + annualContrib(a), 0);
-
-  // เพดานแต่ละกองทุน (ใช้ % รายได้ถ้ามี)
-  const incomeBased15 = annualIncome > 0 ? annualIncome * 0.15 : Infinity;
-  const incomeBased30 = annualIncome > 0 ? annualIncome * 0.30 : Infinity;
-
-  let pvdDeduct     = Math.min(pvdContrib,     incomeBased15, 500000);
-  let rmfDeduct     = Math.min(rmfContrib,     incomeBased30, 500000);
-  const ssfDeduct   = Math.min(ssfContrib,     incomeBased30, 200000);
-  const thaiesgDeduct = Math.min(thaiesgContrib, incomeBased30, 300000);
-
-  // ⚠️ เพดานรวม PVD + RMF + ประกันบำนาญ ≤ 500,000
-  const combinedRetirement = pvdDeduct + rmfDeduct + annuityDeduct;
+  // ⚠️ เพดานรวมกลุ่มเกษียณ PVD + RMF + SSF + บำนาญ ≤ 500,000 (ส่วนของบำนาญที่เติมช่องชีวิตไม่นับ)
+  const combinedRetirement = pvdDeduct + rmfDeduct + ssfDeduct + annuityDeduct;
   if (combinedRetirement > 500000 && combinedRetirement > 0) {
     const ratio = 500000 / combinedRetirement;
     pvdDeduct     *= ratio;
     rmfDeduct     *= ratio;
+    ssfDeduct     *= ratio;
     annuityDeduct *= ratio;
   }
 
-  const insuranceDeduct = lifeDeduct + healthDeduct + annuityDeduct;
+  const insuranceDeduct = lifeDeduct + healthDeduct + annuityToLife + annuityDeduct;
   const assetDeduct     = pvdDeduct + rmfDeduct + ssfDeduct + thaiesgDeduct;
   const totalDeduct     = insuranceDeduct + assetDeduct;
 
-  // ─── 4. Per-policy effective deduction (allocate proportionally within category) ───
-  // ใช้ total premium ของกรมธรรม์ (main + riders) แยกตามหมวด
+  // ─── 4. Per-policy effective deduction (สัดส่วนภายในหมวด) ───
   const policyDeducts = new Map();
-  policies.forEach((p, i) => {
-    const d = policyPremDist(p);
-    /* deduct = สัดส่วนของกรมธรรม์ × cap ของแต่ละหมวด แล้วรวม */
+  pp.byPolicy.forEach((d, i) => {
     const lifeDed    = lifePrem    > 0 ? (d.life    / lifePrem)    * lifeDeduct    : 0;
     const healthDed  = healthPrem  > 0 ? (d.health  / healthPrem)  * healthDeduct  : 0;
-    const annuityDed = annuityPrem > 0 ? (d.annuity / annuityPrem) * annuityDeduct : 0;
+    const annuityDed = annuityPrem > 0 ? (d.annuity / annuityPrem) * (annuityToLife + annuityDeduct) : 0;
     policyDeducts.set(i, lifeDed + healthDed + annuityDed);
   });
 
@@ -2894,8 +2865,8 @@ function computePolicyTaxBreakdown(policies, client) {
   const tax = getClientMarginalTax(client);
 
   return {
-    totalPremium, annuityPrem, healthPrem, lifePrem,
-    lifeDeduct, healthDeduct, annuityDeduct,
+    totalPremium, annuityPrem, healthPrem, lifePrem, excludedPrem: pp.excluded, notes: pp.notes,
+    lifeDeduct, healthDeduct, annuityDeduct, annuityToLife, taxYear: ctx.year,
     pvdContrib, rmfContrib, ssfContrib, thaiesgContrib,
     pvdDeduct, rmfDeduct, ssfDeduct, thaiesgDeduct,
     insuranceDeduct, assetDeduct, totalDeduct,
@@ -2924,7 +2895,9 @@ function renderCostSummary(policies) {
   const insBreakdown = [];
   if (b.lifePrem > 0)    insBreakdown.push(`ชีวิต ${fmt(b.lifeDeduct)}`);
   if (b.healthPrem > 0)  insBreakdown.push(`สุขภาพ ${fmt(b.healthDeduct)}`);
-  if (b.annuityPrem > 0) insBreakdown.push(`บำนาญ ${fmt(b.annuityDeduct)}`);
+  if (b.annuityPrem > 0) insBreakdown.push(`บำนาญ ${fmt(b.annuityDeduct)}${b.annuityToLife > 0 ? ' (+เติมสิทธิ์ชีวิต ' + fmt(b.annuityToLife) + ')' : ''}`);
+  /* เบี้ยที่กฎไม่ให้ลดหย่อน (ชดเชยรายได้ · อุบัติเหตุ/PA · คุ้มครองไม่ถึง 10 ปี) — บอกเหตุผลให้ตัวแทนเห็น */
+  if (b.excludedPrem > 0) insBreakdown.push(`ไม่นับ ${fmt(b.excludedPrem)} (${[...new Set((b.notes || []).map(n => n.reason))].join(' · ')})`);
   const insBreakdownStr = insBreakdown.length > 0 ? insBreakdown.join(' · ') : 'ตามเกณฑ์';
 
   // Asset breakdown (PVD/RMF/SSF/ThaiESG)
@@ -2944,7 +2917,7 @@ function renderCostSummary(policies) {
       <div class="c-ico">📆</div><div class="c-lbl">เฉลี่ย/เดือน</div>
       <div class="c-val">${fmt(Math.round(monthlyPrem))}</div>
     </div>
-    <div class="cost-box" title="ชีวิต+สุขภาพ ≤ ฿100k (สุขภาพย่อย ≤ ฿25k) · บำนาญ ≤ ฿200k · PVD+RMF+บำนาญรวม ≤ ฿500k">
+    <div class="cost-box" title="ปีภาษี ${b.taxYear} · ชีวิต+สุขภาพ ≤ ฿100k (สุขภาพย่อย ≤ ฿25k · โรคร้ายแรง/ทุพพลภาพนับเป็นสุขภาพ) · บำนาญ 15% ของเงินได้ ≤ ฿200k เติมสิทธิ์ชีวิตที่เหลือได้ก่อน · กลุ่มเกษียณรวม ≤ ฿500k · ชดเชยรายได้/อุบัติเหตุ ลดหย่อนไม่ได้">
       <div class="c-ico">✂️</div><div class="c-lbl">ลดหย่อนภาษี</div>
       <div class="c-val">${fmt(b.totalDeduct)}</div>
       <div class="c-sub" style="font-size:.68rem;line-height:1.4;">
@@ -3024,6 +2997,8 @@ function openEditMode() {
   document.getElementById('ep-life-cov').value   = p.lifeCoverage    || '';
   document.getElementById('ep-premium').value    = p.premium         || '';
   document.getElementById('ep-pay-main').value   = p.payYearsMain    || '';
+  document.getElementById('ep-tax-annuity').value = p.taxAnnuity ? '1' : '';
+  document.getElementById('ep-tax-cert-health').value = p.taxCertHealth || '';
   document.getElementById('ep-pay-rider').value  = p.payYearsRider   || '';
   document.getElementById('ep-plan-years').value = p.plannedPayYears || '';
   document.getElementById('ep-paid-up').value    = p.paidUpCoverage  || '';
@@ -3083,6 +3058,8 @@ function saveEditedPolicy() {
 
   const lifeCoverage           = parseMoney(document.getElementById('ep-life-cov'));
   const payYearsMain           = parseInt(document.getElementById('ep-pay-main').value)                  || 0;
+  const taxAnnuity             = document.getElementById('ep-tax-annuity').value === '1';
+  const taxCertHealth          = parseMoney(document.getElementById('ep-tax-cert-health'));
   const payYearsRider          = parseInt(document.getElementById('ep-pay-rider').value)                 || 0;
   const plannedPayYears        = parseInt(document.getElementById('ep-plan-years').value)                || 0;
   const paidUpCoverage         = parseMoney(document.getElementById('ep-paid-up'));
@@ -3134,6 +3111,8 @@ function saveEditedPolicy() {
     pol.start                = start;
     pol.end                  = end;
     pol.payYearsMain         = payYearsMain;
+    pol.taxAnnuity           = taxAnnuity;
+    pol.taxCertHealth        = taxCertHealth;
     pol.payYearsRider        = payYearsRider;
     pol.plannedPayYears      = plannedPayYears;
     pol.paidUpCoverage       = paidUpCoverage;
@@ -3202,10 +3181,12 @@ function openDetail(i) {
   if (expired)       badges.push(`<span class="detail-badge red">⚠ หมดอายุแล้ว</span>`);
   else if (expiring) badges.push(`<span class="detail-badge yellow">⏰ ใกล้หมดอายุ</span>`);
   else if (endDt)    badges.push(`<span class="detail-badge green">✓ ยังมีผลบังคับ</span>`);
-  /* ป้ายลดหย่อน: เฉพาะประเภทที่กฎหมายให้ลดหย่อน (ชีวิต ≥10 ปี / สุขภาพ / โรคร้ายแรง / บำนาญ)
+  /* ป้ายลดหย่อน: จากสูตรกลาง CALC.policyPremiums (ชีวิต ≥10 ปี / สุขภาพ / โรคร้ายแรง / บำนาญ · PA/อุบัติเหตุ/ชดเชยรายได้ ไม่ได้)
      เดิมติดป้ายให้ทุกประเภทที่เบี้ยไม่เกิน 100,000 รวม PA/อุบัติเหตุ ซึ่งลดหย่อนไม่ได้ */
-  const taxEligibleTypes = ['ชีวิต','ทุนชีวิต','ตลอดชีพ','สะสมทรัพย์','Unit Linked','การศึกษา','ลงทุน','ส่งมอบ','บำนาญ','เกษียณ','ลดหย่อนภาษี','สุขภาพ','โรคร้ายแรง'];
-  if (taxEligibleTypes.includes(p.type) && Number(p.premium) > 0) badges.push(`<span class="detail-badge gray" title="ตามเพดานรวม: ชีวิต+สุขภาพ ≤ 100,000 · บำนาญ ≤ 200,000">✂️ ลดหย่อนภาษีได้ (ในเพดาน)</span>`);
+  const ppOne = CALC.policyPremiums([p]).byPolicy[0];
+  const eligiblePrem = ppOne.life + ppOne.health + ppOne.annuity;
+  if (eligiblePrem > 0) badges.push(`<span class="detail-badge gray" title="ชีวิต ${fmt(ppOne.life)} · สุขภาพ ${fmt(ppOne.health)} · บำนาญ ${fmt(ppOne.annuity)}${ppOne.excluded > 0 ? ' · ไม่นับ ' + fmt(ppOne.excluded) : ''} — ตามเพดานรวม: ชีวิต+สุขภาพ ≤ 100,000 · บำนาญ 15% ≤ 200,000">✂️ ลดหย่อนภาษีได้ (ในเพดาน)</span>`);
+  else if (ppOne.excluded > 0) badges.push(`<span class="detail-badge gray" title="${ppOne.reasons.join(' · ')}">✂️ ลดหย่อนไม่ได้</span>`);
   document.getElementById('md-badges').innerHTML = badges.join('');
 
   const isHealth   = p.type === 'สุขภาพ';
@@ -4097,6 +4078,8 @@ function populatePolicyForm(p) {
   setVal('p-premium',          p.premium);
   setVal('p-start',            p.start);
   setVal('p-pay-main',         p.payYearsMain);
+  setVal('p-tax-annuity',      p.taxAnnuity ? '1' : '');
+  setVal('p-tax-cert-health',  p.taxCertHealth);
   setVal('p-end',              p.end);
 
   // 3) Type-specific data
@@ -4182,6 +4165,11 @@ function addPolicy() {
   const disabilityAmount       = parseMoney(document.getElementById('p-disability'));
   const covUpToAge             = parseInt(document.getElementById('p-cov-up-to-age').value)              || 0;
   const payYearsMain           = parseInt(document.getElementById('p-pay-main').value)                  || 0;
+  /* การลดหย่อน: แบบบำนาญ (มีหนังสือรับรอง) · เบี้ยส่วนที่บริษัทรับรองเป็นสุขภาพ (PA/อุบัติเหตุ) */
+  const taxAnnuityEl           = document.getElementById('p-tax-annuity');
+  const taxCertHealthEl        = document.getElementById('p-tax-cert-health');
+  const taxAnnuity             = !!(taxAnnuityEl && taxAnnuityEl.value === '1');
+  const taxCertHealth          = taxCertHealthEl ? parseMoney(taxCertHealthEl) : 0;
   // Legacy fields (kept for backward compatibility — empty by default in new form)
   const payYearsRiderEl        = document.getElementById('p-pay-rider');
   const plannedPayYearsEl      = document.getElementById('p-plan-years');
@@ -4282,6 +4270,8 @@ function addPolicy() {
       ...(paData ? { pa: paData } : {}),
       // ─── Dynamic riders (Phase 3.3 redesign) ───
       riders: [...policyRiders],
+      // ─── การลดหย่อน ───
+      taxAnnuity, taxCertHealth,
       // ─── Legacy fields ───
       payYearsMain, payYearsRider, plannedPayYears, paidUpCoverage,
       riderHealthPrem, riderIncomeDaily, riderIncomePrem,
