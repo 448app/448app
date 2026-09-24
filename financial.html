@@ -1162,7 +1162,10 @@ function renderClientSelect() {
     const genderLabel = c.gender === 'male' ? 'ชาย' : c.gender === 'female' ? 'หญิง' : (c.gender || '');
     const initial     = (c.firstName || '?').charAt(0).toUpperCase();
 
-    const avatarInner = c.photo ? `<img src="${c.photo}" alt="">` : initial;
+    /* รูปลูกค้าอาจเป็น id รูปใน IndexedDB (img_…) → ต้องผ่าน IMG.tag (เดิมใส่ id ลง src ตรง ๆ → รูปแตก) */
+    const avatarInner = !c.photo ? initial
+      : window.IMG ? window.IMG.tag(c.photo, 'alt=""')
+      : (String(c.photo).indexOf('img_') === 0 ? `<img data-imgref="${escHtml(c.photo)}" alt="">` : `<img src="${escHtml(c.photo)}" alt="">`);
     return `<div class="client-card" onclick="showClientMain('${c.id}')">
       <div class="client-card-top">
         <div class="client-avatar">${avatarInner}</div>

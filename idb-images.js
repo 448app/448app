@@ -180,21 +180,19 @@
   }
   function patchOne(im) {
     const ref = im.getAttribute('data-imgref');
-    if (!ref) return;
-    im.removeAttribute('data-imgref');
-    if (!isRef(ref)) return;
-    getURL(ref).then(u => { if (u) im.src = u; }).catch(() => {});
+    if (ref) {
+      im.removeAttribute('data-imgref');
+      if (isRef(ref)) getURL(ref).then(u => { if (u) im.src = u; }).catch(() => {});
+      return;
+    }
+    /* safety net: <img src="img_xxx"> ที่ render site ไหนยังไม่ผ่าน tag() */
+    const raw = im.getAttribute('src');
+    if (isRef(raw)) getURL(raw).then(u => { if (u) im.src = u; }).catch(() => {});
   }
   function patchPending(root, deep) {
     const scope = (root && root.querySelectorAll) ? root : document;
     scope.querySelectorAll('img[data-imgref]').forEach(patchOne);
-    if (deep) {
-      /* safety net: <img src="img_xxx"> ที่ render site ไหนยังไม่ผ่าน tag() */
-      scope.querySelectorAll('img').forEach(im => {
-        const raw = im.getAttribute('src');
-        if (isRef(raw)) getURL(raw).then(u => { if (u) im.src = u; }).catch(() => {});
-      });
-    }
+    if (deep) scope.querySelectorAll('img').forEach(im => { if (isRef(im.getAttribute('src'))) patchOne(im); });
   }
   async function warm(ids) {
     for (const id of (ids || [])) {
@@ -208,8 +206,8 @@
       for (const m of muts) {
         for (const n of m.addedNodes) {
           if (!n || n.nodeType !== 1) continue;
-          if (n.matches && n.matches('img[data-imgref]')) patchOne(n);
-          else if (n.querySelectorAll) patchPending(n);
+          if (n.matches && n.matches('img')) patchOne(n);
+          else if (n.querySelectorAll) patchPending(n, true);
         }
       }
     });
@@ -218,6 +216,11 @@
     else document.addEventListener('DOMContentLoaded', go, { once: true });
   }
   startObserver();
+  /* สคริปต์นี้ถูกโหลดแบบ async หลังหน้าเริ่ม render — patch รูปที่อยู่ใน DOM แล้วทันที
+     (เดิมรูปที่ render ก่อนสคริปต์มาไม่ถูก patch ถ้า warmAppImages ทำงานก่อนสคริปต์โหลด → รูปลูกค้าแตกทั้งหน้า) */
+  const patchExisting = () => patchPending(document, true);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', patchExisting, { once: true });
+  else patchExisting();
 
   window.IMG = {
     putDataURL, getBlob, getURL, getDataURL, remove,

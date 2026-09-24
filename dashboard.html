@@ -952,8 +952,11 @@ function renderClientStrip() {
     const pCount     = (c.policies || []).length;
     const isActive   = c.id === selectedClientId;
     const activeClass = isActive ? ' active' : '';
-    /* ใช้ <img> ถ้ามีรูปลูกค้า — ตรงกับ clients.html / sidebar */
-    const avatarInner = c.photo ? `<img src="${esc(c.photo)}" alt="">` : initial;
+    /* รูปลูกค้าอาจเป็น data: (แบบเก่า) หรือ id รูปใน IndexedDB (img_…) → ต้องผ่าน IMG.tag ให้ resolve เป็น URL
+       (เดิมใส่ id ลง src ตรง ๆ → รูปแตกทุกครั้งที่แถบลูกค้าวาดใหม่หลังรอบโหลดรูปครั้งแรก เช่น หลังกดเลือกลูกค้า) */
+    const avatarInner = !c.photo ? initial
+      : window.IMG ? window.IMG.tag(c.photo, 'alt=""')
+      : (String(c.photo).indexOf('img_') === 0 ? `<img data-imgref="${esc(c.photo)}" alt="">` : `<img src="${esc(c.photo)}" alt="">`);
     return `<div class="client-pill${activeClass}" onclick="selectClient('${esc(c.id)}')" title="${esc(fullName)}">
       <div class="cp-avatar">${avatarInner}</div>
       <div class="cp-name">${esc(c.firstName || '?')}</div>
@@ -1822,7 +1825,9 @@ function checkUpcomingNotifications() {
   if (sbAv) {
     const photo = user.profile && user.profile.photo;
     if (photo) {
-      sbAv.style.backgroundImage = `url('${photo}')`;
+      /* id รูปใน IndexedDB ต้อง resolve ผ่าน IMG.setBg (ใส่ url('img_…') ตรง ๆ ไม่ขึ้นรูป) */
+      if (window.IMG) window.IMG.setBg(sbAv, photo);
+      else if (String(photo).indexOf('img_') !== 0) sbAv.style.backgroundImage = `url('${photo}')`;   /* id → รอ warmAppImages ใส่ให้ */
       sbAv.classList.add('has-photo');
       sbAv.textContent = '';
     } else {

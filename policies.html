@@ -2017,7 +2017,11 @@ function renderClientList(filter) {
     const ageBadge      = [agePart, genderPart].filter(Boolean).join(' · ');
     const birthdatePart = dobVal ? `<span>🎂 ${fmtDate(dobVal)}</span>` : '';
 
-    const avatarInner = c.photo ? `<img src="${c.photo}" alt="">` : initials;
+    /* รูปลูกค้าอาจเป็น id รูปใน IndexedDB (img_…) → ต้องผ่าน IMG.tag (เดิมใส่ id ลง src ตรง ๆ → รูปแตก) */
+    const _photoAttr = String(c.photo || '').replace(/"/g, '&quot;');
+    const avatarInner = !c.photo ? initials
+      : window.IMG ? window.IMG.tag(c.photo, 'alt=""')
+      : (_photoAttr.indexOf('img_') === 0 ? `<img data-imgref="${_photoAttr}" alt="">` : `<img src="${_photoAttr}" alt="">`);
     html += `
       <div class="client-card" onclick="showDetail('${c.id}')">
         <div class="client-card-top">

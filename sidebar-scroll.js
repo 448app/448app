@@ -172,8 +172,13 @@ if ('serviceWorker' in navigator
       sbAv.textContent = '';
     }
   }
-  async function warmAppImages() {
-    if (!window.IMG) return;
+  async function warmAppImages(tries) {
+    /* idb-images.js โหลดแบบ async — อาจยังไม่มาตอน DOMContentLoaded → รอแล้วลองใหม่
+       (เดิม return ทิ้งทันที → รูปลูกค้า/ตัวแทนไม่ถูกโหลดทั้งหน้า ขึ้นอยู่กับว่าสคริปต์ไหนมาก่อน) */
+    if (!window.IMG) {
+      if ((tries || 0) < 100) setTimeout(() => warmAppImages((tries || 0) + 1), 100);
+      return;
+    }
     let users, uid, u;
     try {
       uid = localStorage.getItem('aia_currentUser');
