@@ -42,10 +42,12 @@ try {
         Write-Host "404 GET $rel"
       }
     } catch {
-      $res.StatusCode = 500
+      try { $res.StatusCode = 500 } catch {}
       Write-Host "500 ERROR: $_"
     } finally {
-      $res.Close()
+      # เบราว์เซอร์อาจตัดการเชื่อมต่อก่อน (ERR_CONNECTION_RESET) → Close() โยน HttpListenerException
+      # ห้ามให้ล้มทั้งเซิร์ฟเวอร์ (เดิม $ErrorActionPreference = 'Stop' ทำให้สคริปต์จบด้วย exit 1)
+      try { $res.Close() } catch {}
     }
   }
 } finally {

@@ -19,6 +19,9 @@
   }
   loadOnce('storage-safe.js');
   loadOnce('idb-images.js');
+  /* สำรองข้อมูลกับ Google Drive ของผู้ใช้ — config ก่อน แล้ว sync (ต้องมาหลัง storage-safe เพราะครอบ setItem ต่อกัน) */
+  loadOnce('drive-config.js');
+  loadOnce('drive-sync.js');
   loadOnce('analytics.js');
 })();
 

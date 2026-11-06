@@ -15,6 +15,7 @@
   <!-- EmailJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>emailjs.init('5RajlrhhZfmOm58uR');</script>
+  <script src="drive-config.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -423,11 +424,21 @@
     isLoggingIn = true;   // กัน onAuthStateChanged auto-redirect ก่อนเช็คอนุมัติ
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
+    /* เปิดใช้สำรองข้อมูลกับ Google Drive (drive-config.js) → ขอสิทธิ์โฟลเดอร์ของแอปตั้งแต่ตอนล็อกอิน
+       จะได้ token ไปใช้ส่งข้อมูลขึ้น Drive ทันทีโดยไม่ต้องกดเชื่อมต่อซ้ำ (ดู drive-sync.js) */
+    const driveOn = !!(window.AIA_DRIVE && window.AIA_DRIVE.enabled);
+    if (driveOn) provider.addScope('https://www.googleapis.com/auth/drive.appdata');
     try {
       const cred  = await fbAuth.signInWithPopup(provider);
       const user  = cred.user;
       const fuid  = user.uid;
       const email = (user.email || '').toLowerCase();
+      if (driveOn && cred.credential && cred.credential.accessToken) {
+        try {
+          sessionStorage.setItem('aia_drive_token', JSON.stringify({ token: cred.credential.accessToken, email, exp: Date.now() + 55 * 60 * 1000 }));
+          localStorage.setItem('aia_drive_hint', email);
+        } catch (e) {}
+      }
       const parts = (user.displayName || '').trim().split(/\s+/);
       const firstName = parts[0] || (email.split('@')[0] || 'ผู้ใช้');
       const lastName  = parts.slice(1).join(' ') || '';

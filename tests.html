@@ -41,6 +41,9 @@
     .hint { font-size: 12px; color: var(--slate); }
     @media (max-width: 640px) { .wrap { padding: 16px 12px 40px; } th:nth-child(5), td:nth-child(5) { display: none; } }
   </style>
+  <!-- ทดสอบการสำรองข้อมูลกับ Google Drive ด้วย transport ปลอม (ไม่ติดต่อ Google) -->
+  <script src="drive-config.js"></script>
+  <script src="drive-sync.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -481,6 +484,88 @@ async function runAll() {
       const r = W.calculate();
       check(T, 'หน้าคำนวณภาษี: ค่าลดหย่อนรวมของลูกค้าจำลองยังเท่าเดิม (539,000)', r.totalDeduct, 539000);
       check(T, 'PDF: กลุ่มชีวิต+สุขภาพ (รวมบำนาญที่เติม) ใช้แล้ว 100,000', PS._psTaxCalc(PSclient).groups.lhUsed, 100000);
+    });
+
+    await group('Google Drive (จำลอง)', async () => {
+      const T = 'Google Drive (จำลอง)';
+      const DS = window.DriveSync;
+      check(T, 'โหลด drive-sync.js แล้ว', !!(DS && DS._test), true);
+      /* ใช้ผู้ใช้ทดสอบแยกต่างหาก — ไม่แตะข้อมูลของผู้ใช้จริงบนเครื่อง */
+      const realUid = localStorage.getItem('aia_currentUser');
+      const TU = '__drive_test_user__';
+      const patchU = fn => { const us = readUsers(); const u = us.find(x => x.id === TU); fn(u); writeUsers(us); };
+      const dataU = () => (readUsers().find(x => x.id === TU) || {}).data || { clients: [] };
+      const us0 = readUsers().filter(x => x.id !== TU);
+      us0.push({ id: TU, firstName: 'ไดรฟ์', lastName: 'ทดสอบ', email: 'drive@test', profile: {}, data: { clients: [{ id: 'dc1', firstName: 'ลูกค้า', lastName: 'หนึ่ง' }] } });
+      writeUsers(us0);
+      localStorage.setItem('aia_currentUser', TU);
+      DS._test.suspend(true);
+      DS._test.reset();
+      /* Drive ปลอม — เก็บไฟล์เดียวในหน่วยความจำ */
+      const cloud = { file: null, content: null, uploads: 0, downloads: 0 };
+      DS._test.setTransport({
+        find: async () => cloud.file,
+        download: async () => { cloud.downloads++; return cloud.content; },
+        upload: async (id, name, content, props) => { cloud.uploads++; cloud.content = content; cloud.file = { id: id || 'f1', modifiedTime: new Date().toISOString(), size: content.length, props }; return { id: cloud.file.id }; },
+      });
+      const O = { force: true, reload: false };
+      try {
+        DS._test.setToken('fake-token');
+        /* 1 เครื่องมีข้อมูล + Drive ว่าง → สร้างไฟล์ */
+        DS._test.markDirty();
+        let r = await DS.sync(Object.assign({ reason: 'load' }, O));
+        check(T, '1 เครื่องมีข้อมูล + Drive ว่าง → สร้างไฟล์บน Drive (รุ่น 1)', r.action === 'upload' && cloud.uploads === 1 && cloud.file.props.rev === '1' && cloud.file.props.clients === '1', true);
+        check(T, '1 หลังส่ง: ไม่มีงานค้าง · รุ่นฐาน 1', DS.state().dirtySince == null && DS.state().baseRev === 1, true);
+        check(T, '1 ไฟล์บน Drive รูปแบบเดียวกับไฟล์ Export (มี data.clients)', JSON.parse(cloud.content).data.clients.length === 1 && JSON.parse(cloud.content).syncMeta.rev === 1, true);
+        /* 2 แก้ข้อมูล → ติดงานค้างเอง → ส่งขึ้นเป็นรุ่น 2 */
+        patchU(u => u.data.clients.push({ id: 'dc2', firstName: 'ลูกค้า', lastName: 'สอง' }));
+        check(T, '2 เขียน aia_users แล้วติด "มีงานค้าง" อัตโนมัติ', !!DS.state().dirtySince, true);
+        r = await DS.sync(Object.assign({ reason: 'change' }, O));
+        check(T, '2 ส่งขึ้นเป็นรุ่น 2 · Drive มี 2 ลูกค้า', r.action === 'upload' && cloud.file.props.rev === '2' && JSON.parse(cloud.content).data.clients.length === 2, true);
+        r = await DS.sync(Object.assign({ reason: 'periodic' }, O));
+        check(T, '2 ไม่มีอะไรเปลี่ยน → ไม่ส่งซ้ำ', r.action === 'none' && cloud.uploads === 2, true);
+        /* 3 เครื่องใหม่ (ว่าง ยังไม่เคยซิงก์) + Drive มีข้อมูล → กู้คืนทันที */
+        DS._test.reset();
+        patchU(u => { u.data.clients = []; });
+        DS._test.clearDirty();
+        r = await DS.sync(Object.assign({ reason: 'load' }, O));
+        check(T, '3 เครื่องใหม่ว่าง + Drive มีข้อมูล → กู้คืน 2 ลูกค้า', r.action === 'download' && dataU().clients.length === 2 && cloud.downloads === 1 && DS.state().baseRev === 2, true);
+        /* 4 เครื่องอื่นส่งรุ่น 3 ขึ้นไป · เครื่องนี้ไม่มีงานค้าง → โหลดทับตอนเปิดหน้า แต่ไม่ทับกลางคัน */
+        const c3 = JSON.parse(cloud.content); c3.data.clients.push({ id: 'dc3', firstName: 'ลูกค้า', lastName: 'สาม' });
+        cloud.content = JSON.stringify(c3); cloud.file.props = Object.assign({}, cloud.file.props, { rev: '3', clients: '3' });
+        r = await DS.sync(Object.assign({ reason: 'periodic' }, O));
+        check(T, '4 Drive ใหม่กว่า ระหว่างใช้งาน → แค่แจ้ง "มีข้อมูลใหม่" ไม่ทับกลางคัน', r.action === 'remoteNewer' && dataU().clients.length === 2, true);
+        r = await DS.sync(Object.assign({ reason: 'load' }, O));
+        check(T, '4 Drive ใหม่กว่า ตอนเปิดหน้า → โหลดทับ (3 ลูกค้า รุ่น 3)', r.action === 'download' && dataU().clients.length === 3 && DS.state().baseRev === 3, true);
+        /* 5 ทั้งสองฝั่งแก้ → ขัดแย้ง ไม่ทับอะไรจนกว่าผู้ใช้จะเลือก */
+        patchU(u => { u.data.clients[0].firstName = 'แก้ในเครื่อง'; });
+        const c4 = JSON.parse(cloud.content); c4.data.clients[0].firstName = 'แก้บน Drive';
+        cloud.content = JSON.stringify(c4); cloud.file.props = Object.assign({}, cloud.file.props, { rev: '4' });
+        r = await DS.sync(Object.assign({ reason: 'load' }, O));
+        check(T, '5 ทั้งสองฝั่งแก้ → สถานะขัดแย้ง ไม่ทับข้อมูลฝั่งไหน', r.action === 'conflict' && DS.status().state === 'conflict' && dataU().clients[0].firstName === 'แก้ในเครื่อง' && cloud.file.props.rev === '4', true);
+        await DS.resolveConflict('local', O);
+        check(T, '5 เลือก "ใช้ของเครื่องนี้" → ส่งขึ้นเป็นรุ่น 5 ทับ Drive', cloud.file.props.rev === '5' && JSON.parse(cloud.content).data.clients[0].firstName === 'แก้ในเครื่อง' && DS.state().dirtySince == null, true);
+        /* 6 ไม่มีสิทธิ์เข้า Drive + มีงานค้าง → รอส่ง ไม่เรียก Drive */
+        DS._test.setToken(null);
+        const up = cloud.uploads;
+        patchU(u => { u.data.clients[0].lastName = 'แก้อีกครั้ง'; });
+        r = await DS.sync(Object.assign({ reason: 'change' }, O));
+        check(T, '6 สิทธิ์เข้า Drive หมดอายุ → สถานะ "รอส่ง" ไม่เรียก Drive', r == null && DS.status().state === 'pending' && cloud.uploads === up, true);
+        /* 7 ได้สิทธิ์กลับมา → ส่งงานค้าง */
+        DS._test.setToken('fake-token-2');
+        r = await DS.sync(Object.assign({ reason: 'manual' }, O));
+        check(T, '7 ได้สิทธิ์กลับมา → ส่งงานค้างเป็นรุ่น 6', r.action === 'upload' && cloud.file.props.rev === '6' && JSON.parse(cloud.content).data.clients[0].lastName === 'แก้อีกครั้ง', true);
+        /* 8 โหลดจาก Drive ไม่ติดงานค้าง (กันส่งวน) */
+        check(T, '8 โหลดจาก Drive ไม่ทำให้ติดงานค้าง (กันส่งวน)', DS.state().dirtySince == null, true);
+        /* 9 ตัดสินใจ: ไฟล์บน Drive ว่าง (0 ลูกค้า) + เครื่องนี้มีข้อมูลและยังไม่เคยซิงก์ → ส่งขึ้น ไม่ถาม */
+        const d = DS._test.decide({ fileId: null, lastSyncAt: null, baseRev: 0, dirtySince: null }, { id: 'x', props: { rev: '1', clients: '0' } }, 5);
+        check(T, '9 Drive ว่าง + เครื่องมีข้อมูล (ยังไม่เคยซิงก์) → ส่งขึ้นโดยไม่ถาม', d.action, 'upload');
+      } finally {
+        DS._test.setToken(null); DS._test.setTransport(null); DS._test.reset(); DS._test.suspend(false);
+        if (realUid) localStorage.setItem('aia_currentUser', realUid); else localStorage.removeItem('aia_currentUser');
+        writeUsers(readUsers().filter(x => x.id !== TU));
+        localStorage.removeItem('aia_drive_state_' + TU);
+      }
     });
 
     await group('ภาษี — ลดหย่อนข้ามหน้า', async () => {
