@@ -115,6 +115,19 @@
     const st = await store('readwrite');
     await reqP(st.delete(id));
   }
+  /* เก็บ Blob ด้วย id เดิม (ใช้ตอนดึงรูปจาก Google Drive มาเครื่องใหม่ — drive-sync.js) */
+  async function putBlob(id, blob) {
+    if (_urlCache[id]) { try { URL.revokeObjectURL(_urlCache[id]); } catch (e) {} delete _urlCache[id]; }
+    const st = await store('readwrite');
+    await reqP(st.put({ id, blob }));
+    return id;
+  }
+  async function has(id) {
+    if (!isRef(id)) return false;
+    const st = await store('readonly');
+    const n = await reqP(st.count(id));
+    return n > 0;
+  }
 
   /* Export: รวมรูปตาม ids → { id: dataURL } (ใส่ในไฟล์ backup) */
   async function exportMap(ids) {
@@ -223,7 +236,7 @@
   else patchExisting();
 
   window.IMG = {
-    putDataURL, getBlob, getURL, getDataURL, remove,
+    putDataURL, putBlob, has, getBlob, getURL, getDataURL, remove,
     isRef, exportMap, importMap, genId,
     srcOf, tag, setBg, patchPending, warm,
   };

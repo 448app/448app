@@ -6,8 +6,10 @@
              ดูได้ที่ Firebase Console → Authentication → Sign-in method → Google → Web SDK configuration → Web client ID
              หรือ Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client IDs (Web client)
              ใช้ขอสิทธิ์เข้า Drive ได้กับทุกบัญชี (รวมคนที่ล็อกอินด้วยอีเมล+รหัสผ่าน) · ถ้าเว้นว่าง จะขอสิทธิ์ผ่านการล็อกอิน Google ซ้ำแทน
+   images  : true = ซิงก์รูปลูกค้า/รูปตัวแทน/รูปใน planner เป็นไฟล์แยกใน Drive ด้วย · false = เฉพาะข้อมูลตัวหนังสือ
    แก้ไฟล์นี้แล้ว push ตามปกติ (Client ID เป็นค่าสาธารณะ ใส่ในโค้ดได้) */
 window.AIA_DRIVE = {
   enabled: false,
   clientId: '',
+  images: true,
 };
