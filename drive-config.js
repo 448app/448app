@@ -9,7 +9,7 @@
    images  : true = ซิงก์รูปลูกค้า/รูปตัวแทน/รูปใน planner เป็นไฟล์แยกใน Drive ด้วย · false = เฉพาะข้อมูลตัวหนังสือ
    แก้ไฟล์นี้แล้ว push ตามปกติ (Client ID เป็นค่าสาธารณะ ใส่ในโค้ดได้) */
 window.AIA_DRIVE = {
-  enabled: false,
-  clientId: '',
+  enabled: true,
+  clientId: '2200674251-7749e4hb4m76k7g6jab4rphsdrt9k39e.apps.googleusercontent.com',
   images: true,
 };
