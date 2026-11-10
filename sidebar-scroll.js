@@ -12,9 +12,11 @@
     if (document.querySelector('script[src*="' + src + '"]')) return;
     var s = document.createElement('script');
     s.src = src;
-    /* storage-safe must run BEFORE any setItem (other pages call it during
-       inline init scripts), so prefer sync; analytics can stay async. */
-    if (src === 'analytics.js') s.async = true;
+    /* สคริปต์ที่สร้างด้วย createElement เป็น async เสมอ — รันตามลำดับที่โหลดเสร็จ ไม่ใช่ลำดับที่เรียก
+       (เดิมไม่ได้ตั้งค่า → บางครั้ง drive-sync.js มาถึงก่อน drive-config.js แล้วมองว่า Drive ปิดอยู่ทั้งหน้า:
+       ชิปหาย ไม่ซิงก์ จนกว่าจะเปิดหน้าใหม่) · async = false ทำให้รันเรียงตามลำดับที่เรียกข้างล่าง
+       storage-safe → idb-images → drive-config → drive-sync · analytics ไม่ขึ้นกับใคร ปล่อย async */
+    s.async = (src === 'analytics.js');
     document.head.appendChild(s);
   }
   loadOnce('storage-safe.js');
