@@ -488,6 +488,54 @@
     .note-text { font-size: .92rem; color: var(--gray-800); line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
 
     .notes-empty { text-align: center; padding: 20px 12px; color: var(--gray-400); font-size: .88rem; }
+
+    /* ─── รู้จักลูกค้า: Persona + Latent need card ─── */
+    .kyc-card { background: white; border-radius: var(--radius); padding: 20px 22px; box-shadow: var(--shadow-sm); min-width: 0; overflow: hidden; }
+    .kyc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap; }
+    .kyc-title { font-size: .88rem; font-weight: 800; color: var(--gray-800); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .kyc-count { background: var(--red-soft); color: var(--red-primary); font-size: .74rem; padding: 2px 9px; border-radius: 12px; font-weight: 700; font-family: var(--font-mono); }
+    .kyc-sub { font-size: .78rem; color: var(--gray-600); margin-top: 3px; }
+    .kyc-status { font-size: .76rem; color: #1F7A55; font-weight: 600; white-space: nowrap; min-height: 1.2em; }
+    .kyc-bar { height: 6px; border-radius: 4px; background: var(--gray-200); overflow: hidden; margin: 12px 0 14px; }
+    .kyc-bar i { display: block; height: 100%; background: var(--gold-primary); border-radius: 4px; transition: width .4s; }
+    .kyc-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+    .kyc-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .kyc-chip {
+      padding: 6px 12px; border-radius: 16px; font-size: .78rem; font-weight: 600;
+      border: 1.5px solid var(--gray-200); background: white; color: var(--gray-600);
+      cursor: pointer; font-family: var(--font); transition: all .15s; min-height: 34px;
+    }
+    .kyc-chip:hover { border-color: var(--red-primary); color: var(--red-primary); }
+    .kyc-chip[aria-pressed="true"] { background: var(--red-primary); border-color: var(--red-primary); color: white; }
+    .kyc-chip .n { font-family: var(--font-mono); font-weight: 500; opacity: .85; margin-left: 4px; }
+    .kyc-hide { display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; color: var(--gray-600); cursor: pointer; user-select: none; }
+    .kyc-hide input { width: 16px; height: 16px; accent-color: var(--red-primary); }
+    .kyc-group { font-size: .72rem; font-weight: 800; letter-spacing: .08em; color: var(--gray-600); text-transform: uppercase; margin: 16px 0 4px; display: flex; align-items: center; gap: 10px; }
+    .kyc-group::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+    .kyc-row { display: grid; grid-template-columns: 40px 1fr 22px; gap: 10px; align-items: start; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
+    .kyc-row:last-child { border-bottom: none; }
+    .kyc-code { font-family: var(--font-mono); font-size: .72rem; font-weight: 500; color: white; background: var(--red-primary); border-radius: 6px; padding: 3px 0; text-align: center; margin-top: 1px; }
+    .kyc-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .kyc-label { font-size: .9rem; font-weight: 700; color: var(--gray-800); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .kyc-tag { font-size: .68rem; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: var(--gray-100); color: var(--gray-600); }
+    .kyc-tag.obs { background: var(--gold-soft); color: #7A5A1C; }
+    .kyc-auto { font-size: .8rem; color: var(--red-light); background: var(--red-soft); border-radius: 8px; padding: 4px 9px; align-self: flex-start; max-width: 100%; }
+    .kyc-hint { display: none; font-size: .8rem; color: var(--gray-600); line-height: 1.5; }
+    .kyc-row.no-note .kyc-hint, .kyc-row:focus-within .kyc-hint { display: block; }
+    .kyc-input {
+      width: 100%; box-sizing: border-box; resize: none; overflow: hidden;
+      padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+      font-size: .9rem; line-height: 1.5; font-family: var(--font); color: var(--gray-800);
+      background: var(--gray-100); transition: border-color .2s, background .2s; min-height: 36px;
+    }
+    .kyc-input:focus { outline: none; border-color: var(--red-primary); background: white; }
+    .kyc-row:not(.no-note) .kyc-input { background: white; }
+    .kyc-input::placeholder { color: #9AA2B8; }
+    .kyc-check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--gray-200); margin-top: 1px; display: grid; place-items: center; font-size: .72rem; color: transparent; }
+    .kyc-row.done .kyc-check { background: #1F7A55; border-color: #1F7A55; color: white; }
+    .kyc-empty { text-align: center; padding: 18px 12px; color: var(--gray-600); font-size: .86rem; }
+    @media (max-width: 900px) { .kyc-card { padding: 18px 16px; } .kyc-input { font-size: 16px; } }  /* 16px กัน iPhone ซูมตอนแตะช่อง */
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     .policy-mini { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--gray-100); }
     .policy-mini:last-child { border-bottom: none; }
     .pm-ico { font-size: 1.3rem; width: 32px; text-align: center; }
@@ -833,6 +881,23 @@
           <div class="info-grid" id="p-info-grid"></div>
         </div>
 
+        <!-- รู้จักลูกค้า: Persona (10) + Latent need card (12) — เก็บใน client.persona -->
+        <div class="kyc-card" id="kyc-card">
+          <div class="kyc-head">
+            <div>
+              <div class="kyc-title">🧭 รู้จักลูกค้า · Persona &amp; Latent need <span class="kyc-count" id="kyc-count">0/22</span></div>
+              <div class="kyc-sub" id="kyc-sub">จดหลังพบลูกค้าทุกครั้ง · บันทึกอัตโนมัติ</div>
+            </div>
+            <span class="kyc-status" id="kyc-status" aria-live="polite"></span>
+          </div>
+          <div class="kyc-bar" aria-hidden="true"><i id="kyc-bar"></i></div>
+          <div class="kyc-controls">
+            <div class="kyc-chips" id="kyc-chips" role="group" aria-label="เลือกข้อที่จะแสดง"></div>
+            <label class="kyc-hide"><input type="checkbox" id="kyc-hide-done" onchange="kycSetHideDone(this.checked)"> ซ่อนข้อที่เก็บแล้ว</label>
+          </div>
+          <div id="kyc-list"></div>
+        </div>
+
         <!-- Action buttons -->
         <div class="action-section">
           <div class="action-btn primary" onclick="goToFeature('policies')">
@@ -917,6 +982,288 @@
 
   let selectedClientId = localStorage.getItem('aia_selectedClient') || null;
 
+  /* ════════════════════════════════════════════
+     รู้จักลูกค้า — Persona (10 ข้อ) + Latent need card (12 ข้อ)
+     เก็บใน client.persona = { items: { P03:'…', L02:'…' }, updatedAt }
+     อยู่ในก้อนลูกค้าเดียวกับข้อมูลอื่น → Export และสำรอง Google Drive ไปด้วยอัตโนมัติ
+     ข้อที่แอปมีอยู่แล้ว (ชื่อ อายุ อาชีพ บุตร หนี้ สินทรัพย์ บันทึกพบหน้า) ดึงมาแสดงเป็น 📇
+     ประกาศไว้ก่อน Init เพราะ showProfile() ตอนเปิดหน้าเรียก renderKyc() ทันที
+  ═══════════════════════════════════════════ */
+  const KYC_ITEMS = [
+    { id:'P01', sheet:'P', label:'ชื่อ', stages:[1], countsAuto:true,
+      ask:'“ผม [ชื่อ] ที่ปรึกษาการเงินเอไอเอครับ ขอเรียกพี่ว่าอะไรดีครับ”',
+      ph:'ชื่อที่อยากให้เรียก · ที่มาของชื่อเล่น' },
+    { id:'P02', sheet:'P', label:'เพศ / อายุ', stages:[1], countsAuto:true,
+      ask:'“พี่ทำงานที่นี่มากี่ปีแล้วครับ” · “พี่เกิดเดือนไหนครับ”',
+      ph:'เดือนเกิด (ใช้ทำ Wow service) · อายุโดยประมาณ' },
+    { id:'P03', sheet:'P', label:'สถานะ', stages:[1],
+      ask:'“วันหยุดพี่ส่วนใหญ่ทำอะไรครับ อยู่กับครอบครัว หรือมีเวลาส่วนตัวบ้าง”',
+      ph:'สถานะ · ลูกกี่คน อายุเท่าไร · ใครพึ่งรายได้ของเขา' },
+    { id:'P04', sheet:'P', label:'บ้าน', stages:[2],
+      ask:'“พี่อยู่แถวไหนครับ” → “อยู่ตรงนั้นมานานหรือยังครับ”',
+      ph:'ย่าน · บ้าน/คอนโด · เจ้าของ / เช่า / ผ่อน · อยู่กับใคร' },
+    { id:'P05', sheet:'P', label:'รถ', stages:[2],
+      ask:'“มีแผนจะเปลี่ยนคันไหมครับ” · “ประกันรถครบรอบช่วงไหนครับ”',
+      ph:'รุ่น · กี่คัน · ผ่อนหมดหรือยัง · เดือนต่อประกันรถ' },
+    { id:'P06', sheet:'P', label:'การศึกษา', stages:[2],
+      ask:'“พี่จบสายอะไรมาครับ” · “วางแผนให้น้องเรียนต่อที่ไหนครับ”',
+      ph:'วุฒิ · สาขา · แผนการเรียนของลูก' },
+    { id:'P07', sheet:'P', label:'อาชีพ / รายได้ต่อเดือน', stages:[2,3], countsAuto:true,
+      ask:'“งานพี่ วันหนึ่ง ๆ ต้องทำอะไรบ้างครับ” · “รายได้ประจำ หรือขึ้นกับยอดขายครับ”',
+      ph:'ลักษณะงาน · รายได้ประจำหรือไม่แน่นอน · ช่วงรายได้ (ถามตอนวางแผน)' },
+    { id:'P08', sheet:'P', label:'งานอดิเรก / เรื่องที่สนใจ', stages:[1],
+      ask:'“นอกจากงาน พี่ชอบทำอะไรผ่อนคลายครับ” · “อยากทำอะไรที่ยังไม่ได้ทำครับ”',
+      ph:'งานอดิเรก · ชื่อเฉพาะ (ทีม ร้าน ศิลปิน) · สิ่งที่อยากทำ' },
+    { id:'P09', sheet:'P', label:'Pain point', stages:[3],
+      ask:'“ช่วงนี้มีเรื่องอะไรที่ทำให้พี่คิดหนักบ้างไหมครับ ทั้งเรื่องงานและที่บ้าน”',
+      ph:'จดคำพูดของลูกค้าตรง ๆ · ยังไม่เสนอแบบประกัน' },
+    { id:'P10', sheet:'P', label:'ทรัพย์สิน', stages:[3],
+      ask:'“ขออนุญาตถามภาพรวมเรื่องเงินหน่อยได้ไหมครับ ตอบเท่าที่สะดวกครับ”',
+      ph:'ประเภททรัพย์สิน · ภาระผ่อน · กรมธรรม์เดิม (ไม่ต้องจดยอดในบัญชี)' },
+
+    { id:'L01', sheet:'L', label:'ชอบให้ชมอะไร', stages:[1], mode:'obs',
+      ask:'สังเกตสิ่งที่เขาภูมิใจ แล้วชมแบบเจาะจง “รูปนี้น้องเหรอครับ ได้รางวัลอะไรครับ”',
+      ph:'เรื่องที่เขาภูมิใจ · ท่าทีตอนถูกชม' },
+    { id:'L02', sheet:'L', label:'ห่วงใคร', stages:[2],
+      ask:'“ในบ้าน ใครที่พี่ต้องคอยดูแลมากที่สุดครับ”',
+      ph:'ชื่อ · ความสัมพันธ์ · อายุ ของคนที่เขาห่วง' },
+    { id:'L03', sheet:'L', label:'เรื่องที่ชอบให้คุยด้วย', stages:[1],
+      ask:'“เรื่องนี้พี่แนะนำผมหน่อยได้ไหมครับ ผมอยากลองเริ่ม”',
+      ph:'2–3 หัวข้อที่เขาเปิดใจ ใช้เปิดการพบครั้งหน้า' },
+    { id:'L04', sheet:'L', label:'เรื่องที่ไม่อยากให้พูดถึง', stages:[2], mode:'obs',
+      ask:'สังเกตว่าเขาเปลี่ยนเรื่องหรือตอบสั้น แล้วถอย “ไม่เป็นไรครับ ไว้พี่สะดวกค่อยเล่า”',
+      ph:'จดแค่ “เลี่ยงเรื่อง …” ไม่ต้องจดรายละเอียด' },
+    { id:'L05', sheet:'L', label:'สถานที่สะดวกให้ได้พบ', stages:[1],
+      ask:'“ครั้งหน้าผมไปหาพี่ที่ไหนสะดวกที่สุดครับ ช่วงไหนว่างแบบไม่รีบ”',
+      ph:'สถานที่ · วัน/เวลาที่สะดวก · ร้านประจำ · เมนูที่สั่ง' },
+    { id:'L06', sheet:'L', label:'การแต่งตัว / ภาพลักษณ์', stages:[1], mode:'obs',
+      ask:'ดูสไตล์ของลูกค้า แล้วแต่งตัวระดับเดียวกัน หรือทางการกว่าเล็กน้อย',
+      ph:'สไตล์ลูกค้า · ครั้งหน้าเราควรแต่งตัวแบบไหน' },
+    { id:'L07', sheet:'L', label:'Conversation bias & Q card', stages:[2],
+      ask:'“พี่มองเรื่องประกันยังไงบ้างครับ เคยมีประสบการณ์ดีหรือไม่ดีไหม”',
+      ph:'ความเชื่อของลูกค้า (คำพูดตรง ๆ) · Q card 3–5 ข้อสำหรับครั้งหน้า' },
+    { id:'L08', sheet:'L', label:'จำนวนการพบก่อนขาย', stages:[3], mode:'self',
+      ask:'ประเมินเอง: ไม่เสนอขายก่อนรู้ L02 ห่วงใคร และ P09 Pain point',
+      ph:'ควรพบอีกกี่ครั้ง · สัญญาณว่าพร้อม · นัดเสนอแผนวันไหน' },
+    { id:'L09', sheet:'L', label:'Free service', stages:[2],
+      ask:'“ผมช่วยสรุปกรมธรรม์ที่พี่มีให้เป็นหน้าเดียวได้ ไม่ต้องซื้ออะไรเพิ่มครับ”',
+      ph:'บริการที่เสนอ · สิ่งที่สัญญาไว้ · วันที่ต้องส่ง' },
+    { id:'L10', sheet:'L', label:'Wow service', stages:[3],
+      ask:'“จำได้ว่าพี่เคยเล่าเรื่อง … เห็นแล้วนึกถึงพี่เลยครับ”',
+      ph:'สิ่งที่ทำให้แล้ว + วันที่ · ของเล็ก เป็นส่วนตัว ไม่ให้ส่วนลดเบี้ย' },
+    { id:'L11', sheet:'L', label:'Why + How หรือ How to the best', stages:[3],
+      ask:'“ทำไมเรื่องนี้ถึงสำคัญกับพี่ตอนนี้ครับ” · “ถ้าเริ่มวันนี้ เริ่มจากส่วนไหนก่อนดีครับ”',
+      ph:'Why เป็นคำพูดลูกค้า 1 ประโยค · แบบที่อยากให้เป็น' },
+    { id:'L12', sheet:'L', label:'Financial base & Value base', stages:[3],
+      ask:'“งบที่พี่สบายใจจะแบ่งไว้ต่อเดือนประมาณเท่าไหร่ครับ” · “เรื่องเงิน อะไรสำคัญกับพี่ที่สุดครับ”',
+      ph:'งบที่สบายใจต่อเดือน · คุณค่าหลัก 1–2 ข้อ' },
+  ];
+  const KYC_STAGES = [
+    { key:'all', label:'ทั้งหมด' },
+    { key:1, label:'ครั้งที่ 1' },
+    { key:2, label:'ครั้งที่ 2' },
+    { key:3, label:'ครั้งที่ 3+' },
+  ];
+  const KYC_HINT_ICON = { obs:'👁', self:'🧭' };
+  let kycView = null;          /* null = เลือกให้เอง: ครั้งแรกที่ยังเก็บไม่ครบ */
+  let kycHideDone = false;
+  let kycClientId = null;      /* ลูกค้าที่ช่องบนจอเป็นของคนนี้ */
+  let kycPending = {};
+  let kycSaveTimer = null;
+  let kycShownView = 'all';    /* มุมมองที่วาดอยู่บนจอ — หัวการ์ดอัปเดตตามนี้ ไม่กระโดดไปครั้งถัดไปเองระหว่างพิมพ์ */
+
+  /* ข้อมูลที่แอปมีอยู่แล้ว — แสดงให้เห็นโดยไม่ต้องกรอกซ้ำ */
+  function kycAuto(id, c) {
+    const L = c.liabilities || [], P = c.policies || [];
+    switch (id) {
+      case 'P01': {
+        const nm = [c.firstName, c.lastName].filter(Boolean).join(' ');
+        return nm + (c.nickname ? ' (' + c.nickname + ')' : '');
+      }
+      case 'P02': {
+        const a = CALC.ageInt(c.dob);
+        return [c.gender, a == null ? '' : 'อายุ ' + a + ' ปี'].filter(Boolean).join(' · ');
+      }
+      case 'P03': {
+        const kids = c.children || [];
+        if (!kids.length) return '';
+        const list = kids.map(k => {
+          const a = CALC.ageInt(k.dob);
+          return (k.name || 'บุตร') + (a == null ? '' : ' ' + a + ' ปี');
+        }).join(', ');
+        return 'บุตร ' + kids.length + ' คน: ' + list;
+      }
+      case 'P04': {
+        const n = L.filter(l => l.type === 'home').length;
+        return n ? 'งบการเงิน: สินเชื่อบ้าน ' + n + ' รายการ' : '';
+      }
+      case 'P05': {
+        const n = L.filter(l => l.type === 'car').length;
+        const p = P.filter(x => x.type === 'รถยนต์').length;
+        return [n ? 'สินเชื่อรถ ' + n + ' รายการ' : '', p ? 'กรมธรรม์รถยนต์ ' + p + ' ฉบับ' : ''].filter(Boolean).join(' · ');
+      }
+      case 'P07': {
+        const job = [c.job, c.position, c.workplace].filter(Boolean).join(' · ');
+        const inc = Number(c.income) > 0 ? 'รายได้ราว ' + fmt(c.income / 12) + '/เดือน' : '';
+        return [job, inc].filter(Boolean).join(' · ');
+      }
+      case 'P10': {
+        const A = c.assets || [];
+        const tot = A.reduce((s, a) => s + (Number(a.currentValue) || 0), 0);
+        return [
+          A.length ? 'สินทรัพย์ ' + A.length + ' รายการ' + (tot > 0 ? ' (' + fmt(tot) + ')' : '') : '',
+          L.length ? 'หนี้ ' + L.length + ' รายการ' : '',
+          P.length ? 'กรมธรรม์ ' + P.length + ' ฉบับ' : '',
+        ].filter(Boolean).join(' · ');
+      }
+      case 'L08': {
+        const n = (c.notes || []).filter(x => x.type === 'meet').length;
+        return n ? 'บันทึก “พบหน้า” แล้ว ' + n + ' ครั้ง' : '';
+      }
+    }
+    return '';
+  }
+  function kycItems(c) { return (c && c.persona && c.persona.items) || {}; }
+  function kycIsDone(it, c, items) {
+    if (String(items[it.id] || '').trim()) return true;
+    return !!(it.countsAuto && kycAuto(it.id, c));
+  }
+  function kycStageLabel(st) {
+    return st.length > 1 ? 'ครั้งที่ ' + st[0] + '–' + st[st.length - 1] : 'ครั้งที่ ' + st[0] + (st[0] === 3 ? '+' : '');
+  }
+  function kycCurrentClient() {
+    return (getCurrentUser().data.clients || []).find(x => x.id === selectedClientId) || null;
+  }
+  function kycResolveView(c, items) {
+    if (kycView != null) return kycView;
+    for (const s of [1, 2, 3]) {
+      if (KYC_ITEMS.some(it => it.stages.includes(s) && !kycIsDone(it, c, items))) return s;
+    }
+    return 'all';
+  }
+
+  function renderKyc() {
+    const c = kycCurrentClient();
+    if (!c) return;
+    kycClientId = c.id;
+    const items = kycItems(c);
+    const view  = kycResolveView(c, items);
+    kycShownView = view;
+    kycRenderSummary(c, items, view);
+    document.getElementById('kyc-hide-done').checked = kycHideDone;
+
+    const visible = KYC_ITEMS.filter(it =>
+      (view === 'all' || it.stages.includes(view)) && !(kycHideDone && kycIsDone(it, c, items)));
+    const rowHtml = it => {
+      const note = String(items[it.id] || '');
+      const auto = kycAuto(it.id, c);
+      const done = kycIsDone(it, c, items);
+      const tags = [
+        view === 'all' ? `<span class="kyc-tag">${kycStageLabel(it.stages)}</span>` : '',
+        it.mode === 'obs'  ? '<span class="kyc-tag obs">👁 สังเกต ไม่ต้องถาม</span>' : '',
+        it.mode === 'self' ? '<span class="kyc-tag obs">🧭 ประเมินเอง</span>' : '',
+      ].join('');
+      return `<div class="kyc-row${done ? ' done' : ''}${note.trim() ? '' : ' no-note'}" data-id="${it.id}">
+        <span class="kyc-code">${it.id}</span>
+        <div class="kyc-main">
+          <label class="kyc-label" for="kyc-in-${it.id}">${esc(it.label)} ${tags}</label>
+          ${auto ? `<div class="kyc-auto">📇 ${esc(auto)}</div>` : ''}
+          <div class="kyc-hint">${KYC_HINT_ICON[it.mode] || '💬'} ${esc(it.ask)}</div>
+          <textarea class="kyc-input" id="kyc-in-${it.id}" data-id="${it.id}" rows="1"
+            placeholder="${esc(it.ph)}" oninput="kycInput(this)" onblur="kycFlush()">${esc(note)}</textarea>
+        </div>
+        <span class="kyc-check" title="${done ? 'เก็บแล้ว' : 'ยังไม่ได้เก็บ'}">✓<span class="sr-only">${done ? 'เก็บแล้ว' : 'ยังไม่ได้เก็บ'}</span></span>
+      </div>`;
+    };
+    let html = '';
+    [['P', 'Persona · ข้อมูลพื้นฐาน'], ['L', 'Latent need · ความต้องการแฝง']].forEach(([sheet, title]) => {
+      const rows = visible.filter(it => it.sheet === sheet);
+      if (!rows.length) return;
+      html += `<div class="kyc-group">${title}</div>` + rows.map(rowHtml).join('');
+    });
+    if (!html) {
+      html = `<div class="kyc-empty">✓ เก็บครบทุกข้อ${view === 'all' ? '' : 'ของ' + KYC_STAGES.find(s => s.key === view).label}แล้ว</div>`;
+    }
+    document.getElementById('kyc-list').innerHTML = html;
+    document.querySelectorAll('#kyc-list .kyc-input').forEach(kycAutosize);
+    kycStatus('');
+  }
+
+  /* หัวการ์ด + ปุ่มเลือกครั้งที่พบ — อัปเดตได้โดยไม่วาดช่องกรอกใหม่ (กันเคอร์เซอร์หลุดตอนพิมพ์) */
+  function kycRenderSummary(c, items, view) {
+    const doneIds = new Set(KYC_ITEMS.filter(it => kycIsDone(it, c, items)).map(it => it.id));
+    document.getElementById('kyc-count').textContent = doneIds.size + '/' + KYC_ITEMS.length;
+    document.getElementById('kyc-bar').style.width = (doneIds.size / KYC_ITEMS.length * 100) + '%';
+    const at = c.persona && c.persona.updatedAt;
+    document.getElementById('kyc-sub').textContent = 'จดหลังพบลูกค้าทุกครั้ง · บันทึกอัตโนมัติ' +
+      (at ? ' · แก้ล่าสุด ' + new Date(at).toLocaleDateString('th-TH-u-ca-gregory', { year:'numeric', month:'short', day:'numeric' }) : '');
+    document.getElementById('kyc-chips').innerHTML = KYC_STAGES.map(s => {
+      const set = KYC_ITEMS.filter(it => s.key === 'all' || it.stages.includes(s.key));
+      const d = set.filter(it => doneIds.has(it.id)).length;
+      return `<button type="button" class="kyc-chip" aria-pressed="${s.key === view}" onclick="kycSetView('${s.key}')">${s.label}<span class="n">${d}/${set.length}</span></button>`;
+    }).join('');
+    document.querySelectorAll('#kyc-list .kyc-row').forEach(row => {
+      const d = doneIds.has(row.dataset.id);
+      row.classList.toggle('done', d);
+      const chk = row.querySelector('.kyc-check');
+      if (chk) { chk.title = d ? 'เก็บแล้ว' : 'ยังไม่ได้เก็บ'; chk.querySelector('.sr-only').textContent = chk.title; }
+    });
+  }
+
+  function kycSetView(key) {
+    kycFlush();
+    kycView = key === 'all' ? 'all' : Number(key);
+    renderKyc();
+  }
+  function kycSetHideDone(on) {
+    kycFlush();
+    kycHideDone = !!on;
+    renderKyc();
+  }
+  function kycAutosize(el) {
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight + 3) + 'px';
+  }
+  function kycStatus(t) {
+    const el = document.getElementById('kyc-status');
+    if (el) el.textContent = t;
+  }
+  function kycInput(el) {
+    kycAutosize(el);
+    kycPending[el.dataset.id] = el.value;
+    el.closest('.kyc-row').classList.toggle('no-note', !el.value.trim());
+    kycStatus('กำลังบันทึก…');
+    clearTimeout(kycSaveTimer);
+    kycSaveTimer = setTimeout(kycFlush, 700);
+  }
+  function kycFlush() {
+    clearTimeout(kycSaveTimer);
+    kycSaveTimer = null;
+    const ids = Object.keys(kycPending);
+    if (!ids.length || !kycClientId) return;
+    const pend = kycPending, cid = kycClientId;
+    kycPending = {};
+    updateCurrentUser(u => {
+      const c = (u.data.clients || []).find(x => x.id === cid);
+      if (!c) return;
+      if (!c.persona || typeof c.persona !== 'object') c.persona = {};
+      if (!c.persona.items || typeof c.persona.items !== 'object') c.persona.items = {};
+      ids.forEach(id => {
+        const v = String(pend[id] || '').trim();
+        if (v) c.persona.items[id] = v; else delete c.persona.items[id];
+      });
+      c.persona.updatedAt = new Date().toISOString();
+    });
+    if (cid === selectedClientId) {
+      const c = kycCurrentClient();
+      if (c) kycRenderSummary(c, kycItems(c), kycShownView);
+      kycStatus('บันทึกแล้ว ✓');
+    }
+  }
+  /* ปิดแท็บ/สลับแอปบนมือถือก่อนครบ 0.7 วินาที — บันทึกให้ทันที */
+  window.addEventListener('pagehide', kycFlush);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') kycFlush(); });
+
   // ── Init ──
   const user = getCurrentUser();
   (function applySbAvatar(){
@@ -935,8 +1282,9 @@
   })();
   const tdEl = document.getElementById('topbar-date');
   if (tdEl) tdEl.textContent = new Date().toLocaleDateString('th-TH-u-ca-gregory',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  renderList();
-  if (selectedClientId) showProfile(selectedClientId);
+  /* renderList() + showProfile() ตอนเปิดหน้า ย้ายไปท้ายสคริปต์ — เดิมเรียกตรงนี้ก่อนประกาศ
+     NOTE_TYPE_MAP / _cameraStream (const/let) ทำให้ลูกค้าที่มีบันทึก error ตอนเปิดหน้า
+     แล้วโค้ดหลังจากนี้ไม่ทำงาน (timeline บันทึกไม่ขึ้น กล้องใช้ไม่ได้จนกว่าจะรีโหลด) */
 
   // ── Family helpers ──
   function getFamilies() {
@@ -1055,6 +1403,7 @@
 
   // ── Show profile ──
   function showProfile(cid) {
+    kycFlush();   /* บันทึกช่อง Persona ที่ค้างของลูกค้าคนเดิมก่อนสลับ */
     selectedClientId = cid;
     localStorage.setItem('aia_selectedClient', cid);
     if (typeof window.refreshFlowNav === 'function') window.refreshFlowNav();
@@ -1150,6 +1499,7 @@
     document.getElementById('profile-content').classList.add('show');
     document.getElementById('edit-form').classList.remove('open');
     // Render notes timeline for this client
+    renderKyc();
     renderNotes();
     renderList();
   }
@@ -1817,6 +2167,10 @@
     document.getElementById('profile-content').classList.remove('show');
     renderList();
   }
+
+  // ── Init (ท้ายสคริปต์ — ทุก const/let ข้างบนประกาศครบแล้ว) ──
+  renderList();
+  if (selectedClientId) showProfile(selectedClientId);
 </script>
 </body>
 </html>
