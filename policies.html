@@ -11,6 +11,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="icons.js"></script><script src="calc.js"></script><script src="sidebar-scroll.js"></script>
   <script src="money-input.js"></script>
+  <script src="policy-scan.js"></script>
   <script>
     firebase.initializeApp({
       apiKey: "AIzaSyCrHFBs56sJCT-WX6daZT1Br1vYYNclGD4",
@@ -562,6 +563,84 @@
     }
     .pf-cancel-btn:hover { color: var(--gray-700); border-color: var(--gray-500); }
 
+    /* ─── เพิ่มกรมธรรม์จากรูป (policy-scan.js) ─── */
+    .tch-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .scan-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 510;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .scan-overlay.open { display: flex; }
+    .scan-modal {
+      background: white; border-radius: 18px; width: 520px; max-width: 100%; max-height: 92vh; overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,.25); padding: 26px 28px; position: relative;
+    }
+    .scan-modal h3 { font-size: 1.1rem; margin-bottom: 8px; padding-right: 36px; }
+    .scan-lead { font-size: .9rem; color: var(--gray-600); line-height: 1.6; margin-bottom: 16px; }
+    .scan-pick-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+    .scan-pick {
+      display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 20px 12px; min-height: 96px;
+      border: 1.5px solid var(--red-mid); border-radius: 14px; background: var(--red-soft); color: var(--red-primary);
+      font-family: var(--font); font-size: .95rem; font-weight: 700; cursor: pointer; transition: all .15s;
+    }
+    .scan-pick:hover, .scan-pick:focus-visible { border-color: var(--red-primary); background: white; outline: none; box-shadow: 0 0 0 3px var(--red-soft); }
+    .scan-pick .ico { font-size: 1.7rem; line-height: 1; }
+    .scan-tips { margin: 16px 0 0; padding-left: 20px; font-size: .84rem; color: var(--gray-600); line-height: 1.7; }
+    .scan-preview {
+      background: var(--gray-100); border: 1px solid var(--gray-200); border-radius: 12px; padding: 8px;
+      display: flex; justify-content: center; align-items: center; min-height: 160px;
+    }
+    .scan-preview img { max-width: 100%; max-height: 46vh; border-radius: 6px; display: block; }
+    .scan-tools { display: flex; gap: 8px; justify-content: center; margin: 10px 0 4px; flex-wrap: wrap; }
+    .scan-tools button {
+      padding: 7px 14px; min-height: 36px; border-radius: 18px; border: 1.5px solid var(--gray-200); background: white;
+      font-family: var(--font); font-size: .82rem; font-weight: 600; color: var(--gray-600); cursor: pointer;
+    }
+    .scan-tools button:hover { border-color: var(--red-primary); color: var(--red-primary); }
+    .scan-progress { display: none; margin: 12px 0 4px; }
+    .scan-progress.show { display: block; }
+    .scan-bar { height: 6px; border-radius: 4px; background: var(--gray-200); overflow: hidden; }
+    .scan-bar i { display: block; height: 100%; width: 0; background: var(--gold-primary); border-radius: 4px; transition: width .3s; }
+    .scan-bar.indet i { width: 35%; animation: scan-indet 1.2s ease-in-out infinite alternate; }
+    @keyframes scan-indet { from { margin-left: 0; } to { margin-left: 65%; } }
+    @media (prefers-reduced-motion: reduce) { .scan-bar.indet i { animation: none; width: 100%; opacity: .5; } }
+    .scan-progress-text { font-size: .82rem; color: var(--gray-600); margin-top: 6px; text-align: center; }
+    .scan-error { display: none; margin-top: 12px; background: #FBF2E4; border: 1px solid #EBD9B8; border-radius: 10px; padding: 10px 14px; font-size: .86rem; color: #7A5A1C; line-height: 1.55; }
+    .scan-error.show { display: block; }
+    .scan-read-row { display: flex; gap: 10px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
+    .scan-read-row .btn { padding: 10px 22px; font-size: .9rem; min-height: 42px; }
+    .scan-read-row .btn[disabled] { opacity: .5; cursor: default; transform: none; }
+    .scan-note { font-size: .78rem; color: var(--gray-600); text-align: center; margin-top: 10px; line-height: 1.6; }
+    /* การ์ดผลการอ่าน — อยู่บนสุดของฟอร์มเพิ่มกรมธรรม์ */
+    .pf-scan-card { border: 1.5px solid #EBD9B8; background: #FBF2E4; border-radius: 14px; padding: 14px 16px; margin: 26px 0 18px; }  /* เว้นบนให้พ้นปุ่ม ✕ ของฟอร์ม */
+    .pf-scan-head { font-weight: 800; font-size: .92rem; color: var(--red-primary); margin-bottom: 4px; }
+    .pf-scan-sub { font-size: .8rem; color: #7A5A1C; margin-bottom: 10px; line-height: 1.5; }
+    .pf-scan-body { display: grid; grid-template-columns: 84px 1fr; gap: 12px; align-items: start; }
+    .pf-scan-thumb { width: 84px; height: 108px; padding: 0; border: 1px solid #EBD9B8; border-radius: 8px; overflow: hidden; background: white; cursor: zoom-in; }
+    .pf-scan-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pf-scan-info { min-width: 0; font-size: .84rem; line-height: 1.55; color: var(--gray-800); }
+    .pf-scan-info ul { margin: 0 0 8px; padding-left: 18px; }
+    .pf-scan-info li { margin-bottom: 3px; overflow-wrap: anywhere; }
+    .pf-scan-warn li { color: #7A3A12; font-weight: 600; }
+    .pf-scan-ok { color: #1F7A55; font-weight: 700; margin-bottom: 8px; }
+    .pf-scan-dates { background: white; border: 1px solid #EBD9B8; border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; }
+    .pf-scan-dates div { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .pf-scan-dates b { font-family: var(--font-mono), var(--font); font-weight: 500; }
+    .pf-scan-dates button {
+      padding: 4px 10px; min-height: 30px; border-radius: 14px; border: 1.5px solid var(--red-primary); background: white; color: var(--red-primary);
+      font-family: var(--font); font-size: .76rem; font-weight: 700; cursor: pointer;
+    }
+    .pf-scan-dates small { display: block; color: var(--gray-600); margin-top: 4px; line-height: 1.5; }
+    .pf-scan-info details summary { cursor: pointer; color: var(--red-light); font-size: .8rem; }
+    .pf-scan-info pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-mono), var(--font); font-size: .74rem; background: white; border: 1px solid #EBD9B8; border-radius: 8px; padding: 8px; max-height: 180px; overflow: auto; margin-top: 6px; }
+    .scan-zoom { display: none; position: fixed; inset: 0; z-index: 600; background: rgba(0,0,0,.85); align-items: center; justify-content: center; padding: 16px; cursor: zoom-out; }
+    .scan-zoom.open { display: flex; }
+    .scan-zoom img { max-width: 100%; max-height: 100%; border-radius: 6px; }
+    @media (max-width: 600px) {
+      .scan-modal { padding: 22px 18px; }
+      .pf-scan-body { grid-template-columns: 64px 1fr; }
+      .pf-scan-thumb { width: 64px; height: 84px; }
+    }
+
     .pf-rider-section {
       display: block; margin-top: 14px; padding-top: 14px;
       border-top: 1.5px dashed var(--gray-200);
@@ -618,8 +697,9 @@
       margin: 8px 0 8px 0;
     }
     .rider-row-with-freq {
-      display: grid; grid-template-columns: 1fr 100px; gap: 6px;
+      display: grid; grid-template-columns: minmax(0, 1fr) 100px; gap: 6px;   /* minmax(0,…) — เดิมช่องเงินกว้างตายตัว 200px ดันช่อง "ต่อสัปดาห์" ล้นขอบการ์ด */
     }
+    .rider-row-with-freq input { width: 100%; min-width: 0; box-sizing: border-box; }
     .rider-row-with-freq select {
       padding: 7px 8px !important; font-size: .82rem !important;
       border-radius: 30px; border: 1.5px solid var(--gray-700);
@@ -720,6 +800,11 @@
       .pf-modal { padding: 22px 18px; }
       .pf-row { grid-template-columns: 1fr; gap: 4px; margin-bottom: 14px; }
       .pf-cashreturn-row { grid-template-columns: 80px 1fr 70px 28px; gap: 6px; }
+      /* การ์ดสัญญาเพิ่มเติมบนจอมือถือ: เดิมยังเป็น 2 คอลัมน์ (160px + ช่อง) และช่องเงินกว้างตายตัว 200px → ล้นการ์ด */
+      .rider-card { padding: 14px; }
+      .rider-card .pf-row { grid-template-columns: 1fr; gap: 4px; }
+      .rider-card .pf-row input, .rider-card .pf-row select, .rider-card .pf-row textarea { width: 100%; min-width: 0; box-sizing: border-box; }
+      .rider-row-with-freq { grid-template-columns: minmax(0, 1fr) 96px; }
     }
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .fg { display: flex; flex-direction: column; gap: 4px; }
@@ -1146,13 +1231,63 @@
       <div class="table-card">
         <div class="table-card-header">
           <h3>📋 รายการกรมธรรม์ทั้งหมด</h3>
-          <button onclick="toggleForm()" id="add-btn" class="btn btn-primary" style="padding:7px 16px;font-size:.82rem;">+ เพิ่มกรมธรรม์</button>
+          <div class="tch-actions">
+            <button onclick="openScanModal()" id="scan-btn" class="btn btn-outline" style="padding:7px 16px;font-size:.82rem;" title="ถ่ายรูปหรือเลือกรูปหน้าตารางกรมธรรม์ แล้วให้แอปเติมฟอร์มให้">📷 เพิ่มจากรูป</button>
+            <button onclick="toggleForm()" id="add-btn" class="btn btn-primary" style="padding:7px 16px;font-size:.82rem;">+ เพิ่มกรมธรรม์</button>
+          </div>
         </div>
+
+        <!-- เพิ่มกรมธรรม์จากรูป: เลือกรูป → อ่านข้อความ → เปิดฟอร์มด้านล่างพร้อมค่าที่อ่านได้ (policy-scan.js) -->
+        <div class="scan-overlay" id="scan-modal" onclick="if(event.target===this)closeScanModal()">
+          <div class="scan-modal" role="dialog" aria-modal="true" aria-labelledby="scan-title">
+            <button class="pf-close-btn" onclick="closeScanModal()" type="button" aria-label="ปิด">✕</button>
+            <h3 id="scan-title">📷 เพิ่มกรมธรรม์จากรูป</h3>
+
+            <div id="scan-step-pick">
+              <p class="scan-lead">ถ่ายหรือเลือกรูป<b>หน้าตารางกรมธรรม์</b> แอปจะอ่านแล้วเติมฟอร์มให้ คุณตรวจทุกช่องแล้วค่อยกดบันทึก</p>
+              <div class="scan-pick-row">
+                <button type="button" class="scan-pick" id="scan-pick-camera" onclick="document.getElementById('scan-input-camera').click()"><span class="ico" aria-hidden="true">📷</span>ถ่ายรูป</button>
+                <button type="button" class="scan-pick" id="scan-pick-file" onclick="document.getElementById('scan-input-file').click()"><span class="ico" aria-hidden="true">🖼️</span>เลือกรูปจากเครื่อง</button>
+              </div>
+              <ul class="scan-tips">
+                <li>ถ่ายให้ตรง เต็มหน้า ตัวหนังสือคมชัด</li>
+                <li>แสงสม่ำเสมอ ไม่มีเงามือทับ</li>
+                <li>หนึ่งรูปต่อหนึ่งกรมธรรม์ · รองรับไฟล์รูป JPG / PNG</li>
+              </ul>
+              <div class="scan-error" id="scan-pick-error" role="alert"></div>
+            </div>
+
+            <div id="scan-step-read" style="display:none;">
+              <div class="scan-preview"><img id="scan-preview-img" alt="รูปกรมธรรม์ที่เลือก"></div>
+              <div class="scan-tools">
+                <button type="button" id="scan-rotate-btn" onclick="scanRotate()">↻ หมุนรูป</button>
+                <button type="button" id="scan-repick-btn" onclick="scanPickAgain()">เปลี่ยนรูป</button>
+              </div>
+              <div class="scan-progress" id="scan-progress" aria-live="polite">
+                <div class="scan-bar" id="scan-bar"><i></i></div>
+                <div class="scan-progress-text" id="scan-progress-text"></div>
+              </div>
+              <div class="scan-error" id="scan-error" role="alert"></div>
+              <div class="scan-read-row">
+                <button type="button" class="btn btn-primary" id="scan-read-local" onclick="scanRead('local')">อ่านข้อมูลจากรูป</button>
+                <button type="button" class="btn btn-outline" id="scan-read-google" onclick="scanRead('google')" style="display:none;">อ่านด้วย Google</button>
+              </div>
+              <p class="scan-note" id="scan-note"></p>
+            </div>
+
+            <input type="file" id="scan-input-camera" accept="image/*" capture="environment" hidden onchange="onScanFile(this)">
+            <input type="file" id="scan-input-file" accept="image/*" hidden onchange="onScanFile(this)">
+          </div>
+        </div>
+        <div class="scan-zoom" id="scan-zoom" onclick="this.classList.remove('open')"><img id="scan-zoom-img" alt="รูปกรมธรรม์ที่อ่าน (ขยาย)"></div>
 
         <!-- Add Policy Form (Modal style — Phase 3.3 redesign per mockup) -->
         <div class="add-form" id="add-form" onclick="if(event.target===this)toggleForm()">
           <div class="pf-modal">
             <button class="pf-close-btn" onclick="toggleForm()" type="button">✕</button>
+
+            <!-- ผลการอ่านจากรูป (แสดงเมื่อเปิดฟอร์มจาก "เพิ่มจากรูป") -->
+            <div class="pf-scan-card" id="pf-scan-card" style="display:none;"></div>
 
             <!-- 1. หมายเลขกรมธรรม์ -->
             <div class="pf-row">
@@ -2377,10 +2512,10 @@ function renderPolicyDetailSummary() {
           <div class="pds-pol-head-col"><span class="pds-pol-head-lbl">สัญญาเพิ่มเติม</span><span class="pds-pol-head-val">${hasRider ? 'มี' : 'ไม่มี'}</span></div>
         </div>
         <div class="pds-pol-fields">
-          <div class="lbl">คุ้มครองสูงสุดถึงอายุ</div><div class="val">${_pdsFmt(p.maxCoverageAge || 0)} ปี</div>
+          <div class="lbl">คุ้มครองสูงสุดถึงอายุ</div><div class="val">${Number(p.covUpToAge) > 0 ? _pdsFmt(p.covUpToAge) + ' ปี' : '—'}</div>
           <div class="lbl">เบี้ยประกัน</div><div class="val">${_pdsFmt(p.premium || 0)}</div>
           <div class="lbl">วันที่เริ่ม</div><div class="val">${p.start ? (typeof fmtDate==='function' ? fmtDate(p.start) : p.start) : '—'}</div>
-          <div class="lbl">ระยะเวลาชำระเบี้ย</div><div class="val">${_pdsFmt(p.premiumYears || 0)} ปี</div>
+          <div class="lbl">ระยะเวลาชำระเบี้ย</div><div class="val">${Number(p.payYearsMain) > 0 ? _pdsFmt(p.payYearsMain) + ' ปี' : '—'}</div>
           <div class="lbl">วันที่ชำระเบี้ยครั้งสุดท้าย</div><div class="val">${p.end ? (typeof fmtDate==='function' ? fmtDate(p.end) : p.end) : '—'}</div>
         </div>
         ${_renderAllRiders(p)}
@@ -4377,6 +4512,175 @@ function clearPolicyForm() {
   editingPolicyIndex = null;
   const saveBtn = document.querySelector('.pf-save-btn');
   if (saveBtn) saveBtn.textContent = 'บันทึก';
+  // ซ่อนการ์ดผลการอ่านจากรูป (ถ้าเปิดฟอร์มมาจาก "เพิ่มจากรูป")
+  const scanCard = document.getElementById('pf-scan-card');
+  if (scanCard) { scanCard.style.display = 'none'; scanCard.innerHTML = ''; }
+  _scanThumb = '';
+}
+
+/* ════════════════════════════════════════════════════
+   เพิ่มกรมธรรม์จากรูป — เลือกรูป → อ่านข้อความ (policy-scan.js) → เปิดฟอร์มเพิ่มพร้อมค่าที่อ่านได้
+   ไม่บันทึกอัตโนมัติ: ผู้ใช้ตรวจแล้วกด "บันทึก" เอง (addPolicy เดิม) · แอปไม่เก็บรูปไว้
+══════════════════════════════════════════════════════ */
+/* ใช้ var + function (hoist) — clearPolicyForm() ด้านบนอ้าง _scanThumb และอาจถูกเรียกก่อนสคริปต์วิ่งมาถึงบรรทัดนี้ (กัน TDZ) */
+var _scan = null;        /* รูปที่เลือกอยู่ { img, quarter (หมุนกี่ครั้ง × 90°), busy } */
+var _scanThumb = '';     /* รูปย่อที่แสดงในการ์ดผลการอ่าน (อยู่ในหน่วยความจำจนปิดฟอร์ม) */
+function _scanEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function openScanModal() {
+  if (!window.PolicyScan) { showToast('โหลดส่วนอ่านรูปไม่สำเร็จ — รีโหลดหน้าแล้วลองใหม่'); return; }
+  if (!getCurrentClient()) return;
+  _scan = null;
+  _scanShowStep('pick');
+  _scanError('scan-pick-error', '');
+  /* ปุ่มถ่ายรูป: เฉพาะอุปกรณ์จอสัมผัส (บนคอมพิวเตอร์ได้หน้าต่างเลือกไฟล์เหมือนปุ่มเลือกรูป) */
+  const touch = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  document.getElementById('scan-pick-camera').style.display = touch ? '' : 'none';
+  document.getElementById('scan-modal').classList.add('open');
+  PolicyScan.prepareGoogle();   /* โหลดส่วนเชื่อมต่อ Google ไว้ก่อน — หน้าต่างขอสิทธิ์ต้องเปิดจากการกดปุ่มโดยตรง */
+  setTimeout(() => { const b = document.getElementById(touch ? 'scan-pick-camera' : 'scan-pick-file'); if (b) b.focus(); }, 30);
+}
+function closeScanModal() {
+  if (_scan && _scan.busy) return;   /* กำลังอ่านอยู่ — รอให้เสร็จก่อน */
+  document.getElementById('scan-modal').classList.remove('open');
+  _scan = null;
+  const im = document.getElementById('scan-preview-img');
+  if (im) im.removeAttribute('src');
+}
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const z = document.getElementById('scan-zoom'), m = document.getElementById('scan-modal');
+  if (z && z.classList.contains('open')) z.classList.remove('open');
+  else if (m && m.classList.contains('open')) closeScanModal();
+});
+function _scanShowStep(step) {
+  document.getElementById('scan-step-pick').style.display = step === 'pick' ? '' : 'none';
+  document.getElementById('scan-step-read').style.display = step === 'read' ? '' : 'none';
+}
+function _scanError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg || '';
+  el.classList.toggle('show', !!msg);
+}
+/* pct = null → แถบวิ่งไปมา (ไม่รู้เปอร์เซ็นต์) */
+function _scanProgress(text, pct) {
+  const bar = document.getElementById('scan-bar');
+  document.getElementById('scan-progress').classList.toggle('show', !!text);
+  document.getElementById('scan-progress-text').textContent = text || '';
+  bar.classList.toggle('indet', pct == null);
+  bar.firstElementChild.style.width = pct == null ? '' : Math.max(3, Math.min(100, pct)) + '%';
+}
+function _scanBusy(on) {
+  if (_scan) _scan.busy = on;
+  ['scan-read-local', 'scan-read-google', 'scan-rotate-btn', 'scan-repick-btn'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = on;
+  });
+}
+async function onScanFile(inp) {
+  const file = inp.files && inp.files[0];
+  inp.value = '';
+  if (!file) return;
+  try {
+    const img = await PolicyScan.loadImage(file);
+    _scan = { img: img, quarter: 0, busy: false };
+    _scanError('scan-pick-error', '');
+    _scanShowPreview();
+  } catch (e) {
+    _scanError('scan-pick-error', (e && e.message) || 'เปิดรูปนี้ไม่ได้');
+  }
+}
+function _scanShowPreview() {
+  if (!_scan) return;
+  document.getElementById('scan-preview-img').src = PolicyScan.drawScaled(_scan.img, 900, _scan.quarter).toDataURL('image/jpeg', 0.8);
+  const g = PolicyScan.googleAvailable();
+  document.getElementById('scan-read-google').style.display = g ? '' : 'none';
+  document.getElementById('scan-note').textContent = 'อ่านในเครื่องนี้ รูปไม่ถูกส่งออกไปที่ใด · ครั้งแรกโหลดตัวอ่านประมาณ 5 MB' +
+    (g ? ' · “อ่านด้วย Google” แม่นกว่ากับรูปที่ไม่ชัด โดยส่งรูปไปอ่านในบัญชี Google ของคุณเอง แล้วลบไฟล์ทันที' : '');
+  _scanError('scan-error', '');
+  _scanProgress('', 0);
+  _scanShowStep('read');
+}
+function scanRotate() {
+  if (!_scan || _scan.busy) return;
+  _scan.quarter = (_scan.quarter + 1) % 4;
+  _scanShowPreview();
+}
+function scanPickAgain() {
+  if (_scan && _scan.busy) return;
+  _scan = null;
+  _scanShowStep('pick');
+}
+function scanRead(engine) {
+  if (!_scan || _scan.busy) return;
+  const client = getCurrentClient();
+  if (!client) return;
+  const scan = _scan;
+  _scanError('scan-error', '');
+  _scanBusy(true);
+  if (engine === 'google') _scanProgress('กำลังส่งให้ Google อ่าน… ประมาณ 10–30 วินาที', null);
+  else _scanProgress('กำลังเตรียมตัวอ่าน…', null);
+  const companies = [];
+  getClients().forEach(c => (c.policies || []).forEach(p => { if (p.company && companies.indexOf(p.company) < 0) companies.push(p.company); }));
+  /* เรียกทันทีในจังหวะเดียวกับการกดปุ่ม (ไม่มี await คั่น) — Google เปิดหน้าต่างขอสิทธิ์ได้เฉพาะจากการกดโดยตรง */
+  PolicyScan.readPolicy(scan.img, {
+    engine: engine, quarter: scan.quarter, companies: companies,
+    ctx: { clientName: [client.firstName, client.lastName].filter(Boolean).join(' '), dob: client.dob || '', policies: client.policies || [] },
+    onProgress: p => _scanProgress(p.stage === 'read' ? 'กำลังอ่านข้อความ… ' + p.pct + '%' : 'กำลังโหลดตัวอ่าน… (ครั้งแรกประมาณ 5 MB)', p.stage === 'read' ? p.pct : null),
+  }).then(res => {
+    const thumb = PolicyScan.drawScaled(scan.img, 1400, scan.quarter).toDataURL('image/jpeg', 0.8);
+    _scanBusy(false);
+    closeScanModal();
+    openFormFromScan(res, thumb);
+  }).catch(e => {
+    _scanBusy(false);
+    _scanProgress('', 0);
+    _scanError('scan-error', (e && e.message) || 'อ่านรูปไม่สำเร็จ — ลองใหม่อีกครั้ง');
+  });
+}
+/* เปิดฟอร์ม "เพิ่มกรมธรรม์" ในโหมดเพิ่มใหม่ พร้อมค่าที่อ่านได้ + การ์ดบอกสิ่งที่ต้องตรวจ */
+function openFormFromScan(res, thumb) {
+  const f = document.getElementById('add-form');
+  clearPolicyForm();
+  f.classList.add('open');
+  populatePolicyForm(res.policy);
+  _renderScanCard(res, thumb);
+  const modal = f.querySelector('.pf-modal');
+  if (modal) modal.scrollTop = 0;
+}
+function _renderScanCard(res, thumb) {
+  const card = document.getElementById('pf-scan-card');
+  const D = PolicyScan.fmtThaiDate, x = res.extra || {};
+  const li = arr => arr.map(t => '<li>' + _scanEsc(t) + '</li>').join('');
+  const dates = [];
+  if (x.contractEnd) dates.push('<div><span>วันครบกำหนดสัญญา <b>' + _scanEsc(D(x.contractEnd)) + '</b></span></div>');
+  if (x.lastPremium) dates.push('<div><span>ชำระเบี้ยงวดสุดท้าย (คำนวณ) <b>' + _scanEsc(D(x.lastPremium)) + '</b></span>' +
+    '<button type="button" onclick="scanUseEndDate(\'' + _scanEsc(x.lastPremium) + '\')">ใส่ในฟอร์ม</button></div>');
+  card.innerHTML =
+    '<div class="pf-scan-head">📷 เติมจากรูปแล้ว ' + Number(res.filled || 0) + ' ช่อง</div>' +
+    '<div class="pf-scan-sub">แอปเดาจากข้อความในรูป อาจอ่านผิดได้ — ตรวจทุกช่องให้ตรงกับกรมธรรม์ก่อนกดบันทึก</div>' +
+    '<div class="pf-scan-body">' +
+      '<button type="button" class="pf-scan-thumb" onclick="scanZoom()" aria-label="ขยายรูปกรมธรรม์"><img src="' + thumb + '" alt="รูปกรมธรรม์ที่อ่าน"></button>' +
+      '<div class="pf-scan-info">' +
+        (res.warnings.length ? '<ul class="pf-scan-warn">' + li(res.warnings) + '</ul>' : '<div class="pf-scan-ok">✓ อ่านช่องหลักได้ครบ</div>') +
+        (res.info.length ? '<ul>' + li(res.info) + '</ul>' : '') +
+        (dates.length ? '<div class="pf-scan-dates">' + dates.join('') +
+          '<small>ช่อง “วันที่ชำระเบี้ยครั้งสุดท้าย” ยังไม่ได้เติม — กรอกเอง' + (x.lastPremium ? ' หรือกด “ใส่ในฟอร์ม”' : '') + '</small></div>' : '') +
+        '<details><summary>ข้อความทั้งหมดที่อ่านได้</summary><pre>' + _scanEsc(res.text) + '</pre></details>' +
+      '</div>' +
+    '</div>';
+  card.style.display = '';
+  _scanThumb = thumb;
+}
+function scanZoom() {
+  if (!_scanThumb) return;
+  document.getElementById('scan-zoom-img').src = _scanThumb;
+  document.getElementById('scan-zoom').classList.add('open');
+}
+function scanUseEndDate(iso) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) setVal('p-end', iso);
 }
 
 // ─── PENDING ENDORSEMENTS (add-policy form) ───
