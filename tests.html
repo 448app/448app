@@ -493,6 +493,92 @@ async function runAll() {
       check(T, 'บนจอ: วาดตารางกลับเป็นข้อมูลจริงของลูกค้า', q('#policy-tbody .sum-row'), 4);
     });
 
+    /* ค่าแนะนำของกราฟใยแมงมุม — ที่มาของตัวเลข (วิธีคิด) และค่าที่ตัวแทนกำหนดเองรายลูกค้า */
+    await group('ค่าแนะนำ (ที่มา / ปรับเอง)', async () => {
+      const T = 'ค่าแนะนำ (ที่มา / ปรับเอง)';
+      const W = await openPage('policies.html');
+      const C = W.CALC, c = W.getCurrentClient();
+      const KEYS = ['life', 'health', 'ci', 'pa', 'incomeRep', 'disability'];
+      const clone = o => JSON.parse(JSON.stringify(o));
+      const r0 = C.recommendCoverage(c);
+      check(T, 'ค่าตามสูตรของลูกค้าจำลอง: ชีวิต | สุขภาพ | โรคร้ายแรง | อุบัติเหตุ | ค่าชดเชย | ทุพพลภาพ', KEYS.map(k => r0[k].value).join(' | '), '4200000 | 2300000 | 6000000 | 2400000 | 2500 | 2400000');
+      check(T, 'ยังไม่ได้ปรับเอง → ทุกรายการใช้สูตร (custom = false · value = auto)', KEYS.every(k => r0[k].custom === false && r0[k].value === r0[k].auto), true);
+      check(T, 'ทุพพลภาพเป็นทุนก้อน = ช่อง “แนะนำ” ทุพพลภาพ ของหน้าประกันสุขภาพ (รายได้ 24 เดือน × ตัวคูณอายุ)', r0.disability.value, C.healthRecommend(c).rec.disability);
+      check(T, 'วิธีคิด ชีวิต', r0.life.detail, 'รวมรายการที่ติ๊กนับรวมในหน้าประกันชีวิต: หนี้สิน 3,000,000 + ความรับผิดชอบ 1,200,000 = 4,200,000');
+      check(T, 'วิธีคิด สุขภาพ', r0.health.detail, 'ค่าห้อง 11,300/วัน (โรงพยาบาลกรุงเทพ STD) × 200 เท่าตามระดับค่าห้อง × 1 (อายุ 40 ปี) = 2,260,000 → ปัดเป็นหลักแสน 2,300,000');
+      check(T, 'วิธีคิด โรคร้ายแรง | อุบัติเหตุ', r0.ci.detail + ' | ' + r0.pa.detail, '5 × รายได้ต่อปี 1,200,000 = 6,000,000 | 2 × รายได้ต่อปี 1,200,000 = 2,400,000');
+      check(T, 'วิธีคิด ค่าชดเชย', r0.incomeRep.detail, '70% × รายได้ต่อวัน 3,333 (รายได้ต่อเดือน 100,000 ÷ 30) = 2,333 → ปัดทีละ 500 เป็น 2,500');
+      check(T, 'วิธีคิด ทุพพลภาพ', r0.disability.detail, 'รายได้ต่อเดือน 100,000 × 24 เดือน × 1 (อายุ 40 ปี) = 2,400,000');
+
+      /* บรรทัดวิธีคิดต้องจบที่ตัวเลขเดียวกับค่าตามสูตรเสมอ (รวมกรณีปัดเศษ / ต่ำกว่าขั้นต่ำ / ไม่มีข้อมูล) */
+      const lastNum = s => Number(((String(s).match(/[\d,]*\d(?=\D*$)/) || ['0'])[0]).replace(/,/g, ''));
+      const endsAtAuto = cl => { const r = C.recommendCoverage(cl); return KEYS.filter(k => lastNum(r[k].detail) !== Math.round(r[k].auto)).join(',') || 'ตรงทุกรายการ'; };
+      check(T, 'วิธีคิดจบที่ค่าตามสูตร: ลูกค้าจำลอง', endsAtAuto(c), 'ตรงทุกรายการ');
+      check(T, 'วิธีคิดจบที่ค่าตามสูตร: ลูกค้าไม่มีข้อมูลเลย (ใช้ค่าขั้นต่ำ)', endsAtAuto({}), 'ตรงทุกรายการ');
+      check(T, 'วิธีคิดจบที่ค่าตามสูตร: รายได้ 37,000/เดือน อายุ 62 โรงพยาบาลค่าห้อง 4,500 (ปัดเศษ + ต่ำกว่าขั้นต่ำ)',
+        endsAtAuto({ income: 444000, dob: yearsAgo(62, 1), healthInputs: { hospital: { name: 'รพ.ทดสอบ', std: 4500, vip: 9000 }, tier: 'std' } }), 'ตรงทุกรายการ');
+      check(T, 'วิธีคิดจบที่ค่าตามสูตร: รายได้ 1,234,567/ปี อายุ 25 ห้อง VIP 12,000 มีหนี้ ไม่ได้กรอกภาระ',
+        endsAtAuto({ income: 1234567, dob: yearsAgo(25, 2), liabilities: [{ principal: 750000 }], healthInputs: { hospital: { name: 'รพ.ทดสอบ', std: 6000, vip: 12000 }, tier: 'vip' } }), 'ตรงทุกรายการ');
+      const e0 = C.recommendCoverage({});
+      check(T, 'ไม่มีข้อมูล → ค่าขั้นต่ำ: ชีวิต 1M | สุขภาพ 400K | โรคร้ายแรง 2M | อุบัติเหตุ 500K | ค่าชดเชย 1,500 | ทุพพลภาพ 1M', KEYS.map(k => e0[k].value).join(' | '), '1000000 | 400000 | 2000000 | 500000 | 1500 | 1000000');
+
+      /* ค่าที่กำหนดเอง — สูตรกลาง */
+      const x = clone(c);
+      C.setCoverTarget(x, 'ci', 3000000); C.setCoverTarget(x, 'pa', 1000000); C.setCoverTarget(x, 'life', 5000000);
+      const r1 = C.recommendCoverage(x);
+      check(T, 'กำหนดเอง โรคร้ายแรง 3M · อุบัติเหตุ 1M · ชีวิต 5M → ใช้ค่านั้น และจำค่าตามสูตรไว้', ['ci', 'pa', 'life'].map(k => r1[k].value + '/' + r1[k].custom + '/' + r1[k].auto + '/' + r1[k].basis).join(' | '),
+        '3000000/true/6000000/กำหนดเอง | 1000000/true/2400000/กำหนดเอง | 5000000/true/4200000/กำหนดเอง');
+      check(T, 'รายการที่ไม่ได้แตะยังใช้สูตร', r1.health.value + '/' + r1.health.custom + ' | ' + r1.disability.value + '/' + r1.disability.custom, '2300000/false | 2400000/false');
+      check(T, 'ที่เก็บ: โรคร้ายแรง → ช่องเดียวกับหน้าประกันสุขภาพ · ชีวิต/อุบัติเหตุ → coverageTargets', JSON.stringify(x.healthInputs.customRecommendations) + ' ' + JSON.stringify(x.coverageTargets), '{"ciSevere":3000000} {"pa":1000000,"life":5000000}');
+      check(T, 'หน้าประกันสุขภาพเห็นโรคร้ายแรง (ระยะรุนแรง) ค่าเดียวกัน', C.healthRecommend(x).rec.ciSevere, 3000000);
+      C.setCoverTarget(x, 'health', 1500000); C.setCoverTarget(x, 'incomeRep', 3000); C.setCoverTarget(x, 'disability', 5000000);
+      check(T, 'สุขภาพ / ค่าชดเชย / ทุพพลภาพ เก็บที่ช่อง perVisit / incomeReplace / disability ของหน้าประกันสุขภาพ', JSON.stringify(x.healthInputs.customRecommendations), '{"ciSevere":3000000,"perVisit":1500000,"incomeReplace":3000,"disability":5000000}');
+      C.setCoverTarget(x, 'ci', null); C.setCoverTarget(x, 'pa', ''); C.setCoverTarget(x, 'incomeRep', 0);
+      const r2 = C.recommendCoverage(x);
+      check(T, 'ยกเลิก (null / ว่าง) → กลับไปใช้สูตร · ใส่ 0 = ไม่ตั้งเป้า (ยังถือเป็นค่าที่กำหนดเอง)', r2.ci.value + '/' + r2.ci.custom + ' | ' + r2.pa.value + '/' + r2.pa.custom + ' | ' + r2.incomeRep.value + '/' + r2.incomeRep.custom, '6000000/false | 2400000/false | 0/true');
+      check(T, 'ยกเลิกแล้วลบออกจากที่เก็บจริง (ไม่เหลือค่าค้าง)', ('ciSevere' in x.healthInputs.customRecommendations) + ' ' + ('pa' in x.coverageTargets), 'false false');
+      const bare = {}; C.setCoverTarget(bare, 'health', 900000); C.setCoverTarget(bare, 'unknown', 5);
+      check(T, 'ลูกค้าที่ยังไม่เคยเปิดหน้าประกันสุขภาพ → สร้างที่เก็บให้เอง · ชื่อรายการที่ไม่รู้จักไม่ทำอะไร', JSON.stringify(bare), '{"healthInputs":{"customRecommendations":{"perVisit":900000}}}');
+
+      /* บนจอ (หน้าสรุปกรมธรรม์) */
+      const D = W.document, q = s => D.querySelectorAll(s).length, wait = ms => new Promise(r => setTimeout(r, ms || 80));
+      const rowText = k => (D.querySelector('.spider-leg-item[data-axis="' + k + '"] .spider-leg-row') || {}).textContent.replace(/\s+/g, ' ').trim();
+      const gapText = i => D.querySelectorAll('#gap-list .gap-item')[i].textContent.replace(/\s+/g, ' ').trim();
+      const typeIn = async (k, v) => { const el = D.getElementById('rec-in-' + k); el.value = v; W.saveRecTarget(k, el); await wait(); };
+      const saved = () => { const m = readUsers().find(u => u.id === _uid).data.clients.find(z => z.id === TEST_ID); return JSON.stringify((m.healthInputs || {}).customRecommendations || {}) + ' ' + JSON.stringify(m.coverageTargets || {}); };
+      const axes = W.coverageAxisRows(c.policies, c);
+      check(T, 'บนจอ: มีอยู่ ÷ แนะนำ ของ 6 แกน (%)', axes.map(a => a.pct).join(' | '), '48 | 22 | 17 | 42 | 0 | 0');
+      check(T, 'บนจอ: กราฟมี 6 แถว · แถวทุพพลภาพเป็น “ทุพพลภาพ (ทุน)” · ยังไม่เปิดแผงที่มา', q('#spider-legend .spider-leg-item') + ' / ' + /ทุพพลภาพ \(ทุน\)/.test(rowText('disability')) + ' / ' + q('.spider-rec-panel') + ' / ' + D.getElementById('spider-rec-btn').getAttribute('aria-expanded'), '6 / true / 0 / false');
+      try {
+        W.toggleSpiderRec();
+        check(T, 'บนจอ: กด “ที่มา / ปรับค่าแนะนำ” → 6 แผง 6 ช่อง ค่าเริ่มต้นเป็นค่าตามสูตร', q('.spider-rec-panel') + ' / ' + Array.from(D.querySelectorAll('.srp-input')).map(i => i.value.replace(/,/g, '')).join(',') + ' / ' + D.getElementById('spider-rec-btn').getAttribute('aria-expanded'),
+          '6 / 4200000,2300000,6000000,2400000,2500,2400000 / true');
+        check(T, 'บนจอ: แผงโรคร้ายแรงบอกวิธีคิดพร้อมตัวเลข', /5 × รายได้ต่อปี 1,200,000 = 6,000,000/.test(D.querySelector('.spider-leg-item[data-axis="ci"] .spider-rec-panel').textContent), true);
+        await typeIn('ci', '3,000,000');
+        check(T, 'บนจอ: พิมพ์โรคร้ายแรง 3,000,000 → แถวขึ้น “กำหนดเอง” · 1,000,000 ÷ 3,000,000 = 33%', rowText('ci'), '🏥 โรคร้ายแรงกำหนดเอง มีอยู่ ฿1,000,000 / แนะนำ ฿3,000,000 (ตามสูตร ฿6,000,000) 33% น้อยเกินไป');
+        check(T, 'บนจอ: บันทึกลงข้อมูลลูกค้าจริง และตารางช่องโหว่ใช้ค่าเดียวกัน', saved() + ' · ' + /ขาดอีก ฿ 2,000,000/.test(gapText(2)), '{"ciSevere":3000000} {} · true');
+        check(T, 'บนจอ: มีปุ่ม “ใช้ค่าตามสูตร” เฉพาะแถวที่กำหนดเอง', q('.srp-reset') + ' / ' + !!D.getElementById('rec-reset-ci'), '1 / true');
+        await typeIn('pa', '0');
+        check(T, 'บนจอ: ใส่ 0 = ไม่ตั้งเป้า (ไม่ขึ้น NaN% · ไม่นับว่าขาด)', rowText('pa') + ' · ' + D.querySelector('.spider-leg-item[data-axis="pa"]').className + ' · ' + D.querySelectorAll('#gap-list .gap-item')[3].className,
+          '🚑 อุบัติเหตุกำหนดเอง มีอยู่ ฿1,000,000 / แนะนำ ฿0 (ตามสูตร ฿2,400,000) — ไม่ตั้งเป้า · spider-leg-item none · gap-item none');
+        await typeIn('pa', '');
+        await typeIn('life', '4,200,000');
+        check(T, 'บนจอ: เว้นว่าง → กลับไปใช้สูตร · พิมพ์เท่ากับค่าตามสูตร → ไม่ถือว่ากำหนดเอง', saved() + ' · ' + /กำหนดเอง/.test(rowText('pa') + rowText('life')), '{"ciSevere":3000000} {} · false');
+        D.getElementById('rec-reset-ci').click(); await wait();
+        check(T, 'บนจอ: กด “ใช้ค่าตามสูตร” → กลับเป็น 6,000,000 (17%) และไม่มีค่าค้างในข้อมูล', rowText('ci') + ' · ' + saved(), '🏥 โรคร้ายแรง มีอยู่ ฿1,000,000 / แนะนำ ฿6,000,000 (5× รายได้/ปี) 17% น้อยเกินไป · {} {}');
+        W.toggleSpiderRec();
+        check(T, 'บนจอ: ปิดแผง → เหลือเฉพาะแถวสรุป', q('.spider-rec-panel') + ' / ' + D.getElementById('spider-rec-btn').getAttribute('aria-expanded'), '0 / false');
+      } finally {
+        if (D.getElementById('spider-rec-btn').getAttribute('aria-expanded') === 'true') W.toggleSpiderRec();
+        patchMock(m => { delete m.coverageTargets; if (m.healthInputs) delete m.healthInputs.customRecommendations; });
+      }
+      const D2 = await openPage('dashboard.html');
+      patchMock(m => { m.coverageTargets = { pa: 900000 }; });
+      const dc2 = D2.getClients().find(z => z.id === TEST_ID);
+      check(T, 'หน้าแรกใช้ค่าที่กำหนดเองชุดเดียวกัน (อุบัติเหตุ 900,000)', D2.recommendCoverage(dc2)['อุบัติเหตุ'], 900000);
+      patchMock(m => { delete m.coverageTargets; });
+    });
+
     await group('อัตราส่วนการเงิน', async () => {
       const W = await openPage('ratios.html');
       const d = W.computeData();

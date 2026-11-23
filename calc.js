@@ -11,7 +11,7 @@
      2. เกษียณ      retirementPlan · retirementAssets · retirementDerived · retirementIncomeAfter · retirement
      3. การศึกษา    EDU_* · eduCostTable · eduStageCost · eduUniLevel · childEducation · childRearing · childTotalCost
      4. ภาษี        TAX_* · taxIncome · taxWages · taxYearOf · taxCapCtx · taxExpenseDetail · taxExpense · taxBracket · taxValue · taxScope · policyPremiums
-     5. สุขภาพ/ทุน  HEALTH_ROWS · healthRecommend · healthFromPolicies · healthCalc · recommendCoverage · legacyCover
+     5. สุขภาพ/ทุน  HEALTH_ROWS · healthRecommend · healthFromPolicies · healthCalc · coverTarget · setCoverTarget · recommendCoverage · legacyCover
 */
 (function () {
   if (window.CALC) return;
@@ -684,32 +684,115 @@
       hospital: h.hospital, roomType: h.roomType, rate: h.rate, rec: h.rec, auto: h.auto,
     };
   }
-  /* ทุนแนะนำ (หน้าแรก / สรุปกรมธรรม์ / PDF) — แต่ละค่า { value, basis }
+  /* ค่าแนะนำที่ตัวแทนกำหนดเอง (รายลูกค้า) — เก็บที่เดียวต่อ 1 ตัวเลข ทุกหน้าจึงเห็นค่าเดียวกัน
+     · สุขภาพ / โรคร้ายแรง / ค่าชดเชย / ทุพพลภาพ → healthInputs.customRecommendations (ช่องเดียวกับคอลัมน์ "แนะนำ" ของหน้าประกันสุขภาพ)
+     · ชีวิต / อุบัติเหตุ → client.coverageTargets (หน้าประกันสุขภาพไม่มีสองรายการนี้) */
+  const COVER_TARGETS = {
+    life:       { where: 'targets', key: 'life' },
+    health:     { where: 'health',  key: 'perVisit' },
+    ci:         { where: 'health',  key: 'ciSevere' },
+    pa:         { where: 'targets', key: 'pa' },
+    incomeRep:  { where: 'health',  key: 'incomeReplace' },
+    disability: { where: 'health',  key: 'disability' },
+  };
+  function coverTargetSlot(client, name, create) {
+    const t = COVER_TARGETS[name];
+    if (!t || !client) return null;
+    if (t.where === 'health') {
+      if (!client.healthInputs) { if (!create) return null; client.healthInputs = {}; }
+      if (!client.healthInputs.customRecommendations) { if (!create) return null; client.healthInputs.customRecommendations = {}; }
+      return { obj: client.healthInputs.customRecommendations, key: t.key };
+    }
+    if (!client.coverageTargets) { if (!create) return null; client.coverageTargets = {}; }
+    return { obj: client.coverageTargets, key: t.key };
+  }
+  /* ค่าที่กำหนดเองของรายการนั้น · ไม่ได้กำหนด → null (0 = ตั้งใจไม่ตั้งเป้า ไม่ใช่ "ไม่ได้กำหนด") */
+  function coverTarget(client, name) {
+    const s = coverTargetSlot(client, name, false);
+    if (!s) return null;
+    const v = s.obj[s.key];
+    return (v == null || v === '') ? null : Math.max(Number(v) || 0, 0);
+  }
+  /* กำหนด / ยกเลิก (value = null หรือ '' → กลับไปใช้สูตร) — แก้ที่ object ลูกค้าที่ส่งเข้ามา ผู้เรียกเป็นคนบันทึก */
+  function setCoverTarget(client, name, value) {
+    if (value == null || value === '') {
+      const s = coverTargetSlot(client, name, false);
+      if (s) delete s.obj[s.key];
+      return;
+    }
+    const s = coverTargetSlot(client, name, true);
+    if (s) s.obj[s.key] = Math.max(Number(value) || 0, 0);
+  }
+
+  /* ทุนแนะนำ (หน้าแรก / สรุปกรมธรรม์ / PDF) — แต่ละค่า { value, basis, custom, auto, autoBasis, detail }
+     value = ค่าที่ใช้จริง (ค่าที่ตัวแทนกำหนดเองถ้ามี ไม่มีใช้สูตร) · auto / autoBasis = ค่าตามสูตรและที่มาแบบย่อ
+     detail = วิธีคิดของสูตรพร้อมตัวเลขของลูกค้ารายนี้ (หน้าสรุปกรมธรรม์แสดงใต้ปุ่ม "ที่มา / ปรับค่าแนะนำ")
      ชีวิต: ภาระที่นับรวมในหน้าประกันชีวิต · ไม่มี → 10× รายได้/ปี + หนี้สิน (ขั้นต่ำ 1M)
-     สุขภาพ/โรคร้ายแรง/ชดเชยรายได้: สูตรหน้าประกันสุขภาพ (เคารพค่าที่ตัวแทนแก้เอง) · อุบัติเหตุ 2× รายได้ (ขั้นต่ำ 500K)
-     ทุพพลภาพ (ชดเชยรายเดือน): 65% ของรายได้/เดือน (ขั้นต่ำ 30,000) */
+     สุขภาพ/โรคร้ายแรง/ชดเชยรายได้/ทุพพลภาพ: สูตรหน้าประกันสุขภาพ (healthRecommend) · อุบัติเหตุ 2× รายได้ (ขั้นต่ำ 500K)
+     ทุพพลภาพเป็น "ทุนก้อน" (รายได้ 24 เดือน × ตัวคูณอายุ ขั้นต่ำ 1M) ให้เทียบกับทุนทุพพลภาพของสัญญาเพิ่มเติมได้
+     — เดิมใช้ 65% ของรายได้/เดือน ซึ่งเป็นเงินรายเดือน เทียบกับทุนก้อนไม่ได้ (ขึ้น "เพียงพอ" เสมอ) */
   function recommendCoverage(client) {
     client = client || {};
+    const f = v => Math.round(Number(v) || 0).toLocaleString('th-TH');
     const annualIncome = incomeAnnual(client);
     const monthlyIncome = annualIncome / 12, dailyIncome = monthlyIncome / 30;
     const age = ageInt(client.dob || client.birthdate);
     const totalDebt = sum(client.liabilities, l => l.principal || l.amount);
     const li = client.lifeInputs || {};
-    const need = sum([...(li.debts || []), ...(li.responsibilities || [])].filter(r => r && r.included !== false), r => r.amount);
-    const life = need > 0
-      ? { value: need, basis: 'ภาระที่นับรวมในหน้าประกันชีวิต' }
-      : { value: Math.max(annualIncome * 10 + totalDebt, 1000000), basis: annualIncome > 0 ? '10× รายได้/ปี + หนี้สิน' : 'ค่าเริ่มต้น' };
+    const counted = r => r && r.included !== false;
+    const debtNeed = sum((li.debts || []).filter(counted), r => r.amount);
+    const respNeed = sum((li.responsibilities || []).filter(counted), r => r.amount);
+    const need = debtNeed + respNeed;
+    const noIncome = 'ยังไม่ได้กรอกรายได้ของลูกค้า';
+    /* ต่อท้ายวิธีคิด: การปัดเศษ (ถ้าปัดแล้วค่าเปลี่ยน) และค่าขั้นต่ำ (ถ้าต่ำกว่า) — ให้บรรทัดอธิบายจบที่ตัวเลขเดียวกับค่าตามสูตรเสมอ */
+    const finish = (raw, step, min, stepLabel) => {
+      const r = step ? Math.round(raw / step) * step : raw;
+      return (step && r !== Math.round(raw) ? ` → ${stepLabel} ${f(r)}` : '') + (r < min ? ` → ต่ำกว่าขั้นต่ำ จึงใช้ ${f(min)}` : '');
+    };
+
+    const lifeRaw = annualIncome * 10 + totalDebt;
+    const lifeAuto = need > 0
+      ? { value: need, basis: 'ภาระที่นับรวมในหน้าประกันชีวิต',
+          detail: `รวมรายการที่ติ๊กนับรวมในหน้าประกันชีวิต: หนี้สิน ${f(debtNeed)} + ความรับผิดชอบ ${f(respNeed)} = ${f(need)}` }
+      : { value: Math.max(lifeRaw, 1000000), basis: annualIncome > 0 ? '10× รายได้/ปี + หนี้สิน' : 'ค่าเริ่มต้น',
+          detail: `ยังไม่ได้กรอกภาระในหน้าประกันชีวิต จึงใช้ 10 × รายได้ต่อปี ${f(annualIncome)} + หนี้สิน ${f(totalDebt)} = ${f(lifeRaw)}${finish(lifeRaw, 0, 1000000)}` };
+
     const h = healthRecommend(client);
-    const isCustom = key => h.custom[key] != null && h.custom[key] !== '';
-    const pick = (key, autoBasis) => isCustom(key)
-      ? { value: Number(h.custom[key]) || 0, basis: 'ค่าที่กำหนดในหน้าประกันสุขภาพ' }
-      : { value: h.auto[key], basis: autoBasis };
-    const health = pick('perVisit', h.hospital ? `ตาม ${h.hospital.name} (${h.roomType}) ในหน้าประกันสุขภาพ` : 'ค่าห้องอ้างอิง 3,000/วัน — ยังไม่เลือกโรงพยาบาล');
-    const ci = pick('ciSevere', annualIncome > 0 ? '5× รายได้/ปี' : 'ค่าเริ่มต้น');
-    const incomeRep = pick('incomeReplace', dailyIncome > 0 ? '70% ของรายได้/วัน' : 'ค่าเริ่มต้น');
-    const pa = { value: Math.max(annualIncome * 2, 500000), basis: annualIncome > 0 ? '2× รายได้/ปี' : 'ค่าเริ่มต้น' };
-    const disability = { value: Math.max(Math.round(monthlyIncome * 0.65), 30000), basis: monthlyIncome > 0 ? '65% ของรายได้/เดือน' : 'ค่าเริ่มต้น' };
-    return { annualIncome, age, totalDebt, life, health, ci, pa, incomeRep, disability };
+    const tier = HEALTH_TIER[h.tierKey];
+    const ageNote = age ? `อายุ ${age} ปี` : 'ยังไม่ได้กรอกวันเกิด ใช้อายุ 35 ปี';   /* healthRecommend ใช้ 35 เมื่อไม่มีอายุ */
+    const pvRaw = h.rate * tier.perVisitMult * h.ageMult;
+    const healthAuto = { value: h.auto.perVisit,
+      basis: h.hospital ? `ตาม ${h.hospital.name} (${h.roomType}) ในหน้าประกันสุขภาพ` : 'ค่าห้องอ้างอิง 3,000/วัน — ยังไม่เลือกโรงพยาบาล',
+      detail: `ค่าห้อง ${f(h.rate)}/วัน${h.hospital ? ` (${h.hospital.name} ${h.roomType})` : ' (ค่าอ้างอิง ยังไม่ได้เลือกโรงพยาบาลในหน้าประกันสุขภาพ)'} × ${tier.perVisitMult} เท่าตามระดับค่าห้อง × ${h.ageMult} (${ageNote}) = ${f(pvRaw)}${finish(pvRaw, 100000, 100000, 'ปัดเป็นหลักแสน')}` };
+
+    const ciRaw = annualIncome * 5;
+    const ciAuto = { value: h.auto.ciSevere, basis: annualIncome > 0 ? '5× รายได้/ปี' : 'ค่าเริ่มต้น',
+      detail: annualIncome > 0 ? `5 × รายได้ต่อปี ${f(annualIncome)} = ${f(ciRaw)}${finish(ciRaw, 100000, 2000000, 'ปัดเป็นหลักแสน')}` : `${noIncome} จึงใช้ขั้นต่ำ 2,000,000` };
+
+    const paRaw = annualIncome * 2;
+    const paAuto = { value: Math.max(paRaw, 500000), basis: annualIncome > 0 ? '2× รายได้/ปี' : 'ค่าเริ่มต้น',
+      detail: annualIncome > 0 ? `2 × รายได้ต่อปี ${f(annualIncome)} = ${f(paRaw)}${finish(paRaw, 0, 500000)}` : `${noIncome} จึงใช้ขั้นต่ำ 500,000` };
+
+    const irRaw = dailyIncome * 0.7;
+    const incomeRepAuto = { value: h.auto.incomeReplace, basis: dailyIncome > 0 ? '70% ของรายได้/วัน' : 'ค่าเริ่มต้น',
+      detail: dailyIncome > 0
+        ? `70% × รายได้ต่อวัน ${f(dailyIncome)} (รายได้ต่อเดือน ${f(monthlyIncome)} ÷ 30) = ${f(irRaw)}${finish(irRaw, 500, 1500, 'ปัดทีละ 500 เป็น')}`
+        : `${noIncome} จึงใช้ขั้นต่ำ 1,500/วัน` };
+
+    const disBase = monthlyIncome || 30000, disRaw = disBase * 24 * h.ageMult;
+    const disabilityAuto = { value: h.auto.disability, basis: monthlyIncome > 0 ? 'รายได้ 24 เดือน × ตัวคูณอายุ' : 'ค่าเริ่มต้น',
+      detail: `รายได้ต่อเดือน ${f(disBase)}${monthlyIncome > 0 ? '' : ' (ค่าอ้างอิง เพราะ' + noIncome + ')'} × 24 เดือน × ${h.ageMult} (${ageNote}) = ${f(disRaw)}${finish(disRaw, 100000, 1000000, 'ปัดเป็นหลักแสน')}` };
+
+    /* ค่าที่กำหนดเองชนะสูตร — เก็บค่าตามสูตรไว้ด้วย (แสดง "ตามสูตร …" และใช้ตอนกดกลับไปใช้สูตร) */
+    const out = (name, auto) => {
+      const c = coverTarget(client, name);
+      return c == null
+        ? { value: auto.value, basis: auto.basis, custom: false, auto: auto.value, autoBasis: auto.basis, detail: auto.detail }
+        : { value: c, basis: 'กำหนดเอง', custom: true, auto: auto.value, autoBasis: auto.basis, detail: auto.detail };
+    };
+    return { annualIncome, age, totalDebt,
+      life: out('life', lifeAuto), health: out('health', healthAuto), ci: out('ci', ciAuto),
+      pa: out('pa', paAuto), incomeRep: out('incomeRep', incomeRepAuto), disability: out('disability', disabilityAuto) };
   }
   /* ทุนชีวิตที่จะส่งต่อให้ทายาท = ทุนชีวิตรวมของกรมธรรม์ทุกแบบที่จ่ายเมื่อเสียชีวิต (ไม่นับสุขภาพ/โรคร้ายแรง/PA/อุบัติเหตุ) */
   const LIFE_TYPES = ['ชีวิต', 'ทุนชีวิต', 'ตลอดชีพ', 'สะสมทรัพย์', 'บำนาญ', 'Unit Linked', 'การศึกษา', 'เกษียณ', 'ลดหย่อนภาษี', 'ลงทุน', 'ส่งมอบ'];
@@ -728,6 +811,7 @@
     TAX_BRACKETS, TAX_CAPS, TAX_DEFAULTS, TAX_RET_GROUP, TAX_INCOME_KEYS, taxIncome, taxWages, taxYearNow, taxYearOf, ssoCap, taxCapCtx,
     taxExpenseDetail, taxExpense, taxBracket, taxValue, taxScope,
     TAX_HEALTH_TYPES, TAX_EXCLUDED_TYPES, RIDER_TAX_CLASS, RIDER_TAX_LABEL, policyTermYears, policyPremiums,
-    HEALTH_ROWS, HEALTH_TIER, hospitalTier, healthRecommend, healthFromPolicies, healthCalc, recommendCoverage, LIFE_TYPES, legacyCover,
+    HEALTH_ROWS, HEALTH_TIER, hospitalTier, healthRecommend, healthFromPolicies, healthCalc,
+    COVER_TARGETS, coverTarget, setCoverTarget, recommendCoverage, LIFE_TYPES, legacyCover,
   };
 })();

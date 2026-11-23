@@ -888,6 +888,9 @@
     .gap-item.ok .gap-status     { background: #C3E6CB; color: #155724; }
     .gap-item.warn .gap-status   { background: #FFE08A; color: #856404; }
     .gap-item.danger .gap-status { background: #D4BA82; color: #721C24; }
+    .gap-item.none   { border-color: var(--gray-200); background: var(--gray-100); }   /* ไม่ตั้งเป้า (ค่าแนะนำ = 0) */
+    .gap-item.none .gap-dot    { background: var(--red-mid); }
+    .gap-item.none .gap-status { background: var(--gray-200); color: #4A5473; }
     .gap-desc { font-size: .75rem; color: var(--gray-600); margin-top: 2px; }
 
     .cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -966,23 +969,52 @@
     .spider-card-inner {
       display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center;
     }
-    .spider-title { font-size: .95rem; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+    .spider-title { font-size: .95rem; font-weight: 700; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
     .spider-canvas-wrap { display: flex; justify-content: center; align-items: center; }
     .spider-legend { display: flex; flex-direction: column; gap: 10px; }
     .spider-leg-item {
-      display: flex; align-items: center; gap: 12px;
       padding: 11px 14px; border-radius: var(--radius-sm);
       background: var(--gray-100); border-left: 4px solid transparent;
     }
+    .spider-leg-row { display: flex; align-items: center; gap: 12px; }
     .spider-leg-item.ok     { border-left-color: #28a745; background: #F0FFF4; }
     .spider-leg-item.warn   { border-left-color: #FFA500; background: #FFFBF0; }
     .spider-leg-item.danger { border-left-color: #1B2A5E; background: #EEF1FA; }
+    .spider-leg-item.none   { border-left-color: var(--red-mid); }                 /* ไม่ตั้งเป้า (ค่าแนะนำ = 0) */
     .spider-leg-label { flex: 1; font-weight: 700; font-size: .85rem; }
     .spider-leg-pct { font-size: .82rem; font-weight: 800; }
     .spider-leg-item.ok .spider-leg-pct     { color: #28a745; }
     .spider-leg-item.warn .spider-leg-pct   { color: #FFA500; }
     .spider-leg-item.danger .spider-leg-pct { color: #1B2A5E; }
+    .spider-leg-item.none .spider-leg-pct   { color: var(--gray-600); }
     .spider-leg-sub { font-size: .72rem; color: var(--gray-500); margin-top: 2px; }
+    .spider-leg-basis { font-size: .7rem; color: var(--gray-600); }   /* ที่มาแบบย่อของตัวเลขแนะนำ (เดิม <small> 9.6px สีจาง อ่านยาก) */
+    /* ─── ที่มา / ปรับค่าแนะนำ (ค่าที่ตัวแทนกำหนดเอง รายลูกค้า) ─── */
+    .spider-rec-btn {
+      display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+      padding: 5px 12px; border-radius: 999px; border: 1px solid #E3E9FA; background: var(--red-soft); color: var(--red-primary);
+      font: inherit; font-size: .76rem; font-weight: 600; line-height: 1.4; cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+    }
+    .spider-rec-btn:hover, .spider-rec-btn:focus-visible { background: #fff; border-color: var(--red-primary); outline: none; }
+    .spider-rec-btn[aria-expanded="true"] { background: var(--red-primary); border-color: var(--red-primary); color: #fff; }
+    /* เปิดแผง: กราฟอยู่บน รายการเรียง 2 คอลัมน์ (แต่ละแถวสูงขึ้นมาก ถ้าคงกราฟไว้ซ้ายจะเหลือที่ว่างยาว) — จอแคบเหลือคอลัมน์เดียว */
+    .spider-card.rec-open .spider-card-inner { grid-template-columns: 1fr; gap: 16px; }
+    .spider-card.rec-open .spider-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; align-items: start; }
+    .spider-card.rec-open .spider-rec-foot { grid-column: 1 / -1; }
+    @media (max-width: 900px) { .spider-card.rec-open .spider-legend { grid-template-columns: minmax(0, 1fr); } }
+    .spider-leg-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: #FBF2E4; border: 1px solid #EBD9B8; color: #8A5A12; font-size: .7rem; font-weight: 600; vertical-align: middle; white-space: nowrap; }
+    .spider-rec-panel { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--red-mid); font-size: .76rem; color: #4A5473; line-height: 1.55; overflow-wrap: anywhere; }
+    .srp-edit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin-top: 8px; }
+    .srp-edit label { font-weight: 600; color: var(--red-dark); }
+    .srp-input {
+      width: 132px; height: 34px; padding: 0 10px; border: 1px solid var(--red-mid); border-radius: 6px; background: #fff;
+      font: inherit; font-size: .85rem; font-weight: 600; color: var(--red-dark); text-align: right; font-variant-numeric: tabular-nums;
+    }
+    .srp-input:focus { outline: none; border-color: var(--red-primary); box-shadow: 0 0 0 3px rgba(27,42,94,.12); }
+    .srp-reset { background: none; border: 0; padding: 4px 2px; font: inherit; font-size: .74rem; font-weight: 600; color: var(--red-primary); cursor: pointer; text-decoration: underline; }
+    .srp-hint { margin-top: 6px; color: var(--gray-600); }
+    .srp-hint a { color: var(--red-primary); font-weight: 600; }
+    .spider-rec-foot { font-size: .74rem; color: var(--gray-600); line-height: 1.6; padding: 2px 2px 0; }
     @media(max-width: 768px) {
       .spider-card-inner { grid-template-columns: 1fr; }
     }
@@ -1526,7 +1558,11 @@
 
       <!-- Spider Chart -->
       <div class="spider-card" id="spider-card" style="display:none;">
-        <div class="spider-title">🕸️ ภาพรวมความคุ้มครอง (Spider Chart)</div>
+        <div class="spider-title">
+          <span>🕸️ ภาพรวมความคุ้มครอง (Spider Chart)</span>
+          <!-- เปิดแล้วแต่ละแถวแสดงวิธีคิดของตัวเลข "แนะนำ" + ช่องพิมพ์ค่าที่ต้องการเอง (renderSpiderChart) -->
+          <button type="button" class="spider-rec-btn" id="spider-rec-btn" onclick="toggleSpiderRec()" aria-expanded="false" aria-controls="spider-legend">ที่มา / ปรับค่าแนะนำ</button>
+        </div>
         <div class="spider-card-inner">
           <div class="spider-canvas-wrap">
             <canvas id="spider-canvas" width="280" height="280" style="max-width:280px;max-height:280px;"></canvas>
@@ -1924,6 +1960,7 @@ let currentClientId = null;
 let editingClientId = null;
 let currentPolicyIdx = null;
 let spiderChartInstance = null;
+let spiderRecOpen = false;        /* เปิดแผง "ที่มา / ปรับค่าแนะนำ" ใต้แต่ละแถวของกราฟใยแมงมุมอยู่หรือไม่ */
 
 // ─── CONSTANTS ───
 const TYPE_ICONS = {
@@ -2908,26 +2945,39 @@ document.addEventListener('keydown', function (e) {
    · ชีวิต: ภาระที่นับรวมในหน้าประกันชีวิต (หนี้สิน + ความรับผิดชอบ) ถ้ากรอกแล้ว · ไม่มี → 10× รายได้/ปี + หนี้สิน (ขั้นต่ำ 1M)
    · สุขภาพ (วงเงินค่ารักษาต่อครั้ง) / โรคร้ายแรง / ชดเชยรายได้: สูตรเดียวกับหน้าประกันสุขภาพ (โรงพยาบาลที่เลือก · อายุ · รายได้)
      และเคารพค่าที่ตัวแทนพิมพ์ทับในหน้านั้น
-   · อุบัติเหตุ: 2× รายได้/ปี ขั้นต่ำ 500K · ทุพพลภาพ: 65% ของรายได้/เดือน ขั้นต่ำ 30,000
+   · อุบัติเหตุ: 2× รายได้/ปี ขั้นต่ำ 500K · ทุพพลภาพ (ทุนก้อน): รายได้ 24 เดือน × ตัวคูณอายุ ขั้นต่ำ 1M (= หน้าประกันสุขภาพ)
+   · ทุกรายการตัวแทนพิมพ์ค่าเองได้รายลูกค้า (ปุ่ม "ที่มา / ปรับค่าแนะนำ" → saveRecTarget) — ค่าที่กำหนดเองชนะสูตร
    เดิมหน้าแรก / กราฟใยแมงมุม / ตารางช่องโหว่ ใช้เกณฑ์คนละชุด (10×+หนี้ / 7× / 5M คงที่) → ลูกค้าคนเดียวเห็น "แนะนำ" 3 ค่า */
 function computeRecommendedCoverage(client) { return CALC.recommendCoverage(client); }   /* สูตรกลาง calc.js (= หน้าแรก / PDF) */
 
-// ─── SPIDER CHART ───
-function renderSpiderChart(policies) {
-  const client = getCurrentClient();
-  const rec = computeRecommendedCoverage(client);
-  const checks = [
-    { type:'ชีวิต',       label:'ชีวิต',               icon:'🛡️', recommend: rec.life.value,       formula: rec.life.basis },
-    { type:'สุขภาพ',      label:'สุขภาพ (ต่อครั้ง)',   icon:'❤️', recommend: rec.health.value,     formula: rec.health.basis },
-    { type:'โรคร้ายแรง', label:'โรคร้ายแรง',         icon:'🏥', recommend: rec.ci.value,         formula: rec.ci.basis },
-    { type:'อุบัติเหตุ', label:'อุบัติเหตุ',         icon:'🚑', recommend: rec.pa.value,         formula: rec.pa.basis },
-    { type:'ค่าชดเชย',   label:'ค่าชดเชย (฿/วัน)',    icon:'💵', recommend: rec.incomeRep.value,  formula: rec.incomeRep.basis },
-    { type:'ทุพพลภาพ',   label:'ทุพพลภาพ (฿/เดือน)', icon:'♿', recommend: rec.disability.value, formula: rec.disability.basis },
-  ];
+/* 6 แกนของกราฟใยแมงมุม / ตารางช่องโหว่ — key = ชื่อใน CALC.recommendCoverage และ CALC.setCoverTarget
+   type = ชื่อหมวดที่ใช้รวม "มีอยู่" (coverageHaveByType) · hint = บอกว่าตัวเลขตั้งต้นมาจากหน้าไหน / ค่าที่พิมพ์เองไปโผล่ที่ไหนอีก */
+const HEALTH_PAGE_LINK = '<a href="health-insurance.html">หน้าประกันสุขภาพ</a>';
+const COVER_AXES = [
+  { key:'life',       type:'ชีวิต',       label:'ชีวิต',             icon:'🛡️', unit:'',
+    gapLabel:'ประกันชีวิต',                 tip:'แนะนำทุนชีวิตอย่างน้อย',
+    hint:'ค่าตามสูตรเปลี่ยนได้โดยแก้รายการภาระที่ <a href="life-insurance.html">หน้าประกันชีวิต</a>' },
+  { key:'health',     type:'สุขภาพ',      label:'สุขภาพ (ต่อครั้ง)', icon:'❤️', unit:'',
+    gapLabel:'ประกันสุขภาพ (ต่อครั้ง)',      tip:'แนะนำวงเงินค่ารักษาต่อครั้งอย่างน้อย',
+    hint:'เปลี่ยนโรงพยาบาล/ประเภทห้องได้ที่ ' + HEALTH_PAGE_LINK + ' · ค่าที่พิมพ์เองใช้ร่วมกับช่อง “แนะนำ” วงเงินค่ารักษา (ต่อครั้ง) ของหน้านั้น' },
+  { key:'ci',         type:'โรคร้ายแรง', label:'โรคร้ายแรง',       icon:'🏥', unit:'',
+    gapLabel:'ประกันโรคร้ายแรง (CI)',       tip:'แนะนำอย่างน้อย',
+    hint:'ค่าที่พิมพ์เองใช้ร่วมกับช่อง “แนะนำ” โรคร้ายแรง (ระยะรุนแรง) ใน' + HEALTH_PAGE_LINK },
+  { key:'pa',         type:'อุบัติเหตุ', label:'อุบัติเหตุ',       icon:'🚑', unit:'',
+    gapLabel:'ประกันอุบัติเหตุ (PA)',       tip:'แนะนำคุ้มครองอุบัติเหตุอย่างน้อย',
+    hint:'รายได้ต่อปีมาจากข้อมูลลูกค้า (ไม่ได้กรอกใช้รายได้ต่อเดือนในกระแสเงินสด × 12)' },
+  { key:'incomeRep',  type:'ค่าชดเชย',   label:'ค่าชดเชย (฿/วัน)',  icon:'💵', unit:'/วัน',
+    gapLabel:'ค่าชดเชยรายวัน (฿/วัน)',       tip:'แนะนำค่าชดเชยรายวันอย่างน้อย',
+    hint:'ค่าที่พิมพ์เองใช้ร่วมกับช่อง “แนะนำ” ชดเชยรายได้ (รายวัน) ใน' + HEALTH_PAGE_LINK },
+  { key:'disability', type:'ทุพพลภาพ',   label:'ทุพพลภาพ (ทุน)',    icon:'♿', unit:'',
+    gapLabel:'ทุนทุพพลภาพ',                 tip:'แนะนำทุนทุพพลภาพอย่างน้อย',
+    hint:'เป็นทุนก้อน เทียบกับทุนทุพพลภาพของสัญญาเพิ่มเติม · ค่าที่พิมพ์เองใช้ร่วมกับช่อง “แนะนำ” ทุพพลภาพ ใน' + HEALTH_PAGE_LINK },
+];
 
-  // Compute coverage by type (รวม rider ทุกประเภทด้วย)
+/* ความคุ้มครองที่มีอยู่ แยกตามหมวด (ทุนหลักตามประเภทกรมธรรม์ + สัญญาเพิ่มเติม) — กราฟใยแมงมุมและตารางช่องโหว่ใช้ชุดเดียวกัน */
+function coverageHaveByType(policies) {
   const byType = {};
-  policies.forEach(p => {
+  (policies || []).forEach(p => {
     const pCol3 = TYPE_TO_COL[p.type] || p.type;
     byType[pCol3] = (byType[pCol3] || 0) + primaryCovOf(p);
     if (p.type === 'สุขภาพ' && p.lifeCoverage > 0)
@@ -2950,35 +3000,75 @@ function renderSpiderChart(policies) {
     const disabV  = getRiderCoverageByCategory(p, 'disability');
     if (disabV > 0)  byType['ทุพพลภาพ'] = (byType['ทุพพลภาพ'] || 0) + disabV;
   });
+  return byType;
+}
 
-  const pctValues = checks.map(c => {
-    const have  = byType[c.type] || 0;
-    const pct   = Math.min(Math.round((have / c.recommend) * 100), 150);
-    return pct;
+/* แถวของแต่ละแกน: มีอยู่ · แนะนำ (ค่าที่กำหนดเองถ้ามี) · % · ไม่ตั้งเป้า = ตัวแทนกำหนดค่าแนะนำเป็น 0 (เดิมหารด้วย 0 ได้ NaN%) */
+function coverageAxisRows(policies, client) {
+  const rec = computeRecommendedCoverage(client);
+  const byType = coverageHaveByType(policies);
+  return COVER_AXES.map(a => {
+    const r = rec[a.key], have = byType[a.type] || 0;
+    const noTarget = !(r.value > 0);
+    const pct = noTarget ? 100 : Math.min(Math.round((have / r.value) * 100), 150);
+    return Object.assign({}, a, { rec: r, recommend: r.value, have: have, pct: pct, noTarget: noTarget });
   });
+}
+
+// ─── SPIDER CHART ───
+function renderSpiderChart(policies) {
+  const client = getCurrentClient();
+  const checks = coverageAxisRows(policies, client);
+  const pctValues = checks.map(c => c.pct);
+  const E = _scanEsc;
+
+  /* ปุ่ม "ที่มา / ปรับค่าแนะนำ" — เปิดแล้วแต่ละแถวมีวิธีคิด + ช่องพิมพ์ค่าเอง */
+  const recBtn = document.getElementById('spider-rec-btn');
+  if (recBtn) {
+    recBtn.setAttribute('aria-expanded', spiderRecOpen ? 'true' : 'false');
+    recBtn.textContent = spiderRecOpen ? 'ปิดที่มา / ปรับค่า' : 'ที่มา / ปรับค่าแนะนำ';
+  }
+  document.getElementById('spider-card').classList.toggle('rec-open', spiderRecOpen);
 
   // Render legend
-  document.getElementById('spider-legend').innerHTML = checks.map((c, i) => {
-    const have = byType[c.type] || 0;
-    const pct  = pctValues[i];
-    const level = pct === 0 ? 'danger' : pct < 50 ? 'danger' : pct < 100 ? 'warn' : 'ok';
-    const statusText = pct === 0 ? 'ยังไม่มี' : pct < 50 ? 'น้อยเกินไป' : pct < 100 ? 'ยังไม่เพียงพอ' : 'เพียงพอ ✓';
-    const sub = have > 0
-      ? `มีอยู่ ${fmtShort(have)} / แนะนำ ${fmtShort(c.recommend)} <small style="color:var(--gray-400);">(${c.formula})</small>`
-      : `แนะนำ ${fmtShort(c.recommend)} <small style="color:var(--gray-400);">(${c.formula})</small>`;
+  document.getElementById('spider-legend').innerHTML = checks.map(c => {
+    const have = c.have, pct = c.pct;
+    const level = c.noTarget ? 'none' : pct < 50 ? 'danger' : pct < 100 ? 'warn' : 'ok';
+    const statusText = c.noTarget ? 'ไม่ตั้งเป้า' : pct === 0 ? 'ยังไม่มี' : pct < 50 ? 'น้อยเกินไป' : pct < 100 ? 'ยังไม่เพียงพอ' : 'เพียงพอ ✓';
+    const basisTxt = c.rec.custom ? 'ตามสูตร ' + fmtShort(c.rec.auto) : E(c.rec.basis);
+    const sub = (have > 0 ? `มีอยู่ ${fmtShort(have)} / ` : '') +
+      `แนะนำ ${c.noTarget ? '฿0' : fmtShort(c.recommend)} <span class="spider-leg-basis">(${basisTxt})</span>`;
+    const panel = !spiderRecOpen ? '' : `
+        <div class="spider-rec-panel">
+          <div><b>${c.rec.custom ? 'ค่าตามสูตร ' + fmtShort(c.rec.auto) : 'ที่มา'}:</b> ${E(c.rec.detail)}</div>
+          <div class="srp-edit">
+            <label for="rec-in-${c.key}">ค่าแนะนำที่ใช้</label>
+            <input id="rec-in-${c.key}" class="srp-input money-fmt" type="text" inputmode="decimal" autocomplete="off"
+              value="${Math.round(c.recommend)}" aria-label="ค่าแนะนำที่ใช้ — ${c.label}" aria-describedby="rec-hint-${c.key}"
+              onchange="saveRecTarget('${c.key}', this)" onkeydown="if(event.key==='Enter')this.blur()" onfocus="this.select()">
+            <span>บาท${E(c.unit)}</span>
+            ${c.rec.custom ? `<button type="button" class="srp-reset" id="rec-reset-${c.key}" onclick="saveRecTarget('${c.key}', null)" aria-label="ใช้ค่าตามสูตร — ${c.label}">↺ ใช้ค่าตามสูตร</button>` : ''}
+          </div>
+          <div class="srp-hint" id="rec-hint-${c.key}">${c.hint}</div>
+        </div>`;
     return `
-      <div class="spider-leg-item ${level}">
-        <div style="font-size:1.1rem;">${c.icon}</div>
-        <div style="flex:1;">
-          <div class="spider-leg-label">${c.label}</div>
-          <div class="spider-leg-sub">${sub}</div>
-        </div>
-        <div>
-          <div class="spider-leg-pct">${pct}%</div>
-          <div style="font-size:.68rem;color:var(--gray-500);text-align:right;">${statusText}</div>
-        </div>
+      <div class="spider-leg-item ${level}" data-axis="${c.key}">
+        <div class="spider-leg-row">
+          <div style="font-size:1.1rem;">${c.icon}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="spider-leg-label">${c.label}${c.rec.custom ? '<span class="spider-leg-tag">กำหนดเอง</span>' : ''}</div>
+            <div class="spider-leg-sub">${sub}</div>
+          </div>
+          <div>
+            <div class="spider-leg-pct">${c.noTarget ? '—' : pct + '%'}</div>
+            <div style="font-size:.68rem;color:var(--gray-500);text-align:right;">${statusText}</div>
+          </div>
+        </div>${panel}
       </div>`;
-  }).join('');
+  }).join('') + (!spiderRecOpen ? '' :
+    '<div class="spider-rec-foot">พิมพ์ตัวเลขแล้วกด Enter เพื่อบันทึก · เว้นว่าง = กลับไปใช้สูตร · ใส่ 0 = ไม่ตั้งเป้าในรายการนั้น<br>' +
+    'ค่าที่กำหนดเองเป็นของลูกค้ารายนี้ และใช้กับตารางช่องโหว่ด้านล่างและหน้าแรกด้วย</div>');
+  if (spiderRecOpen && window.refreshAllMoneyInputs) refreshAllMoneyInputs();
 
   // Destroy old chart
   if (spiderChartInstance) { spiderChartInstance.destroy(); spiderChartInstance = null; }
@@ -3054,6 +3144,7 @@ function renderSpiderChart(policies) {
             label: ctx => {
               const v = ctx.parsed.r;
               if (ctx.datasetIndex === 1) return 'มาตรฐาน: 100%';
+              if (checks[ctx.dataIndex] && checks[ctx.dataIndex].noTarget) return 'ไม่ตั้งเป้า (ค่าแนะนำ 0)';
               return `ปัจจุบัน: ${v}%${v >= 100 ? ' ✓' : ''}`;
             }
           },
@@ -3065,53 +3156,73 @@ function renderSpiderChart(policies) {
   });
 }
 
+/* ── ที่มา / ปรับค่าแนะนำ ──
+   ตัวเลข "แนะนำ" คิดจากสูตรกลาง (CALC.recommendCoverage) · ตัวแทนพิมพ์ค่าเองได้รายลูกค้า (CALC.setCoverTarget)
+   สุขภาพ / โรคร้ายแรง / ค่าชดเชย / ทุพพลภาพ เก็บที่เดียวกับช่อง "แนะนำ" ของหน้าประกันสุขภาพ → สองหน้าเห็นค่าเดียวกัน
+   ชีวิต / อุบัติเหตุ เก็บที่ client.coverageTargets · หน้าแรกอ่านผ่านสูตรกลางเดียวกันจึงตรงกันเอง */
+function toggleSpiderRec() {
+  spiderRecOpen = !spiderRecOpen;
+  const c = getCurrentClient();
+  renderSpiderChart((c && c.policies) || []);
+}
+/* el = ช่องที่พิมพ์ (ว่าง หรือเท่ากับค่าตามสูตร → กลับไปใช้สูตร) · el = null → ปุ่ม "ใช้ค่าตามสูตร" */
+function saveRecTarget(key, el) {
+  const cid = currentClientId, cur = getCurrentClient();
+  if (!cur || !CALC.COVER_TARGETS[key]) return;
+  let value = null;
+  if (el) {
+    const raw = String(el.value || '').trim();
+    if (raw !== '') {
+      value = Math.max(parseMoney(raw), 0);
+      if (value === Math.round(computeRecommendedCoverage(cur)[key].auto)) value = null;
+    }
+  }
+  const changed = CALC.coverTarget(cur, key) !== value;
+  if (changed) {
+    updateCurrentUser(u => {
+      const c = (u.data.clients || []).find(x => x.id === cid);
+      if (c) CALC.setCoverTarget(c, key, value);
+    });
+    showToast(value == null ? '↺ กลับไปใช้ค่าตามสูตรแล้ว' : '💾 บันทึกค่าแนะนำที่กำหนดเองแล้ว');
+  }
+  /* วาดใหม่หลัง event นี้จบ: ถ้ากด Tab ไปช่อง/ปุ่มถัดไป ตัวนั้นได้โฟกัสก่อน แล้วคืนโฟกัสให้ตำแหน่งเดิมหลังวาด (ไม่งั้นโฟกัสหายทุกครั้งที่บันทึก)
+     · กดปุ่ม "ใช้ค่าตามสูตร" แล้วปุ่มนั้นหายไป → โฟกัสกลับไปที่ช่องของแถวเดียวกัน */
+  setTimeout(() => {
+    const act = document.activeElement;
+    let focusId = act && /^rec-(in|reset)-/.test(act.id || '') ? act.id : '';
+    if (!el) focusId = 'rec-in-' + key;
+    const pol = (getCurrentClient() || {}).policies || [];
+    renderSpiderChart(pol);
+    renderGapAnalysis(pol);
+    const n = focusId && (document.getElementById(focusId) || document.getElementById(focusId.replace('rec-reset-', 'rec-in-')));
+    if (n) {
+      n.focus();
+      /* เลือกทั้งช่องหลังตัวจัดรูปแบบตัวเลข (money-input.js) ทำงานเสร็จ — ไม่งั้นการใส่ลูกน้ำใหม่จะล้างการเลือก */
+      if (n.tagName === 'INPUT') setTimeout(() => { if (document.activeElement === n) n.select(); }, 0);
+    }
+  }, 0);
+}
+
 // ─── GAP ANALYSIS ───
 function renderGapAnalysis(policies) {
   /* เป้า "แนะนำ" ชุดเดียวกับกราฟใยแมงมุม (computeRecommendedCoverage) — เดิมใช้ค่าคงที่ 5M/1M/2M/500K
      ทำให้ตารางนี้กับกราฟด้านบนบอกคนละเป้า และอาจขึ้น "เพียงพอ" ทั้งที่กราฟบอกว่าขาด */
-  const rec = computeRecommendedCoverage(getCurrentClient());
-  const checks = [
-    { type:'ชีวิต',       label:'ประกันชีวิต',                 recommend: rec.life.value,       tip:`แนะนำทุนชีวิตอย่างน้อย ${fmt(rec.life.value)} (${rec.life.basis})` },
-    { type:'สุขภาพ',      label:'ประกันสุขภาพ (ต่อครั้ง)',      recommend: rec.health.value,     tip:`แนะนำวงเงินค่ารักษาต่อครั้งอย่างน้อย ${fmt(rec.health.value)} (${rec.health.basis})` },
-    { type:'โรคร้ายแรง', label:'ประกันโรคร้ายแรง (CI)',       recommend: rec.ci.value,         tip:`แนะนำอย่างน้อย ${fmt(rec.ci.value)} (${rec.ci.basis})` },
-    { type:'อุบัติเหตุ', label:'ประกันอุบัติเหตุ (PA)',       recommend: rec.pa.value,         tip:`แนะนำคุ้มครองอุบัติเหตุอย่างน้อย ${fmt(rec.pa.value)} (${rec.pa.basis})` },
-    { type:'ค่าชดเชย',   label:'ค่าชดเชยรายวัน (฿/วัน)',        recommend: rec.incomeRep.value,  unit:'/วัน',   tip:`แนะนำค่าชดเชยรายวันอย่างน้อย ${fmt(rec.incomeRep.value)}/วัน (${rec.incomeRep.basis})` },
-    { type:'ทุพพลภาพ',   label:'เงินทดแทนทุพพลภาพ (฿/เดือน)',  recommend: rec.disability.value, unit:'/เดือน', tip:`แนะนำเงินทดแทนอย่างน้อย ${fmt(rec.disability.value)}/เดือน (${rec.disability.basis})` },
-  ];
-
-  const byType = {};
-  policies.forEach(p => {
-    const pCol4 = TYPE_TO_COL[p.type] || p.type;
-    byType[pCol4] = (byType[pCol4] || 0) + primaryCovOf(p);
-    if (p.type === 'สุขภาพ' && p.lifeCoverage > 0)
-      byType['ชีวิต'] = (byType['ชีวิต'] || 0) + p.lifeCoverage;
-    // Rider coverages (Phase 3.3 — uses riders[] + legacy)
-    if (p.type !== 'สุขภาพ') {
-      const v = getRiderCoverageByCategory(p, 'health');
-      if (v > 0) byType['สุขภาพ'] = (byType['สุขภาพ'] || 0) + v;
-    }
-    if (p.type !== 'โรคร้ายแรง') {
-      const v = getRiderCoverageByCategory(p, 'critical');
-      if (v > 0) byType['โรคร้ายแรง'] = (byType['โรคร้ายแรง'] || 0) + v;
-    }
-    if (p.type !== 'อุบัติเหตุ') {
-      const v = getRiderCoverageByCategory(p, 'accident');
-      if (v > 0) byType['อุบัติเหตุ'] = (byType['อุบัติเหตุ'] || 0) + v;
-    }
-    const incomeV = getRiderCoverageByCategory(p, 'income');
-    if (incomeV > 0) byType['ค่าชดเชย'] = (byType['ค่าชดเชย'] || 0) + incomeV;
-    const disabV  = getRiderCoverageByCategory(p, 'disability');
-    if (disabV > 0)  byType['ทุพพลภาพ'] = (byType['ทุพพลภาพ'] || 0) + disabV;
-  });
+  /* แถวชุดเดียวกับกราฟ (coverageAxisRows) — รวมค่าแนะนำที่ตัวแทนกำหนดเอง */
+  const checks = coverageAxisRows(policies, getCurrentClient());
 
   document.getElementById('gap-list').innerHTML = checks.map(c => {
-    const have  = byType[c.type] || 0;
-    const ratio = have / c.recommend;
+    const have  = c.have;
+    const ratio = c.noTarget ? 1 : have / c.recommend;
     let level, status, desc;
     const u = c.unit || '';
     const fmtAmt = v => fmt(v) + u;
-    if (have === 0) {
-      level = 'danger'; status = 'ยังไม่มีความคุ้มครอง'; desc = c.tip;
+    if (c.noTarget) {
+      /* ตัวแทนกำหนดค่าแนะนำเป็น 0 = ไม่ตั้งเป้ารายการนี้ (เดิมขึ้น "ยังไม่มีความคุ้มครอง" หรือหารด้วย 0) */
+      level = 'none'; status = 'ไม่ตั้งเป้า';
+      desc = (have > 0 ? `มีอยู่ ${fmtAmt(have)} · ` : '') + 'กำหนดค่าแนะนำเป็น 0 (ไม่ตั้งเป้าสำหรับรายการนี้)';
+    } else if (have === 0) {
+      level = 'danger'; status = 'ยังไม่มีความคุ้มครอง';
+      desc = `${c.tip} ${fmtAmt(c.recommend)} (${_scanEsc(c.rec.basis)})`;
     } else if (ratio < 0.5) {
       level = 'danger'; status = 'คุ้มครองน้อยเกินไป';
       desc = `มีอยู่ ${fmtAmt(have)} — ขาดอีก ${fmtAmt(c.recommend - have)} จากที่แนะนำ`;
@@ -3126,7 +3237,7 @@ function renderGapAnalysis(policies) {
       <div class="gap-item ${level}">
         <div class="gap-dot"></div>
         <div style="flex:1;">
-          <div class="gap-label">${TYPE_ICONS[c.type]} ${c.label}</div>
+          <div class="gap-label">${TYPE_ICONS[c.type]} ${c.gapLabel}</div>
           <div class="gap-desc">${desc}</div>
         </div>
         <div class="gap-status">${status}</div>
