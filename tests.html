@@ -387,6 +387,112 @@ async function runAll() {
       check('สรุปกรมธรรม์', 'ขั้นภาษีจากข้อมูลภาษี', W.getClientMarginalTax(c).label, '25%');
     });
 
+    /* ตารางสรุปความคุ้มครอง (รูปแบบตารางของสำนักงาน) — ข้อมูลของตาราง · การลงคอลัมน์ · วันครบกำหนดชำระ · สิ่งที่แสดงบนจอ */
+    await group('ตารางสรุปความคุ้มครอง', async () => {
+      const T = 'ตารางสรุปความคุ้มครอง';
+      const W = await openPage('policies.html');
+      const c = W.getCurrentClient();
+      const DAY = '2026-11-20';                                   /* วันอ้างอิงคงที่ → ค่าที่คาดไม่เลื่อนตามวันรัน */
+      const m = W.buildPolicySummary(c.policies, c, DAY);
+      const one = (r, k) => r.cov[k].map(e => e.amount + (e.unit || '') + (e.note ? ' ' + e.note : '')).join(' + ') || '-';
+      const hasCol = (mm, k) => mm.cols.some(x => x.key === k);
+      check(T, 'กรมธรรม์ 4 ฉบับ → 4 แถว · 17 คอลัมน์ (บริษัทเดียวกันทั้งหมด และไม่มีรายการ “อื่น ๆ” → ซ่อนสองคอลัมน์นั้น)', m.rows.length + ' / ' + m.cols.length + ' / ' + hasCol(m, 'company') + ' / ' + hasCol(m, 'other'), '4 / 17 / false / false');
+      const co = list => { const mm = W.buildPolicySummary(list.map(x => ({ company: x, premium: 1000 })), c, DAY); return hasCol(mm, 'company') + ' ' + (mm.singleCompany || '-'); };
+      check(T, 'คอลัมน์บริษัท: บริษัทเดียว → ซ่อน (บอกชื่อที่บรรทัดสรุป) · ต่างบริษัท / กรอกไม่ครบ → แสดง · ไม่ได้กรอกเลย → ซ่อน',
+        [co(['AIA', 'aia ']), co(['AIA', 'เมืองไทย']), co(['AIA', '']), co(['', ''])].join(' | '), 'false AIA | true - | true - | false -');
+      check(T, 'หัวตาราง: ชื่อลูกค้าเติม “คุณ” · ไม่มีครอบครัว → ไม่มีแถบครอบครัว', m.personName + ' | ' + m.familyName, 'คุณทดสอบ อัตโนมัติ | ');
+      check(T, 'วันที่แบบ วัน/เดือน/ปี พ.ศ. 2 หลัก (1 พ.ย. 2549 → 1/11/49 · 1 พ.ย. 2628 → 1/11/28)', m.rows[0].start + ' | ' + m.rows[0].end, '1/11/49 | 1/11/28');
+      check(T, 'ตลอดชีพ 20/99 เริ่มปี 2549 ชำระ 20 ปี → “ชำระครบแล้ว”', m.rows[0].due, 'ชำระครบแล้ว');
+      check(T, 'ส่งมอบ เริ่ม 15 ม.ค. 2563 ชำระ 10 ปี → ครบกำหนดชำระครั้งถัดไป 15/1/70', m.rows[1].due, '15/1/70');
+      check(T, 'บำนาญ เริ่ม 1 มี.ค. 2564 ชำระ 10 ปี → ครบกำหนดชำระครั้งถัดไป 1/3/70', m.rows[3].due, '1/3/70');
+      check(T, 'แถว 1 ทุนประกัน | ค่ารักษา | CI', one(m.rows[0], 'life') + ' | ' + one(m.rows[0], 'med') + ' | ' + one(m.rows[0], 'ci'), '2000000 | 500000/ครั้ง H&S | 1000000 CI');
+      check(T, 'แบบ “ส่งมอบ” ลงคอลัมน์ทุนประกัน (ช่องเงินเอาประกัน) · PA ลงคอลัมน์ AI', one(m.rows[1], 'life') + ' | ' + one(m.rows[2], 'ai') + ' | ' + one(m.rows[2], 'life'), '3000000 | 1000000 | -');
+      check(T, 'เบี้ยต่อปีของแถว 1 = สัญญาหลัก 50,000 + สัญญาเพิ่มเติม 26,000', m.rows[0].premYear, 76000);
+      check(T, 'เบี้ยเฉลี่ยต่อเดือนของแถว 1 = 76,000 ÷ 12', m.rows[0].premMonth, 6333.33, { abs: 0.01 });
+      check(T, 'แถวรวม: ทุนประกัน 2M + 3M', m.total.cov.life, 5000000);
+      check(T, 'แถวรวม: AI | CI | ค่ารักษา', m.total.cov.ai + ' | ' + m.total.cov.ci + ' | ' + m.total.cov.med, '1000000 | 1000000 | 500000');
+      check(T, 'แถวรวม: เบี้ยต่อปี 76,000 + 80,000 + 5,000 + 60,000 (= สูตรกลาง CALC.policyPremiums)', m.total.premYear, 221000);
+      check(T, 'แถวรวม: เบี้ยต่อปีเท่ากับยอดรวมของหน้าคำนวณภาษี', m.total.premYear, W.CALC.policyPremiums(c.policies).total);
+      check(T, 'บรรทัดสรุปใต้หัวเรื่อง', m.statsLine, 'กรมธรรม์ 4 ฉบับ · บริษัท AIA · เบี้ยรวมประมาณ 221,000 บาท/ปี · ข้อมูล ณ วันที่ 20 พฤศจิกายน 2569');
+
+      /* กรมธรรม์ใกล้ครบ / ครบสัญญาแล้ว */
+      const live = W.buildPolicySummary(c.policies, c);            /* วันนี้จริง: PA ของลูกค้าจำลองครบสัญญาในอีก 50 วัน */
+      check(T, 'PA ครบสัญญาในอีก 50 วัน → ติดป้าย “อีก 50 วัน”', live.rows[2].expiring + ' / ' + live.rows[2].daysLeft, 'true / 50');
+      const far = W.buildPolicySummary(c.policies, c, '2090-01-01');
+      check(T, 'เลยวันครบสัญญาแล้ว → ช่องครบกำหนดชำระขึ้น “ครบสัญญาแล้ว” ทุกแถว', far.rows.every(r => r.expired && r.due === 'ครบสัญญาแล้ว'), true);
+
+      /* การลงคอลัมน์ของแต่ละประเภท (เรียกสูตรตรง ๆ) */
+      const cov = p => { const v = W.summaryCoverage(p); return Object.keys(v).filter(k => v[k].length).map(k => k + '=' + v[k].map(e => e.amount + (e.unit || '') + (e.note ? ' ' + e.note : '')).join('+')).join(' ; '); };
+      check(T, 'บำนาญ: เงินเอาประกันลง “ทุนประกัน”', cov({ type: 'บำนาญ', lifeCoverage: 500000 }), 'life=500000');
+      check(T, 'รถยนต์: ลง “อื่น ๆ” พร้อมชื่อประเภท', cov({ type: 'รถยนต์', lifeCoverage: 600000 }), 'other=600000 รถยนต์');
+      check(T, 'สุขภาพ (มีวงเงินและทุนชีวิต): ค่ารักษา + ทุนชีวิตแยกกัน', cov({ type: 'สุขภาพ', coverage: 5000000, lifeCoverage: 100000 }), 'life=100000 ทุนชีวิต ; med=5000000');
+      check(T, 'สุขภาพ (กรอกแต่ช่องเงินเอาประกัน): ลง “ค่ารักษา” ที่เดียว ไม่ซ้ำสองคอลัมน์', cov({ type: 'สุขภาพ', lifeCoverage: 300000 }), 'med=300000');
+      check(T, 'PA: ทุนอุบัติเหตุลง AI · ค่ารักษาอุบัติเหตุลง “อื่น ๆ”', cov({ type: 'PA', lifeCoverage: 1000000, pa: { medicalCoverage: 100000 } }), 'ai=1000000 ; other=100000 ค่ารักษาอุบัติเหตุ');
+      check(T, 'สัญญาเพิ่มเติมครบ 5 ชนิด ลงคอลัมน์ของตัวเอง',
+        cov({ type: 'ตลอดชีพ', lifeCoverage: 200000, disabilityAmount: 200000, riders: [
+          { type: 'medical', name: 'Health Happy', treatmentType: 'เหมาจ่าย', perYear: 5000000, roomMeal: 6000 },
+          { type: 'income', name: 'HB', dailyComp: 2000 }, { type: 'accident', name: 'AI', deathByAccident: 100000 },
+          { type: 'critical', name: 'ECIR', ciSevere: 1000000, ciEarly: 250000, ciDeath: 100000 }, { type: 'disability', name: 'TPD', disabilityAmt: 500000 } ] }),
+        'life=200000 ; tpd=200000+500000 TPD ; death=100000 ; room=6000/วัน ; ai=100000 AI ; ci=1000000 ECIR · ระยะต้น 250,000 ; hb=2000/วัน HB ; med=5000000/ปี Health Happy');
+      check(T, 'กรมธรรม์รุ่นเก่า (ช่องเดี่ยว ไม่มีรายการสัญญาเพิ่มเติม)',
+        cov({ type: 'ตลอดชีพ', lifeCoverage: 100000, riderHealthCov: 300000, riderHealthName: 'HS', riderCriticalCov: 500000, riderAccidentCov: 200000, riderIncomeDaily: 1000, riderDisabilityMonthly: 10000 }),
+        'life=100000 ; tpd=10000/เดือน ; ai=200000 ; ci=500000 ; hb=1000/วัน ; med=300000/ครั้ง HS');
+
+      /* ครบกำหนดชำระเบี้ยฯ (ถือว่าชำระรายปี) */
+      const due = p => W.summaryDue(p, DAY);
+      check(T, 'ครบกำหนดชำระ: ไม่ได้กรอกวันเริ่ม → “-”', due({ payYearsMain: 20 }), '-');
+      check(T, 'ครบกำหนดชำระ: เริ่ม 7 พ.ค. 2569 → 7/5/70', due({ start: '2026-05-07', payYearsMain: 20 }), '7/5/70');
+      check(T, 'ครบกำหนดชำระ: เริ่ม 29 ก.พ. → ปีที่ไม่มี 29 ก.พ. ใช้ 28/2', due({ start: '2020-02-29', payYearsMain: 20 }), '28/2/70');
+      check(T, 'ครบกำหนดชำระ: ชำระครั้งเดียว → “ชำระครบแล้ว”', due({ start: '2025-01-01', payYearsMain: 1 }), 'ชำระครบแล้ว');
+      check(T, 'ครบกำหนดชำระ: ไม่ได้กรอกระยะชำระ ใช้วันครบสัญญาเป็นเพดาน → “-”', due({ start: '2025-12-19', end: '2026-12-19' }), '-');
+      check(T, 'ครบกำหนดชำระ: ไม่ได้กรอกทั้งระยะชำระและวันครบสัญญา → วันครบรอบถัดไป', due({ start: '2020-06-01' }), '1/6/70');
+
+      /* แถบครอบครัว (จำลองข้อมูลครอบครัวในหน้าต่างทดสอบ ไม่แตะข้อมูลที่บันทึก) */
+      const realUser = W.getCurrentUser;
+      try {
+        W.getCurrentUser = () => ({ data: { families: [{ id: 't-fam', name: 'อัตโนมัติ' }, { id: 't-fam2', name: 'ครอบครัวสุขใจ' }] } });
+        check(T, 'ลูกค้าอยู่ในครอบครัว → แถบ “ครอบครัว…” (ไม่เติมคำว่าครอบครัวซ้ำ)',
+          W.buildPolicySummary(c.policies, Object.assign({}, c, { familyId: 't-fam' }), DAY).familyName + ' | ' + W.buildPolicySummary(c.policies, Object.assign({}, c, { familyId: 't-fam2' }), DAY).familyName,
+          'ครอบครัวอัตโนมัติ | ครอบครัวสุขใจ');
+      } finally { W.getCurrentUser = realUser; }
+
+      /* สิ่งที่แสดงบนจอ */
+      const D = W.document, q = s => D.querySelectorAll(s).length;
+      const text = s => (D.querySelector(s) || {}).textContent || '';
+      check(T, 'บนจอ: หัวคอลัมน์ 17 · แถวกรมธรรม์ 4 · การ์ด (จอแคบ) 4', q('.sum-head th') + ' / ' + q('#policy-tbody .sum-row') + ' / ' + q('.sum-cards .sum-card'), '17 / 4 / 4');
+      check(T, 'บนจอ: แถวรวมขึ้น “รวม 4 กรมธรรม์” และเบี้ยรวม 221,000', /รวม 4 กรมธรรม์/.test(text('#totals-row')) && /221,000/.test(text('#totals-row')), true);
+      const b = W.computePolicyTaxBreakdown(c.policies, c);
+      check(T, 'บนจอ: “สุทธิ” ในแถวรวม = เบี้ยรวม − ภาษีที่ประหยัดได้ (ลดหย่อนประกัน 160,000 × 25%)',
+        /สุทธิ 181,000/.test(text('#totals-row')) && Math.round((b.healthDeduct + b.lifeDeduct + b.annuityDeduct) * b.tax.rate) === 40000, true);
+      /* ปุ่มขยายเต็มจอ */
+      const card = D.querySelector('.table-card'), xb = () => D.getElementById('sum-expand');
+      const full = () => card.classList.contains('sum-full') + ' ' + xb().textContent + ' ' + xb().getAttribute('aria-pressed') + ' ' + W.getComputedStyle(card).position;
+      const esc = () => D.dispatchEvent(new W.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      try {
+        check(T, 'ขยายเต็มจอ: เริ่มต้นอยู่ในหน้า ปุ่มขึ้น “ขยายเต็มจอ”', full(), 'false ขยายเต็มจอ false static');
+        xb().click();
+        check(T, 'ขยายเต็มจอ: กดปุ่ม → การ์ดตารางลอยเต็มจอ ปุ่มเปลี่ยนเป็น “ย่อกลับ”', full(), 'true ย่อกลับ true fixed');
+        W.openDetail(0); esc();
+        check(T, 'ขยายเต็มจอ: Esc ครั้งแรกปิดหน้าต่างรายละเอียด ตารางยังขยายอยู่', D.getElementById('detail-modal').classList.contains('open') + ' ' + card.classList.contains('sum-full'), 'false true');
+        W.renderTable(c.policies);
+        check(T, 'ขยายเต็มจอ: วาดตารางใหม่ (หลังแก้ไข/ลบ) ยังขยายอยู่ และปุ่มยังเป็น “ย่อกลับ”', full(), 'true ย่อกลับ true fixed');
+        esc();
+        check(T, 'ขยายเต็มจอ: Esc → ย่อกลับเข้าหน้าเดิม', full(), 'false ขยายเต็มจอ false static');
+        W.toggleSumFull(true); W.renderTable([]);
+        check(T, 'ขยายเต็มจอ: ลบจนไม่เหลือกรมธรรม์ → ย่อกลับเอง (ไม่ค้างเต็มจอ)', card.classList.contains('sum-full'), false);
+      } finally { W.toggleSumFull(false); W.closeDetail(); W.renderTable(c.policies); }
+
+      try {
+        W.renderTable(c.policies.concat([{ id: 't-px', name: '<b id="t-xss">x</b>', type: 'รถยนต์', number: 'X<1>', company: 'A&B', lifeCoverage: 600000, premium: 18500, start: '2024-11-17', end: '2025-11-17', riders: [] }]));
+        check(T, 'บนจอ: มีบริษัทอื่นและรายการ “อื่น ๆ” → 19 คอลัมน์ · แถวที่ครบสัญญาแล้วเป็นสีจาง', q('.sum-head th') + ' / ' + q('#policy-tbody .sum-row.inactive'), '19 / 1');
+        check(T, 'บนจอ: ชื่อแบบประกัน/เลขที่/บริษัทที่มีเครื่องหมาย < > & แสดงเป็นตัวอักษร ไม่ถูกตีความเป็นโค้ด',
+          D.getElementById('t-xss') === null && /<b id="t-xss">x<\/b>/.test(text('#policy-tbody .sum-row:last-child .sum-plan')) && /X<1>/.test(text('#policy-tbody .sum-row:last-child')) && /A&B/.test(text('#policy-tbody .sum-row:last-child')), true);
+        W.renderTable([]);
+        check(T, 'บนจอ: ไม่มีกรมธรรม์ → ซ่อนตาราง แสดงข้อความ “กด + เพิ่มกรมธรรม์”', D.getElementById('policy-table-wrap').style.display + ' / ' + D.getElementById('policy-empty-state').style.display + ' / ' + q('.sum-row'), 'none / block / 0');
+      } finally { W.renderTable(c.policies); }
+      check(T, 'บนจอ: วาดตารางกลับเป็นข้อมูลจริงของลูกค้า', q('#policy-tbody .sum-row'), 4);
+    });
+
     await group('อัตราส่วนการเงิน', async () => {
       const W = await openPage('ratios.html');
       const d = W.computeData();

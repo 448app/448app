@@ -437,48 +437,105 @@
     .table-card-header { padding: 16px 20px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
     .table-card-header h3 { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
 
-    /* ─── POLICY TABLE ─── */
-    .policy-table-wrap { overflow-x: auto; }
-    .policy-table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: .875rem; }
-    .policy-table thead th {
-      background: var(--red-primary); color: white;
-      padding: 11px 14px; font-weight: 700; text-align: right;
-      white-space: nowrap; font-size: .8rem;
+    /* ─── ตารางสรุปความคุ้มครอง ───
+       โครงเดียวกับตารางของสำนักงาน (แอปสรุปกรมธรรม์): ครอบครัว › ลูกค้า › หัวคอลัมน์ › กรมธรรม์ 1 แถวต่อฉบับ › รวม
+       สีตาม Money Match Design System: แถบครอบครัว = Navy Deep · แถบลูกค้า = น้ำเงินอ่อน + เส้นทอง · หัวคอลัมน์ = Brand Navy
+       · แถวรวม = ทองอ่อน + เส้นทอง (ทองใช้เป็นเส้น/จุดเน้นเท่านั้น) · เส้นตาราง #E4E7F0
+       ขนาดตัวอักษรปรับตามความกว้างของกล่อง (10–12.5px แบบเดียวกับแอปเดิม) ให้ทุกคอลัมน์พอดีจอโน้ตบุ๊กโดยไม่ต้องเลื่อนข้าง
+       --sum-em = ความกว้างรวมของคอลัมน์เป็น em (renderTable ใส่ให้ตามจำนวนคอลัมน์) · แคบกว่านั้นจึงเลื่อนข้าง · จอแคบมากใช้การ์ด */
+    .policy-table-wrap { padding: 16px 12px 20px; container-type: inline-size; container-name: sumwrap; }
+    .sum-top { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: start; gap: 0 10px; margin-bottom: 14px; }
+    .sum-top-mid { grid-column: 2; min-width: 0; }
+    .sum-title { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; text-align: center; color: var(--red-dark); line-height: 1.4; }
+    .sum-sub { font-size: .78rem; color: var(--gray-600); text-align: center; margin-top: 2px; line-height: 1.5; }
+    /* ปุ่มขยายเต็มจอ — ตารางได้ความกว้างทั้งจอ ตัวอักษรจึงใหญ่ขึ้น (ซ่อนเมื่อแสดงเป็นการ์ดบนจอแคบ) */
+    .sum-expand {
+      grid-column: 3; justify-self: end; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+      padding: 5px 12px; border-radius: 999px; border: 1px solid #E3E9FA; background: var(--red-soft); color: var(--red-primary);
+      font: inherit; font-size: .76rem; font-weight: 600; line-height: 1.4; cursor: pointer; transition: background .15s, border-color .15s;
     }
-    .policy-table thead th.col-policy { text-align: left; min-width: 200px; }
-    .policy-table thead th.col-date   { text-align: left; min-width: 130px; }
-    .policy-table thead th.col-action { min-width: 72px; }
-    .policy-table tbody td {
-      padding: 13px 14px; border-bottom: 1px solid var(--gray-100);
-      text-align: right; white-space: nowrap; vertical-align: top;
+    .sum-expand:hover, .sum-expand:focus-visible { background: #fff; border-color: var(--red-primary); outline: none; }
+    .table-card.sum-full { position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 200; margin: 0; border-radius: 0; box-shadow: none; overflow: auto; overscroll-behavior: contain; }
+    .sum-full .policy-table-wrap { max-width: 1500px; margin: 0 auto; }
+    .sum-full .sum-expand { display: inline-flex; }   /* ขยายอยู่ต้องมีปุ่มย่อเสมอ แม้หมุนจอจนกลายเป็นการ์ด */
+    .sum-full .sum-table { font-size: 12px; font-size: clamp(10px, calc(100cqi / var(--sum-em, 90)), 14px); }
+    .sum-scroll { overflow-x: auto; border: 1px solid var(--gray-200); border-radius: 12px; container-type: inline-size; }
+    .sum-table {
+      width: 100%; min-width: calc(var(--sum-em, 90) * 10px); border-collapse: collapse; table-layout: auto;
+      font-size: 11px; font-size: clamp(10px, calc(100cqi / var(--sum-em, 90)), 12.5px);
+      line-height: 1.45; color: var(--red-dark);
     }
-    .policy-table tbody td.col-policy { text-align: left; }
-    .policy-table tbody td.col-date   { text-align: left; }
-    .policy-table tbody tr { cursor: pointer; transition: background .15s; }
-    .policy-table tbody tr:hover { background: var(--red-soft); }
-    .policy-table tfoot td {
-      background: var(--gray-800); color: white;
-      padding: 12px 14px; font-weight: 700; text-align: right; font-size: .85rem;
+    .sum-table th, .sum-table td { border: 1px solid var(--gray-200); padding: .5em .25em; text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+    .sum-table tr > :first-child { border-left: 0; }
+    .sum-table tr > :last-child { border-right: 0; }
+    .sum-table thead tr:first-child > * { border-top: 0; }
+    .sum-table tfoot tr:last-child > * { border-bottom: 0; }
+    .sum-family td { background: var(--red-dark); color: #fff; font-family: var(--font-display); font-weight: 600; font-size: 1.35em; padding: .5em; border-color: var(--red-dark); }
+    .sum-person td { background: var(--red-soft); color: var(--red-primary); font-family: var(--font-display); font-weight: 600; font-size: 1.25em; padding: .45em; border-bottom: 2px solid var(--gold-primary); }
+    .sum-head th { background: var(--red-primary); color: #fff; font-weight: 600; white-space: pre-line; overflow-wrap: normal; border-color: rgba(255,255,255,.2); border-top-color: var(--red-primary); border-bottom-color: var(--red-primary); }
+    .sum-row { cursor: pointer; }
+    .sum-row td { background: #fff; transition: background .15s; }
+    .sum-row:hover td, .sum-row:focus-within td { background: var(--gray-100); }
+    .sum-row.inactive td { color: #8B93AB; }
+    .sum-num { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .sum-no { font-weight: 500; font-variant-numeric: tabular-nums; }
+    .sum-unit { font-size: max(10px, .9em); color: var(--gray-600); font-weight: 400; white-space: nowrap; }
+    .sum-note { display: block; font-size: max(10px, .9em); color: var(--gray-600); font-weight: 400; line-height: 1.3; }
+    .sum-entry + .sum-entry { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--gray-200); }
+    .sum-dash { color: var(--red-mid); }
+    .sum-plan { background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: 600; color: var(--red-primary); cursor: pointer; text-align: center; overflow-wrap: anywhere; }
+    .sum-plan:hover, .sum-plan:focus-visible { text-decoration: underline; outline: none; }
+    .sum-pill { display: inline-block; margin-top: 3px; padding: 1px 7px; border-radius: 999px; background: var(--red-soft); color: #4A5473; font-size: max(10px, .88em); font-weight: 500; white-space: nowrap; }
+    .sum-flag { display: block; font-size: max(10px, .9em); font-weight: 600; line-height: 1.3; }
+    .sum-table .tbl-btn { width: 24px; height: 24px; font-size: .72rem; }
+    .sum-flag.warn { color: #B4690E; }
+    .sum-flag.danger { color: #B3261E; }
+    .sum-total td { background: #FBF2E4; border-top: 2px solid var(--gold-primary); font-weight: 700; color: var(--red-dark); }
+    .sum-total .sum-num { font-weight: 600; }
+    .sum-total-label { text-align: right !important; padding-right: 10px !important; font-family: var(--font-display); }
+    .sum-foot { font-size: .72rem; color: var(--gray-600); margin-top: 10px; line-height: 1.6; }
+    /* จอแคบ: กรมธรรม์ละ 1 การ์ด (แสดงเฉพาะคอลัมน์ที่มีข้อมูล) แทนตารางกว้าง */
+    .sum-cards { display: none; }
+    .sum-card-band { text-align: center; font-family: var(--font-display); font-weight: 600; padding: 8px 10px; }
+    .sum-card-band.family { background: var(--red-dark); color: #fff; border-radius: 12px 12px 0 0; font-size: .95rem; }
+    .sum-card-band.person { background: var(--red-soft); color: var(--red-primary); border-bottom: 2px solid var(--gold-primary); font-size: .9rem; margin-bottom: 10px; }
+    .sum-card-band.person:first-child { border-radius: 12px 12px 0 0; }
+    .sum-card-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; align-items: start; }
+    .sum-card { border: 1px solid var(--gray-200); border-radius: 12px; padding: 12px 14px; background: #fff; font-size: .86rem; color: var(--red-dark); cursor: pointer; }
+    .sum-card.inactive { color: #8B93AB; }
+    .sum-card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+    .sum-card-top .sum-card-co { color: var(--gray-600); font-size: .8rem; }
+    .sum-card-plan { margin-top: 4px; font-weight: 600; color: var(--red-primary); overflow-wrap: anywhere; }
+    .sum-card-plan .sum-plan { text-align: left; }
+    .sum-card-meta { margin-top: 3px; font-size: .78rem; color: var(--gray-600); line-height: 1.5; }
+    .sum-card-meta .sum-flag { display: inline; font-size: inherit; }
+    .sum-card-lines { margin-top: 10px; border-top: 1px solid var(--gray-200); }
+    .sum-card-lines > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--gray-200); }
+    .sum-card-lines > div > span:first-child { font-weight: 600; flex-shrink: 0; }
+    .sum-card-lines > div > span:last-child { text-align: right; }
+    .sum-card-foot { margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .sum-card-foot > span { min-width: 0; line-height: 1.5; }
+    .sum-card-total { margin-top: 10px; background: #FBF2E4; border: 1px solid #EBD9B8; border-top: 2px solid var(--gold-primary); border-radius: 0 0 12px 12px; padding: 10px 14px; font-size: .86rem; color: var(--red-dark); }
+    .sum-card-total-head { font-family: var(--font-display); font-weight: 600; }
+    .sum-card-total .sum-card-lines { margin-top: 8px; border-top-color: #EBD9B8; }
+    .sum-card-total .sum-card-lines > div { border-bottom-color: #EBD9B8; }
+    .sum-card-total-prem { margin-top: 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-weight: 700; }
+    .sum-card-total-sub { text-align: right; }
+    /* สลับตาราง ↔ การ์ดตามความกว้างที่มีจริงของกล่อง (เช่น แท็บเล็ตที่เปิดเมนูข้างอยู่ ก็ได้การ์ด)
+       @media ด้านล่างเป็นทางสำรองสำหรับเบราว์เซอร์ที่ยังไม่รองรับ container query */
+    @media (max-width: 760px) {
+      .policy-table-wrap { padding: 14px 12px 16px; }
+      .sum-scroll, .sum-expand { display: none; }
+      .sum-cards { display: block; }
     }
-    .policy-table tfoot td.col-policy { text-align: left; }
-
-    .pcell-name  { font-weight: 700; color: var(--gray-800); font-size: .9rem; }
-    .pcell-co    { font-size: .75rem; color: var(--gray-500,#757575); margin-top: 1px; }
-    .pcell-num   { font-size: .72rem; color: var(--gray-400); margin-top: 1px; }
-    .type-badge  {
-      display: inline-block; font-size: .7rem; font-weight: 700; padding: 2px 8px;
-      border-radius: 50px; margin-top: 4px;
-      background: var(--red-soft); color: var(--red-primary);
+    @container sumwrap (max-width: 700px) {
+      .sum-scroll, .sum-expand { display: none; }
+      .sum-cards { display: block; }
     }
-    .dcell-range { font-size: .82rem; color: var(--gray-800); }
-    .dcell-years { font-size: .72rem; color: var(--gray-400); margin-top: 2px; }
-    .dcell-exp   { font-size: .72rem; font-weight: 700; margin-top: 2px; }
-    .dcell-exp.ok     { color: #28a745; }
-    .dcell-exp.warn   { color: #e67e00; }
-    .dcell-exp.danger { color: var(--red-primary); }
-    .cov-amount { font-weight: 700; color: var(--gray-800); }
-    .cov-none   { color: var(--gray-200); font-size: .78rem; }
-    .tbl-actions { display: flex; gap: 5px; justify-content: flex-end; }
+    @container sumwrap (min-width: 560px) {
+      .sum-card-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .tbl-actions { display: flex; gap: 5px; justify-content: center; }
     .tbl-btn {
       width: 28px; height: 28px; border-radius: 7px; border: 1.5px solid var(--gray-200);
       background: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -1455,27 +1512,9 @@
           </div>
         </div>
 
-        <!-- Policy Table -->
+        <!-- ตารางสรุปความคุ้มครอง (รูปแบบตารางของสำนักงาน) — สร้างโดย renderTable() -->
         <div class="policy-table-wrap" id="policy-table-wrap">
-          <table class="policy-table">
-            <thead>
-              <tr>
-                <th class="col-policy">กรมธรรม์</th>
-                <th class="col-date">วันที่สัญญา</th>
-                <th>เบี้ย/ปี</th>
-                <th>ทุนชีวิต</th>
-                <th>สุขภาพ</th>
-                <th>โรคร้ายแรง</th>
-                <th>อุบัติเหตุ</th>
-                <th>บำนาญ</th>
-                <th>รถยนต์</th>
-                <th>อื่นๆ</th>
-                <th class="col-action"></th>
-              </tr>
-            </thead>
-            <tbody id="policy-tbody"></tbody>
-            <tfoot><tr id="totals-row"></tr></tfoot>
-          </table>
+          <div id="policy-sum"></div>
         </div>
 
         <!-- Policy Empty State -->
@@ -1897,7 +1936,6 @@ const TYPE_ICONS = {
   // ─── Phase 3.3 new types ───
   'ตลอดชีพ':'🛡️','สะสมทรัพย์':'💰','Unit Linked':'🔗','PA':'🚑'
 };
-const COVERAGE_TYPES = ['ชีวิต','สุขภาพ','โรคร้ายแรง','อุบัติเหตุ','บำนาญ','รถยนต์','อื่นๆ'];
 const TYPE_TO_COL = {
   // Legacy
   'ชีวิต':'ชีวิต','ทุนชีวิต':'ชีวิต',
@@ -2538,16 +2576,175 @@ function renderPolicyDetailSummary() {
   `;
 }
 
-// ─── POLICY TABLE ───
+// ─── POLICY TABLE — ตารางสรุปความคุ้มครอง (รูปแบบตารางของสำนักงาน) ───
+/* คอลัมน์ตามตารางของสำนักงาน (แอปสรุปกรมธรรม์) · w = สัดส่วนความกว้าง · cov = คอลัมน์ความคุ้มครอง (มียอดรวม)
+   ไม่มี "เจ็บป่วยระยะสุดท้าย" และ "ตัวแทนที่ดูแล" เพราะแอปนี้ไม่มีช่องกรอกสองเรื่องนี้
+   "บริษัท" แสดงเฉพาะเมื่อมีมากกว่า 1 บริษัท (buildPolicySummary) — แบบเดียวกับตารางของสำนักงาน
+   "อื่น ๆ" แสดงเฉพาะเมื่อมีรายการ (รถยนต์ · ค่ารักษาของ PA ฯลฯ) และไม่รวมยอด เพราะเป็นคนละประเภทกัน */
+/* w = ความกว้างที่พอดีเนื้อหาเมื่อตัวอักษร 11px (ผลรวม ÷ 11 = --sum-em ที่ CSS ใช้ย่อ/ขยายตัวอักษรให้ตารางพอดีกล่อง)
+   card = ชื่อเต็มที่ใช้บนการ์ด (จอแคบ มีที่พอให้เขียนคำเต็มแทนตัวย่อ) · hint = คำอธิบายเมื่อชี้ที่หัวคอลัมน์ */
+const SUM_COLS = [
+  { key: 'no',        title: 'ลำดับ',                w: 26 },
+  { key: 'company',   title: 'บริษัท',               w: 46 },
+  { key: 'number',    title: 'เลข\nกรมธรรม์',        w: 70 },
+  { key: 'plan',      title: 'แบบประกัน',            w: 92 },
+  { key: 'start',     title: 'วันที่เริ่ม\nกธ.',       w: 55 },
+  { key: 'end',       title: 'วันครบ\nสัญญา',        w: 55 },
+  { key: 'due',       title: 'ครบกำหนด\nชำระเบี้ยฯ',  w: 56, hint: 'วันครบรอบกรมธรรม์ครั้งถัดไป (ถือว่าชำระเบี้ยรายปี) จนครบระยะเวลาชำระเบี้ย' },
+  { key: 'life',  cov: true, title: 'ทุนประกัน',      w: 65 },
+  { key: 'tpd',   cov: true, title: 'ทุพพลภาพ',       w: 58 },
+  { key: 'death', cov: true, title: 'มรณ/\nมะเร็ง',   w: 52, hint: 'เงินชดเชยกรณีเสียชีวิตของสัญญาเพิ่มเติมโรคร้ายแรง' },
+  { key: 'room',  cov: true, title: 'ค่าห้อง',        w: 44, unit: '/วัน' },
+  { key: 'ai',    cov: true, title: 'AI',             w: 58, hint: 'อุบัติเหตุ (เสียชีวิตจากอุบัติเหตุ)', card: 'อุบัติเหตุ (AI)' },
+  { key: 'ci',    cov: true, title: 'CI/ECIR',        w: 58, hint: 'โรคร้ายแรง (ระยะรุนแรง)', card: 'โรคร้ายแรง (CI)' },
+  { key: 'hb',    cov: true, title: 'HB',             w: 44, unit: '/วัน', hint: 'ชดเชยรายวันเมื่อนอนโรงพยาบาล', card: 'ชดเชยรายวัน (HB)' },
+  { key: 'med',   cov: true, title: 'ค่ารักษา\nเหมาจ่าย', w: 60 },
+  { key: 'other', cov: true, title: 'อื่น ๆ',         w: 68, optional: true, noTotal: true },
+  { key: 'premMonth', title: 'เบี้ยฯ\nเฉลี่ย\nต่อเดือน', w: 52, hint: 'เบี้ยต่อปี ÷ 12' },
+  { key: 'premYear',  title: 'เบี้ยฯ\n(รายปี)',       w: 60, hint: 'เบี้ยสัญญาหลัก + สัญญาเพิ่มเติม ต่อปี' },
+  { key: 'act',       title: '',                      w: 28 },
+];
+const SUM_TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+
+/** '2018-09-11' → '11/9/61' (วัน/เดือน/ปี พ.ศ. 2 หลัก แบบตารางของสำนักงาน) */
+function sumShortDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  return m ? Number(m[3]) + '/' + Number(m[2]) + '/' + String(Number(m[1]) + 543).slice(-2) : '';
+}
+function sumLongDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  return m ? Number(m[3]) + ' ' + SUM_TH_MONTHS[Number(m[2]) - 1] + ' ' + (Number(m[1]) + 543) : '';
+}
+function sumIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function sumAddYears(iso, n) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+  if (!m) return '';
+  const y = Number(m[1]) + n, last = new Date(y, Number(m[2]), 0).getDate();
+  return y + '-' + m[2] + '-' + String(Math.min(Number(m[3]), last)).padStart(2, '0');
+}
+function sumFmt(n) { return Number(n).toLocaleString('th-TH', { maximumFractionDigits: 2 }); }
+
+/* แบบประกันที่ช่อง "เงินเอาประกัน" ลงคอลัมน์ "ทุนประกัน" (ตารางของสำนักงานลงทุนประกันของทุกแบบไว้คอลัมน์นี้ รวมบำนาญ/ส่งมอบ)
+   ต่างจากกราฟใยแมงมุมที่นับ "ทุนชีวิต" เฉพาะแบบคุ้มครองชีวิต — ที่นี่เป็นรายการตามกรมธรรม์ ไม่ใช่การวิเคราะห์ความพอเพียง */
+const SUM_LIFE_TYPES = ['', 'ชีวิต', 'ทุนชีวิต', 'ตลอดชีพ', 'สะสมทรัพย์', 'Unit Linked', 'บำนาญ', 'เกษียณ', 'ลดหย่อนภาษี', 'ลงทุน', 'การศึกษา', 'ส่งมอบ'];
+
+/* ความคุ้มครองของกรมธรรม์ 1 ฉบับ แยกตามคอลัมน์ → { life:[{amount,unit,note}], tpd:[], … }
+   สัญญาหลัก: สุขภาพ → ค่ารักษา · โรคร้ายแรง → CI · PA/อุบัติเหตุ → AI (TYPE_TO_COL + primaryCovOf ชุดเดียวกับส่วนอื่นของหน้า)
+   · แบบประกันชีวิตทุกแบบ → ทุนประกัน · ที่เหลือ (รถยนต์ ฯลฯ) → อื่น ๆ
+   สัญญาเพิ่มเติมลงคอลัมน์ตามชนิด · กรมธรรม์รุ่นเก่า (ช่องเดี่ยว) ใช้เมื่อไม่มีสัญญาเพิ่มเติมชนิดนั้น */
+function summaryCoverage(p) {
+  const cov = { life: [], tpd: [], death: [], room: [], ai: [], ci: [], hb: [], med: [], other: [] };
+  const add = (k, amount, note, unit) => {
+    amount = Number(amount) || 0;
+    if (amount > 0) cov[k].push({ amount: amount, note: String(note || '').trim(), unit: unit || '' });
+  };
+  const riders = Array.isArray(p.riders) ? p.riders : [];
+  const of = t => riders.filter(r => r.type === t);
+  const has = t => riders.some(r => r.type === t);
+  const pCol = TYPE_TO_COL[p.type] || p.type;
+  const primary = primaryCovOf(p);
+
+  if (pCol === 'สุขภาพ') {
+    add('med', primary);
+    if (Number(p.coverage) > 0) add('life', p.lifeCoverage, 'ทุนชีวิต');   /* มีทั้งวงเงินสุขภาพและทุนชีวิต → แสดงแยก (ไม่ซ้ำสองคอลัมน์) */
+  }
+  else if (pCol === 'โรคร้ายแรง') add('ci', primary);
+  else if (pCol === 'อุบัติเหตุ') add('ai', primary);
+  else if (SUM_LIFE_TYPES.indexOf(p.type || '') >= 0) add('life', primary);   /* ช่อง "เงินเอาประกัน" ของแบบประกันชีวิตทุกแบบ */
+  else add('other', primary, p.type);                                        /* รถยนต์ · อื่นๆ · ประเภทที่ไม่รู้จัก */
+  if (p.type === 'PA' && p.pa) add('other', p.pa.medicalCoverage, 'ค่ารักษาอุบัติเหตุ');
+
+  add('tpd', p.disabilityAmount);
+  /* ชื่อสัญญาเพิ่มเติมแสดงในคอลัมน์หลักของมัน (ค่ารักษา · CI) — คอลัมน์รอง (ค่าห้อง · มรณ/มะเร็ง) แสดงเฉพาะตัวเลข ไม่ซ้ำชื่อ */
+  of('disability').forEach(r => add('tpd', r.disabilityAmt, r.name));
+  of('critical').forEach(r => add('death', r.ciDeath));
+  of('medical').forEach(r => add('room', r.roomMeal, '', '/วัน'));
+  of('income').forEach(r => add('hb', r.dailyComp, r.name, '/วัน'));
+  if (p.type !== 'อุบัติเหตุ') of('accident').forEach(r => add('ai', r.deathByAccident, r.name));
+  if (p.type !== 'โรคร้ายแรง') of('critical').forEach(r =>
+    add('ci', r.ciSevere, [r.name, Number(r.ciEarly) > 0 ? 'ระยะต้น ' + sumFmt(r.ciEarly) : ''].filter(Boolean).join(' · ')));
+  if (p.type !== 'สุขภาพ') of('medical').forEach(r => {
+    const lump = r.treatmentType === 'เหมาจ่าย' && Number(r.perYear) > 0;
+    add('med', lump ? r.perYear : r.perVisit, r.name, lump ? '/ปี' : '/ครั้ง');
+  });
+  /* กรมธรรม์รุ่นเก่า (ช่องเดี่ยว) */
+  if (!has('medical') && p.type !== 'สุขภาพ') add('med', p.riderHealthCov, p.riderHealthName, '/ครั้ง');
+  if (!has('critical') && p.type !== 'โรคร้ายแรง') add('ci', p.riderCriticalCov, p.riderCriticalName);
+  if (!has('accident') && p.type !== 'อุบัติเหตุ') add('ai', p.riderAccidentCov, p.riderAccidentName);
+  if (!has('income')) add('hb', p.riderIncomeDaily, p.riderIncomeName, '/วัน');
+  if (!has('disability')) add('tpd', p.riderDisabilityMonthly, p.riderDisabilityName, '/เดือน');
+  return cov;
+}
+
+/* ช่อง "ครบกำหนดชำระเบี้ยฯ": วันครบรอบกรมธรรม์ครั้งถัดไป (แอปนี้ไม่มีงวดชำระ จึงถือว่าชำระรายปี)
+   หยุดเมื่อครบระยะเวลาชำระเบี้ยของสัญญาหลัก — ไม่ได้กรอกระยะชำระ ใช้วันครบสัญญาแทน */
+function summaryDue(p, todayIso) {
+  if (!p.start) return '-';
+  const pay = Number(p.payYearsMain) || 0;
+  const stopAt = pay ? sumAddYears(p.start, pay) : (p.end || '');
+  for (let k = 1; k <= 120; k++) {
+    const d = sumAddYears(p.start, k);
+    if (stopAt && d >= stopAt) return pay ? 'ชำระครบแล้ว' : '-';
+    if (d >= todayIso) return sumShortDate(d);
+  }
+  return '-';
+}
+
+/** ข้อมูลของตารางสรุป (ไม่แตะหน้าจอ — ใช้ทั้งตารางบนจอกว้างและการ์ดบนจอแคบ · tests.html เรียกตรวจ) */
+function buildPolicySummary(policies, client, todayIso) {
+  todayIso = todayIso || sumIso(new Date());
+  const today = parseLocal(todayIso);
+  const soon = new Date(today); soon.setDate(soon.getDate() + 90);
+  const soonIso = sumIso(soon);
+  const rows = (policies || []).map((p, i) => {
+    const total = CALC.policyPremiums([p]).total;      /* เบี้ยสัญญาหลัก + สัญญาเพิ่มเติม (สูตรกลางเดียวกับหน้าภาษี) */
+    const main = Number(p.premium) || 0;
+    const expired = !!p.end && p.end < todayIso;
+    const expiring = !!p.end && !expired && p.end <= soonIso;
+    return {
+      i: i, no: i + 1, company: String(p.company || ''), number: String(p.number || ''), name: String(p.name || ''), type: String(p.type || ''),
+      start: sumShortDate(p.start), end: sumShortDate(p.end), expired: expired, expiring: expiring,
+      daysLeft: expiring ? Math.round((parseLocal(p.end) - today) / 86400000) : null,
+      due: expired ? 'ครบสัญญาแล้ว' : summaryDue(p, todayIso),
+      cov: summaryCoverage(p),
+      premYear: total, premMain: main, premRiders: Math.max(total - main, 0), premMonth: total / 12,
+    };
+  });
+  const hasOther = rows.some(r => r.cov.other.length);
+  /* คอลัมน์ "บริษัท" แสดงเมื่อกรมธรรม์มาจากมากกว่า 1 บริษัท (หรือบางฉบับไม่ได้กรอก) — บริษัทเดียวกันทั้งหมดบอกไว้ที่บรรทัดสรุปแทน แบบตารางของสำนักงาน */
+  const coKeys = rows.map(r => r.company.trim().toLowerCase());
+  const showCompany = new Set(coKeys).size > 1;
+  const singleCompany = !showCompany && coKeys[0] ? rows[0].company.trim() : '';
+  const cols = SUM_COLS.filter(c => c.key === 'company' ? showCompany : (!c.optional || hasOther));
+  const totalCov = {};
+  cols.filter(c => c.cov && !c.noTotal).forEach(c => {
+    totalCov[c.key] = rows.reduce((s, r) => s + r.cov[c.key].reduce((a, e) => a + e.amount, 0), 0);
+  });
+  const premYear = rows.reduce((s, r) => s + r.premYear, 0);
+  let familyName = '';
+  if (client && client.familyId) {
+    const fam = ((getCurrentUser().data || {}).families || []).find(f => f.id === client.familyId);
+    if (fam && fam.name) familyName = /^ครอบครัว/.test(fam.name) ? fam.name : 'ครอบครัว' + fam.name;
+  }
+  const full = client ? [client.firstName, client.lastName].filter(Boolean).join(' ') : '';
+  const personName = !full ? 'ลูกค้า'
+    : /^(คุณ|นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.|เด็กชาย|เด็กหญิง|ดร\.|mr\.?|mrs\.?|ms\.?|miss)\s*/i.test(full) ? full : 'คุณ' + full;
+  return {
+    cols: cols, rows: rows, familyName: familyName, personName: personName, singleCompany: singleCompany,
+    total: { cov: totalCov, premYear: premYear, premMonth: premYear / 12 },
+    statsLine: 'กรมธรรม์ ' + rows.length + ' ฉบับ' + (singleCompany ? ' · บริษัท ' + singleCompany : '') +
+      ' · เบี้ยรวมประมาณ ' + sumFmt(Math.round(premYear)) + ' บาท/ปี · ข้อมูล ณ วันที่ ' + sumLongDate(todayIso),
+  };
+}
+
 function renderTable(policies) {
-  const tbody      = document.getElementById('policy-tbody');
-  const tfoot      = document.getElementById('totals-row');
-  const emptyEl    = document.getElementById('policy-empty-state');
-  const tableWrap  = document.getElementById('policy-table-wrap');
+  const box       = document.getElementById('policy-sum');
+  const emptyEl   = document.getElementById('policy-empty-state');
+  const tableWrap = document.getElementById('policy-table-wrap');
 
   if (policies.length === 0) {
-    tbody.innerHTML = '';
-    tfoot.innerHTML = '';
+    toggleSumFull(false);            /* ไม่มีตารางแล้ว — ถ้าขยายเต็มจออยู่ให้ย่อกลับ (ปุ่มย่ออยู่ในตาราง) */
+    box.innerHTML = '';
     emptyEl.style.display   = 'block';
     tableWrap.style.display = 'none';
     return;
@@ -2555,118 +2752,157 @@ function renderTable(policies) {
   emptyEl.style.display   = 'none';
   tableWrap.style.display = '';
 
-  const today = new Date(); today.setHours(0,0,0,0);
+  const client = getCurrentClient();
+  const m = buildPolicySummary(policies, client);
+  /* เบี้ยสุทธิหลังประหยัดภาษี (ต่อกรมธรรม์) — สูตรเดิมของตารางนี้ */
+  const taxBd = computePolicyTaxBreakdown(policies, client);
+  const E = _scanEsc, N = m.cols.length;
+  const wSum = m.cols.reduce((s, c) => s + c.w, 0);
+  const dash = '<span class="sum-dash">-</span>';
+  const num = v => '<span class="sum-num">' + sumFmt(v) + '</span>';
+  const unitOf = c => c.unit ? ' <span class="sum-unit">' + E(c.unit) + '</span>' : '';   /* หน่วยของยอดรวม (ค่าห้อง · HB เป็นต่อวัน) */
+  const entryHtml = e => '<div class="sum-entry">' + num(e.amount) + (e.unit ? ' <span class="sum-unit">' + E(e.unit) + '</span>' : '') +
+    (e.note ? '<span class="sum-note">' + E(e.note) + '</span>' : '') + '</div>';
+  const netOf = r => {
+    const deduct = taxBd.policyDeducts.get(r.i) || 0, saving = deduct * taxBd.tax.rate;
+    return saving > 0 ? { net: r.premYear - saving, deduct: deduct, saving: saving } : null;
+  };
+  const netLine = r => {
+    const n = netOf(r);
+    return n ? '<span class="sum-note" title="หัก ' + E(taxBd.tax.label) + ' จาก ' + sumFmt(Math.round(n.deduct)) + ' = ประหยัด ' + sumFmt(Math.round(n.saving)) + '">สุทธิ ' + sumFmt(Math.round(n.net)) + '</span>' : '';
+  };
+  const premTitle = r => r.premRiders > 0 ? ' title="สัญญาหลัก ' + sumFmt(r.premMain) + ' + สัญญาเพิ่มเติม ' + sumFmt(r.premRiders) + '"' : '';
+  const delBtn = r => '<button type="button" class="tbl-btn del" onclick="event.stopPropagation();deletePolicy(' + r.i + ')" title="ลบกรมธรรม์นี้" aria-label="ลบกรมธรรม์ ' + E(r.name) + '">🗑️</button>';
 
-  // Compute per-policy tax breakdown (for net cost in premium column)
-  const taxBd = computePolicyTaxBreakdown(policies, getCurrentClient());
-
-  tbody.innerHTML = policies.map((p, i) => {
-    const endDt   = parseLocal(p.end);
-    const startDt = parseLocal(p.start);
-    const diffDays = endDt ? Math.round((endDt - today) / 86400000) : null;
-    const expired  = diffDays !== null && diffDays < 0;
-    const expiring = diffDays !== null && diffDays <= 90 && diffDays >= 0;
-
-    let dateHtml = '';
-    if (startDt && endDt) {
-      const years = Math.round((endDt - startDt) / (365.25 * 86400000));
-      dateHtml = `<div class="dcell-range">${fmtDate(p.start)}</div>
-                  <div class="dcell-range">→ ${fmtDate(p.end)}</div>
-                  <div class="dcell-years">${years} ปี</div>`;
-      if (expired)       dateHtml += `<div class="dcell-exp danger">หมดอายุแล้ว</div>`;
-      else if (expiring) dateHtml += `<div class="dcell-exp warn">อีก ${diffDays} วัน</div>`;
-      else               dateHtml += `<div class="dcell-exp ok">ยังมีผล</div>`;
-    } else if (startDt) {
-      dateHtml = `<div class="dcell-range">${fmtDate(p.start)}</div><div class="dcell-years">ตลอดชีพ</div>`;
-    } else {
-      dateHtml = '<div class="dcell-range" style="color:var(--gray-400);">—</div>';
+  const cell = (r, c) => {
+    switch (c.key) {
+      case 'no':      return String(r.no);
+      case 'company': return r.company ? E(r.company) : dash;
+      case 'number':  return r.number ? '<span class="sum-no">' + E(r.number) + '</span>' : dash;
+      case 'plan':    return '<button type="button" class="sum-plan" onclick="event.stopPropagation();openDetail(' + r.i + ')" title="ดูรายละเอียด / แก้ไข">' + (E(r.name) || '-') + '</button>' +
+                             (r.type ? '<br><span class="sum-pill">' + E(r.type) + '</span>' : '');
+      case 'start':   return r.start ? num0(r.start) : dash;
+      case 'end':     return (r.end ? num0(r.end) : dash) + (r.expiring ? '<span class="sum-flag warn">อีก ' + r.daysLeft + ' วัน</span>' : '');
+      case 'due':     return /^\d/.test(r.due) ? num0(r.due) : (r.expired ? '<span class="sum-flag danger">' + E(r.due) + '</span>' : (r.due === '-' ? dash : E(r.due)));
+      case 'premMonth': return r.premYear > 0 ? num(Math.round(r.premMonth)) : dash;
+      case 'premYear':  return r.premYear > 0 ? num(r.premYear) + netLine(r) : dash;
+      case 'act':     return '<div class="tbl-actions">' + delBtn(r) + '</div>';
+      default:        return r.cov[c.key].length ? r.cov[c.key].map(entryHtml).join('') : dash;
     }
+  };
+  function num0(text) { return '<span class="sum-num">' + E(text) + '</span>'; }
 
-    const pCol = TYPE_TO_COL[p.type] || p.type;
-    const covCols = COVERAGE_TYPES.map(t => {
-      if (t === pCol) return `<td class="cov-amount">${fmtShort(primaryCovOf(p))}</td>`;
-      // ทุนชีวิตจากประกันสุขภาพ
-      if (t === 'ชีวิต' && p.type === 'สุขภาพ' && p.lifeCoverage > 0)
-        return `<td class="cov-amount" title="ทุนชีวิตจากประกันสุขภาพ">
-                  ${fmtShort(p.lifeCoverage)}
-                  <div style="font-size:.65rem;color:var(--gray-400);font-weight:400;">ทุนชีวิต</div>
-                </td>`;
-      // Rider coverages (เฉพาะกรมธรรม์ที่ไม่ใช่ type นั้นโดยตรง)
-      let riderAmt = 0;
-      if (t === 'สุขภาพ'      && p.type !== 'สุขภาพ')      riderAmt = getRiderCoverageByCategory(p, 'health');
-      if (t === 'โรคร้ายแรง' && p.type !== 'โรคร้ายแรง') riderAmt = getRiderCoverageByCategory(p, 'critical');
-      if (t === 'อุบัติเหตุ' && p.type !== 'อุบัติเหตุ') riderAmt = getRiderCoverageByCategory(p, 'accident');
-      if (riderAmt > 0) return `<td class="cov-amount" style="opacity:.75;">
-        ${fmtShort(riderAmt)}<div style="font-size:.62rem;color:var(--gray-400);font-weight:400;line-height:1;">ไรเดอร์</div>
-      </td>`;
-      return `<td><span class="cov-none">—</span></td>`;
-    }).join('');
-
-    return `
-      <tr onclick="openDetail(${i})">
-        <td class="col-policy">
-          <div class="pcell-name">${TYPE_ICONS[p.type]||'📄'} ${p.name}</div>
-          <div class="pcell-co">${p.company}</div>
-          ${p.number ? `<div class="pcell-num">${p.number}</div>` : ''}
-          <span class="type-badge">${p.type}</span>
-        </td>
-        <td class="col-date">${dateHtml}</td>
-        <td style="font-weight:700;color:var(--red-primary);">
-          ${fmtShort(p.premium)}
-          ${(() => {
-            const policyDeduct = taxBd.policyDeducts.get(i) || 0;
-            const policySaving = policyDeduct * taxBd.tax.rate;
-            const policyNet    = (p.premium||0) - policySaving;
-            return policySaving > 0
-              ? `<div style="font-size:.68rem;color:var(--gray-500);font-weight:500;line-height:1.3;margin-top:2px;" title="หัก ${taxBd.tax.label} จาก ${fmtShort(policyDeduct)} = ประหยัด ${fmtShort(policySaving)}">สุทธิ ${fmtShort(policyNet)}</div>`
-              : '';
-          })()}
-        </td>
-        ${covCols}
-        <td class="col-action" onclick="event.stopPropagation()">
-          <div class="tbl-actions">
-            <button class="tbl-btn view" onclick="openDetail(${i})" title="ดูรายละเอียด">👁</button>
-            <button class="tbl-btn del"  onclick="deletePolicy(${i})" title="ลบ">🗑️</button>
-          </div>
-        </td>
-      </tr>`;
+  /* ── ตาราง (จอกว้าง) ── */
+  /* คอลัมน์ปุ่มลบไม่มีข้อความบนหัว — ใช้ aria-label แทนข้อความซ่อน (ข้อความซ่อนแบบ position:absolute หลุดออกนอกกล่องเลื่อน ทำให้ทั้งหน้าเลื่อนข้างได้) */
+  const head = '<tr class="sum-head">' + m.cols.map(c => '<th scope="col"' + (c.hint ? ' title="' + E(c.hint) + '"' : '') +
+    (c.key === 'act' ? ' aria-label="ลบ"' : '') + '>' + E(c.title) + '</th>').join('') + '</tr>';
+  const body = m.rows.map(r => '<tr class="sum-row' + (r.expired ? ' inactive' : '') + '" onclick="openDetail(' + r.i + ')">' +
+    m.cols.map(c => '<td' + (c.key === 'premYear' ? premTitle(r) : '') + (c.key === 'act' ? ' onclick="event.stopPropagation()"' : '') + '>' + cell(r, c) + '</td>').join('') + '</tr>').join('');
+  const firstCov = m.cols.findIndex(c => c.cov);
+  const totalSaving = m.rows.reduce((s, r) => { const n = netOf(r); return s + (n ? n.saving : 0); }, 0);
+  const totalCells = m.cols.slice(firstCov).map(c => {
+    if (c.cov) return '<td>' + (!c.noTotal && m.total.cov[c.key] > 0 ? num(m.total.cov[c.key]) + unitOf(c) : '') + '</td>';
+    if (c.key === 'premMonth') return '<td>' + (m.total.premYear > 0 ? num(Math.round(m.total.premMonth)) : '') + '</td>';
+    if (c.key === 'premYear') return '<td>' + (m.total.premYear > 0 ? num(m.total.premYear) + (totalSaving > 0 ? '<span class="sum-note">สุทธิ ' + sumFmt(Math.round(m.total.premYear - totalSaving)) + '</span>' : '') : '') + '</td>';
+    return '<td></td>';
   }).join('');
+  const table =
+    '<div class="sum-scroll"><table class="sum-table" style="--sum-em:' + (wSum / 11).toFixed(1) + ';" aria-label="สรุปความคุ้มครองประกันภัย ' + E(m.personName) + '">' +
+      '<colgroup>' + m.cols.map(c => '<col style="width:' + (c.w / wSum * 100).toFixed(2) + '%">').join('') + '</colgroup>' +
+      '<thead>' +
+        (m.familyName ? '<tr class="sum-family"><td colspan="' + N + '">' + E(m.familyName) + '</td></tr>' : '') +
+        '<tr class="sum-person"><td colspan="' + N + '">' + E(m.personName) + '</td></tr>' + head +
+      '</thead>' +
+      '<tbody id="policy-tbody">' + body + '</tbody>' +
+      '<tfoot><tr class="sum-total" id="totals-row"><td colspan="' + firstCov + '" class="sum-total-label">รวม ' + m.rows.length + ' กรมธรรม์</td>' + totalCells + '</tr></tfoot>' +
+    '</table></div>';
 
-  // Totals
-  const totPremium = policies.reduce((s,p) => s + (p.premium||0), 0);
-  const totByType  = {};
-  COVERAGE_TYPES.forEach(t => totByType[t] = 0);
-  policies.forEach(p => {
-    const pCol2 = TYPE_TO_COL[p.type] || p.type;
-    if (pCol2 && totByType[pCol2] !== undefined) totByType[pCol2] += primaryCovOf(p);
-    // ทุนชีวิตจากประกันสุขภาพ
-    if (p.type === 'สุขภาพ' && p.lifeCoverage > 0) totByType['ชีวิต'] += p.lifeCoverage;
-    // Rider coverages จากกรมธรรม์ชีวิต/ประเภทอื่น (Phase 3.3 schema)
-    if (p.type !== 'สุขภาพ') {
-      const v = getRiderCoverageByCategory(p, 'health');
-      if (v > 0) totByType['สุขภาพ'] = (totByType['สุขภาพ'] || 0) + v;
-    }
-    if (p.type !== 'โรคร้ายแรง') {
-      const v = getRiderCoverageByCategory(p, 'critical');
-      if (v > 0) totByType['โรคร้ายแรง'] = (totByType['โรคร้ายแรง'] || 0) + v;
-    }
-    if (p.type !== 'อุบัติเหตุ') {
-      const v = getRiderCoverageByCategory(p, 'accident');
-      if (v > 0) totByType['อุบัติเหตุ'] = (totByType['อุบัติเหตุ'] || 0) + v;
-    }
-  });
+  /* ── การ์ด (จอแคบ) — แสดงเฉพาะคอลัมน์ที่มีข้อมูล ── */
+  const covCols = m.cols.filter(c => c.cov);
+  const cardLabel = c => E(c.card || c.title.replace(/\n/g, ''));
+  const cards = m.rows.map(r => {
+    const lines = covCols.filter(c => r.cov[c.key].length).map(c =>
+      '<div><span>' + cardLabel(c) + '</span><span>' + r.cov[c.key].map(e =>
+        num(e.amount) + (e.unit ? ' <span class="sum-unit">' + E(e.unit) + '</span>' : '') + (e.note ? ' <span class="sum-unit">' + E(e.note) + '</span>' : '')).join('<br>') + '</span></div>').join('');
+    const meta = [
+      r.start ? 'เริ่ม ' + E(r.start) : '',
+      !r.end ? '' : r.expired ? '<span class="sum-flag danger">ครบสัญญาแล้ว ' + E(r.end) + '</span>'
+        : 'ครบสัญญา ' + E(r.end) + (r.expiring ? ' <span class="sum-flag warn">(อีก ' + r.daysLeft + ' วัน)</span>' : ''),
+      r.expired || r.due === '-' ? '' : /^\d/.test(r.due) ? 'ครบกำหนดชำระเบี้ย ' + E(r.due) : E(r.due),
+    ].filter(Boolean).join(' · ');
+    const n = netOf(r);
+    return '<div class="sum-card' + (r.expired ? ' inactive' : '') + '" onclick="openDetail(' + r.i + ')">' +
+      '<div class="sum-card-top"><b>' + r.no + '.</b> <span class="sum-no">' + (E(r.number) || '-') + '</span>' +
+        (r.company ? ' <span class="sum-card-co">' + E(r.company) + '</span>' : '') + (r.type ? ' <span class="sum-pill" style="margin-top:0;">' + E(r.type) + '</span>' : '') + '</div>' +
+      '<div class="sum-card-plan"><button type="button" class="sum-plan" onclick="event.stopPropagation();openDetail(' + r.i + ')">' + (E(r.name) || '-') + '</button></div>' +
+      (meta ? '<div class="sum-card-meta">' + meta + '</div>' : '') +
+      (lines ? '<div class="sum-card-lines">' + lines + '</div>' : '') +
+      '<div class="sum-card-foot"><span>' + (r.premYear > 0
+          ? 'เบี้ย <b class="sum-num">' + sumFmt(r.premYear) + '</b> /ปี <span class="sum-unit">เฉลี่ย ' + sumFmt(Math.round(r.premMonth)) + ' /เดือน' + (n ? ' · สุทธิ ' + sumFmt(Math.round(n.net)) : '') + '</span>'
+          : 'ยังไม่ได้กรอกเบี้ย') + '</span>' + delBtn(r) + '</div>' +
+    '</div>';
+  }).join('');
+  const totalLines = covCols.filter(c => !c.noTotal && m.total.cov[c.key] > 0).map(c =>
+    '<div><span>' + cardLabel(c) + '</span><span>' + num(m.total.cov[c.key]) + unitOf(c) + '</span></div>').join('');
+  const cardsHtml = '<div class="sum-cards">' +
+    (m.familyName ? '<div class="sum-card-band family">' + E(m.familyName) + '</div>' : '') +
+    '<div class="sum-card-band person">' + E(m.personName) + '</div>' +
+    '<div class="sum-card-list">' + cards + '</div>' +
+    '<div class="sum-card-total">' +
+      '<div class="sum-card-total-head">รวม ' + m.rows.length + ' กรมธรรม์</div>' +
+      (totalLines ? '<div class="sum-card-lines">' + totalLines + '</div>' : '') +
+      (m.total.premYear > 0
+        ? '<div class="sum-card-total-prem"><span>เบี้ยรวมต่อปี</span><span class="sum-num">' + sumFmt(m.total.premYear) + '</span></div>' +
+          '<div class="sum-card-total-sub sum-unit">เฉลี่ย ' + sumFmt(Math.round(m.total.premMonth)) + ' /เดือน' +
+            (totalSaving > 0 ? ' · สุทธิ ' + sumFmt(Math.round(m.total.premYear - totalSaving)) : '') + '</div>'
+        : '') +
+    '</div>' +
+  '</div>';
 
-  const totCovCols = COVERAGE_TYPES.map(t =>
-    totByType[t] > 0 ? `<td>${fmtShort(totByType[t])}</td>` : `<td style="opacity:.4;">—</td>`
-  ).join('');
-
-  tfoot.innerHTML = `
-    <td class="col-policy">รวม ${policies.length} กรมธรรม์</td>
-    <td class="col-date" style="opacity:.5;">—</td>
-    <td>${fmtShort(totPremium)}</td>
-    ${totCovCols}
-    <td class="col-action"></td>`;
+  box.innerHTML =
+    '<div class="sum-top"><div class="sum-top-mid">' +
+      '<div class="sum-title">สรุปความคุ้มครองประกันภัย</div>' +
+      '<div class="sum-sub">' + E(m.statsLine) + '</div>' +
+    '</div><button type="button" class="sum-expand" id="sum-expand" onclick="toggleSumFull()"></button></div>' +
+    table + cardsHtml +
+    '<div class="sum-foot">หน่วยเป็นบาท · วันที่เป็น วัน/เดือน/ปี พ.ศ. · “ครบกำหนดชำระเบี้ยฯ” คือวันครบรอบกรมธรรม์ครั้งถัดไป โดยถือว่าชำระเบี้ยรายปี · “สุทธิ” คือเบี้ยหลังหักภาษีที่ประหยัดได้ · กดที่รายการเพื่อดูรายละเอียดหรือแก้ไข</div>';
+  _sumExpandSync();
 }
+
+/* ── ขยายตารางสรุปเต็มจอ ──
+   ในหน้าปกติตารางกว้างได้ราว 950–1,030px (มีเมนูข้าง + ขอบเนื้อหา) ตัวอักษรจึงอยู่ที่ ~10–11px
+   ขยายเต็มจอ = การ์ดตารางลอยทับทั้งหน้าจอ ตารางได้ความกว้างทั้งจอ ตัวอักษรโตได้ถึง 14px (ใช้ตอนอธิบายให้ลูกค้าดู)
+   ย่อกลับด้วยปุ่มเดิมหรือปุ่ม Esc · หน้าต่างรายละเอียด/ฟอร์มเพิ่มกรมธรรม์ยังเปิดทับได้ตามปกติ (z-index สูงกว่า) */
+const SUM_ICON_EXPAND   = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.5 2H14v4.5M14 2L9 7M6.5 14H2V9.5M2 14l5-5"/></svg>';
+const SUM_ICON_COLLAPSE = '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 6.5H9.5V2M9.5 6.5L14 2M2 9.5h4.5V14M6.5 9.5L2 14"/></svg>';
+function _sumCard() {
+  const wrap = document.getElementById('policy-table-wrap');
+  return wrap ? wrap.closest('.table-card') : null;
+}
+function _sumExpandSync() {
+  const btn = document.getElementById('sum-expand'), card = _sumCard();
+  if (!btn || !card) return;
+  const full = card.classList.contains('sum-full');
+  btn.innerHTML = (full ? SUM_ICON_COLLAPSE : SUM_ICON_EXPAND) + '<span>' + (full ? 'ย่อกลับ' : 'ขยายเต็มจอ') + '</span>';
+  btn.setAttribute('aria-pressed', full ? 'true' : 'false');
+  btn.title = full ? 'ย่อตารางกลับเข้าหน้าเดิม (Esc)' : 'ขยายตารางเต็มจอ — ตัวอักษรใหญ่ขึ้น';
+}
+function toggleSumFull(on) {
+  const card = _sumCard();
+  if (!card) return;
+  const now = card.classList.contains('sum-full');
+  const want = typeof on === 'boolean' ? on : !now;
+  if (want === now) return;
+  card.classList.toggle('sum-full', want);
+  if (want) card.scrollTop = 0;
+  _sumExpandSync();
+}
+/* Esc ย่อกลับ — เว้นตอนมีหน้าต่างอื่นเปิดทับอยู่ (ให้ Esc เป็นของหน้าต่างนั้น) · ใช้ capture เพื่ออ่านสถานะก่อนที่ตัวจัดการอื่นจะปิดหน้าต่าง */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape' || !document.querySelector('.table-card.sum-full')) return;
+  if (document.querySelector('#detail-modal.open, #client-modal.open, #add-form.open, #scan-modal.open, #scan-zoom.open, #fmenu-items.open, #pyr-popup.open, #info-pop-modal.open')) return;
+  toggleSumFull(false);
+}, true);
 
 /* ══ เกณฑ์ "แนะนำ" — ชุดเดียวกับหน้าแรก (dashboard.html → computeRecommendedCoverage) แก้ที่หนึ่งต้องแก้อีกที่ด้วย
    · ชีวิต: ภาระที่นับรวมในหน้าประกันชีวิต (หนี้สิน + ความรับผิดชอบ) ถ้ากรอกแล้ว · ไม่มี → 10× รายได้/ปี + หนี้สิน (ขั้นต่ำ 1M)
