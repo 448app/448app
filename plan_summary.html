@@ -1154,6 +1154,57 @@
     }
     .pf-insight b { color: #A88A4F; font-weight: 800; }
 
+    /* ─── ตารางสรุปความคุ้มครอง (หัวข้อรายการกรมธรรม์) — หน้าตาเดียวกับตารางในหน้าสรุปกรมธรรม์ (.sum-* ใน policies.html)
+       สี Money Match: แถบครอบครัว Navy Deep · แถบลูกค้าน้ำเงินอ่อน + เส้นทอง · หัวคอลัมน์ Brand Navy · แถวรวมทองอ่อน + เส้นทอง
+       --sum-em = ความกว้างรวมของคอลัมน์เป็น em (_pfPolicyTableHTML ใส่ให้) → ตัวอักษร = ความกว้างกล่อง ÷ --sum-em
+       ตัวอย่างบนจอ (กล่อง ~710px) ≈ 7.5–8.5px · หน้าแนวนอนตอนพิมพ์ (~1,035px) ≈ 11–12.5px · จอแคบกว่านั้นเลื่อนข้างในกรอบ */
+    /* หัวข้อนี้อยู่บนหน้าแนวนอน (สูงแค่ ~19 ซม.) — ลดช่องไฟให้กรมธรรม์ 6–7 ฉบับพอดีหน้าเดียว */
+    .pf-sec-wide h4 { margin-bottom: 8px; }
+    .pf-sec-wide .pf-kpi-grid { margin: 6px 0 8px; }
+    .pf-sec-wide .pf-kpi { padding: 8px 14px; }
+    .pf-sec-wide .pf-insight { margin: 0 0 10px; padding: 8px 14px; }
+    .pf-sum-wrap { container-type: inline-size; overflow-x: auto; border: 1px solid #E4E7F0; border-radius: 8px; }
+    .pf-sum-table {
+      width: 100%; min-width: calc(var(--sum-em, 85) * 7px); border-collapse: separate; border-spacing: 0; table-layout: auto;
+      font-size: 8.5px; font-size: clamp(7px, calc(100cqi / var(--sum-em, 85)), 12.5px);
+      line-height: 1.4; color: #101A3D;
+    }
+    /* เส้นตารางเป็นของแต่ละช่อง (ขวา + ล่าง) ไม่ใช้ border-collapse — ตารางที่ยาวข้ามหน้าจึงไม่มีเส้นคอลัมน์ลากต่อในที่ว่างท้ายหน้า
+       กรอบนอก: บนจอเป็นของ .pf-sum-wrap (มุมมน) · ตอนพิมพ์เป็นของช่องริม (ดู @media print ด้านล่าง) */
+    .pf-sum-table th, .pf-sum-table td { border: 0 solid #E4E7F0; border-right-width: 1px; border-bottom-width: 1px; padding: .4em .25em; text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+    .pf-sum-table tr > :last-child { border-right-width: 0; }
+    .pf-sum-table tbody tr:last-child > * { border-bottom-width: 0; }
+    .pf-sum-family td { background: #101A3D; color: #fff; font-family: var(--font-display, inherit); font-weight: 600; font-size: 1.3em; padding: .45em; border-color: #101A3D; }
+    .pf-sum-person td { background: #EEF1FA; color: #1B2A5E; font-family: var(--font-display, inherit); font-weight: 600; font-size: 1.2em; padding: .4em; border-bottom: 2px solid #C79A3F; }
+    .pf-sum-head th { background: #1B2A5E; color: #fff; font-weight: 600; white-space: pre-line; overflow-wrap: normal; border-color: rgba(255,255,255,.2); border-top-color: #1B2A5E; border-bottom-color: #1B2A5E; }
+    .pf-sum-row td { background: #fff; }
+    .pf-sum-row.inactive td { color: #8B93AB; }
+    .pf-sum-num { font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .pf-sum-plan { font-weight: 600; color: #1B2A5E; }
+    .pf-sum-pill { display: inline-block; margin-top: 2px; padding: 0 6px; border-radius: 999px; background: #EEF1FA; color: #4A5473; font-size: .88em; font-weight: 500; white-space: nowrap; }
+    .pf-sum-unit { font-size: .9em; color: #6C7490; font-weight: 400; white-space: nowrap; }
+    .pf-sum-note { display: block; font-size: .9em; color: #6C7490; font-weight: 400; line-height: 1.3; }
+    .pf-sum-flag { display: block; font-size: .9em; font-weight: 600; line-height: 1.3; }
+    .pf-sum-flag.warn { color: #B4690E; }
+    .pf-sum-flag.danger { color: #B3261E; }
+    .pf-sum-entry + .pf-sum-entry { margin-top: 3px; padding-top: 3px; border-top: 1px dashed #E4E7F0; }
+    .pf-sum-dash { color: #C3CADD; }
+    .pf-sum-total td { background: #FBF2E4; border-top: 2px solid #C79A3F; font-weight: 700; color: #101A3D; }
+    .pf-sum-total .pf-sum-num { font-weight: 600; }
+    .pf-sum-total-label { text-align: right !important; padding-right: 8px !important; }
+    .pf-sum-foot { font-size: .72rem; color: #6C7490; margin-top: 6px; line-height: 1.6; }
+    .pf-wide-note { font-size: .74rem; color: #6C7490; margin-top: 4px; font-style: italic; }
+    @media print {
+      .pf-wide-note { display: none; }                       /* หมายเหตุสำหรับหน้าตัวอย่างบนจอเท่านั้น */
+      .pf-sum-wrap { overflow: visible; border: 0; border-radius: 0; }
+      .pf-sum-table { min-width: 0; }
+      .pf-sum-table tr > :first-child { border-left-width: 1px; }
+      .pf-sum-table tr > :last-child { border-right-width: 1px; }
+      .pf-sum-table tbody tr:last-child > * { border-bottom-width: 1px; }
+      .pf-sum-table tr { page-break-inside: avoid; break-inside: avoid; }
+      .pf-sum-total { page-break-before: avoid; break-before: avoid; }   /* แถวรวมไม่ขึ้นหน้าใหม่ตามลำพัง (ถ้าเบราว์เซอร์รองรับ) */
+    }
+
     /* Section icon — replaces emoji */
     .pf-h-icon {
       display: inline-flex; align-items: center; justify-content: center;
@@ -3492,56 +3543,86 @@ function _pfRenderTax(c, summary) {
   `;
 }
 
+/* ตารางสรุปความคุ้มครอง (รูปแบบตารางของสำนักงาน) — ข้อมูลชุดเดียวกับหน้าสรุปกรมธรรม์ (CALC.policySummary)
+   ต่างจากหน้าจอ: ไม่มีปุ่มลบ / การกดแถว / บรรทัด "สุทธิ" หลังหักภาษี (เป็นเอกสารให้ลูกค้า)
+   ตัวอักษรย่อ/ขยายตามความกว้างที่มี (cqi): หน้าแนวนอนตอนพิมพ์กว้างกว่าในตัวอย่างบนจอ ตัวอักษรจึงใหญ่กว่า */
+function _pfPolicyTableHTML(m) {
+  const E = _pfEsc, F = CALC.sumFmt, cols = m.cols, N = cols.length;
+  const wSum = cols.reduce((s, x) => s + x.w, 0);
+  const dash = '<span class="pf-sum-dash">-</span>';
+  const num = v => '<span class="pf-sum-num">' + F(v) + '</span>';
+  const txt = t => '<span class="pf-sum-num">' + E(t) + '</span>';
+  const unitOf = col => col.unit ? ' <span class="pf-sum-unit">' + E(col.unit) + '</span>' : '';
+  const entry = e => '<div class="pf-sum-entry">' + num(e.amount) + (e.unit ? ' <span class="pf-sum-unit">' + E(e.unit) + '</span>' : '') +
+    (e.note ? '<span class="pf-sum-note">' + E(e.note) + '</span>' : '') + '</div>';
+  const cell = (r, col) => {
+    switch (col.key) {
+      case 'no':      return String(r.no);
+      case 'company': return r.company ? E(r.company) : dash;
+      case 'number':  return r.number ? E(r.number) : dash;
+      case 'plan':    return '<span class="pf-sum-plan">' + (E(r.name) || '-') + '</span>' + (r.type ? '<br><span class="pf-sum-pill">' + E(r.type) + '</span>' : '');
+      case 'start':   return r.start ? txt(r.start) : dash;
+      case 'end':     return (r.end ? txt(r.end) : dash) + (r.expiring ? '<span class="pf-sum-flag warn">อีก ' + r.daysLeft + ' วัน</span>' : '');
+      case 'due':     return /^\d/.test(r.due) ? txt(r.due) : (r.expired ? '<span class="pf-sum-flag danger">' + E(r.due) + '</span>' : (r.due === '-' ? dash : E(r.due)));
+      case 'premMonth': return r.premYear > 0 ? num(Math.round(r.premMonth)) : dash;
+      case 'premYear':  return r.premYear > 0 ? num(r.premYear) : dash;
+      default:        return r.cov[col.key].length ? r.cov[col.key].map(entry).join('') : dash;
+    }
+  };
+  const head = '<tr class="pf-sum-head">' + cols.map(col => '<th scope="col">' + E(col.title) + '</th>').join('') + '</tr>';
+  const body = m.rows.map(r => '<tr class="pf-sum-row' + (r.expired ? ' inactive' : '') + '">' + cols.map(col => '<td>' + cell(r, col) + '</td>').join('') + '</tr>').join('');
+  const firstCov = cols.findIndex(col => col.cov);
+  const totalCells = cols.slice(firstCov).map(col => {
+    if (col.cov) return '<td>' + (!col.noTotal && m.total.cov[col.key] > 0 ? num(m.total.cov[col.key]) + unitOf(col) : '') + '</td>';
+    if (col.key === 'premMonth') return '<td>' + (m.total.premYear > 0 ? num(Math.round(m.total.premMonth)) : '') + '</td>';
+    if (col.key === 'premYear') return '<td>' + (m.total.premYear > 0 ? num(m.total.premYear) : '') + '</td>';
+    return '<td></td>';
+  }).join('');
+  /* แถบครอบครัว/ลูกค้า + หัวคอลัมน์อยู่ใน <thead> → พิมพ์ซ้ำเองเมื่อตารางยาวข้ามหน้า */
+  return '<div class="pf-sum-wrap"><table class="pf-sum-table" style="--sum-em:' + (wSum / 11).toFixed(1) + ';">' +
+      '<colgroup>' + cols.map(col => '<col style="width:' + (col.w / wSum * 100).toFixed(2) + '%">').join('') + '</colgroup>' +
+      '<thead>' +
+        (m.familyName ? '<tr class="pf-sum-family"><td colspan="' + N + '">' + E(m.familyName) + '</td></tr>' : '') +
+        '<tr class="pf-sum-person"><td colspan="' + N + '">' + E(m.personName) + '</td></tr>' + head +
+      '</thead>' +
+      /* แถวรวมอยู่ท้าย <tbody> ไม่ใช้ <tfoot> — <tfoot> ถูกพิมพ์ซ้ำท้ายทุกหน้าเมื่อตารางยาวข้ามหน้า ("รวม 6 กรมธรรม์" จะไปโผล่ใต้หน้าที่ยังไม่ครบ) */
+      '<tbody>' + body +
+        '<tr class="pf-sum-total"><td colspan="' + firstCov + '" class="pf-sum-total-label">รวม ' + m.rows.length + ' กรมธรรม์</td>' + totalCells + '</tr>' +
+      '</tbody>' +
+    '</table></div>';
+}
+
+/* รายการกรมธรรม์ — ตารางกว้าง 16–18 คอลัมน์ ทั้งหัวข้อจึงพิมพ์บนหน้าแนวนอน (.pf-sec-wide → @page pfWide ใน _pfBuildPrintHTML)
+   เบราว์เซอร์ที่ไม่รองรับหน้าแนวนอนแทรก จะพิมพ์แนวตั้งตามเดิม ตารางยังครบแต่ตัวอักษรเล็กลง */
 function _pfRenderPolicies(c) {
   const policies = c.policies || [];
   if (policies.length === 0) {
     return `<div class="pf-doc-section"><h4>${_pfIcon('chartBar')} รายการกรมธรรม์ · Policy Portfolio</h4><div class="pf-empty">ยังไม่มีกรมธรรม์</div></div>`;
   }
-  const totalCov = policies.reduce((s,p) => s + Number(p.lifeCoverage || p.coverage || 0), 0);
-  const totalPrem = policies.reduce((s,p) => s + Number(p.annualPremium || p.premium || 0), 0);
-  const annualIncome = Number(c.income) || (Number((c.cashflow||{}).income||0) * 12);
+  const m = CALC.policySummary(policies, c, { families: ((getUser() || {}).data || {}).families });
+  /* การ์ดด้านบนใช้ยอดเดียวกับแถวรวมของตารางด้านล่าง และแสดงเป็นตัวเลขเต็ม (ไม่ย่อเป็น M) ให้เทียบกับตารางได้ตรงตัว
+     · ทุนประกันรวม = ผลรวมคอลัมน์ "ทุนประกัน" — เดิมเป็น "ความคุ้มครองรวม" ที่บวกทุนของทุกกรมธรรม์ทุกประเภท
+       (รวม PA / รถยนต์ / วงเงินสุขภาพ) จึงไม่ตรงกับคอลัมน์ใดของตาราง
+     · เบี้ยรวม/ปี = สัญญาหลัก + สัญญาเพิ่มเติม (สูตรกลาง CALC.policyPremiums) — เดิมรวมเฉพาะเบี้ยสัญญาหลัก
+       ตัวเลขในการ์ดจึงต่ำกว่าเบี้ยที่ลูกค้าจ่ายจริง */
+  const baht = n => '฿' + Math.round(Number(n) || 0).toLocaleString('th-TH');
+  const totalLife = m.total.cov.life || 0;
+  const totalPrem = m.total.premYear;
+  const annualIncome = CALC.incomeAnnual(c);
   const premiumPct = annualIncome > 0 ? (totalPrem / annualIncome) * 100 : 0;
 
-  /* Mix by type */
-  const byType = {};
-  policies.forEach(p => {
-    const t = p.type || 'อื่นๆ';
-    byType[t] = (byType[t] || 0) + Number(p.annualPremium || p.premium || 0);
-  });
-
-  const rows = policies.map(p => {
-    const cov = Number(p.lifeCoverage || p.coverage || 0);
-    return `<tr>
-      <td>${_pfEsc(p.name||'—')}</td>
-      <td>${_pfEsc(p.type||'—')}</td>
-      <td>${_pfEsc(p.company||'—')}</td>
-      <td class="num">${fmt(cov)}</td>
-      <td class="num">${fmt(p.annualPremium || p.premium || 0)}</td>
-    </tr>`;
-  }).join('');
   return `
-    <div class="pf-doc-section">
+    <div class="pf-doc-section pf-sec-wide">
       <h4>${_pfIcon('chartBar')} รายการกรมธรรม์ · Policy Portfolio (${policies.length} ฉบับ)</h4>
 
       <div class="pf-kpi-grid">
         ${_pfKpi('จำนวนกรมธรรม์', policies.length + ' ฉบับ')}
-        ${_pfKpi('ความคุ้มครองรวม', fmt(totalCov))}
-        ${_pfKpi('เบี้ยรวม/ปี', fmt(totalPrem))}
+        ${_pfKpi('ทุนประกันรวม', baht(totalLife))}
+        ${_pfKpi('เบี้ยรวม/ปี', baht(totalPrem))}
         ${_pfKpi('เบี้ย/รายได้', premiumPct.toFixed(1) + '%', { status: premiumPct<10?'good':premiumPct<15?'med':'bad', sub: 'แนะนำ < 10%' })}
       </div>
 
-      <table class="pf-doc-table">
-        <thead><tr><th>กรมธรรม์</th><th>ประเภท</th><th>บริษัท</th><th class="num">ทุนคุ้มครอง</th><th class="num">เบี้ย/ปี</th></tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot>
-          <tr style="background:#F4F6FA;font-weight:800;">
-            <td colspan="3">รวม</td>
-            <td class="num">${fmt(totalCov)}</td>
-            <td class="num">${fmt(totalPrem)}</td>
-          </tr>
-        </tfoot>
-      </table>
-
+      <!-- ข้อสังเกตอยู่ก่อนตาราง: ตารางเป็นส่วนเดียวที่ยาวตามจำนวนกรมธรรม์ ถ้าล้นหน้า ให้ส่วนที่ล้นเป็นแถวของตาราง ไม่ใช่กล่องข้อสังเกตค้างอยู่หน้าเดียวลำพัง -->
       <div class="pf-insight">
         ${premiumPct >= 15
           ? '<b>เบี้ยประกันรวมเกิน 15% ของรายได้</b> — สูงเกินสมดุล ควรพิจารณาทยอยปรับ rider หรือลด sum insured ส่วนเกิน'
@@ -3549,6 +3630,10 @@ function _pfRenderPolicies(c) {
           ? 'เบี้ยประกันใกล้เกินงบ — ทบทวนความจำเป็นแต่ละกรมธรรม์'
           : 'สัดส่วนเบี้ยประกันต่อรายได้ <b>อยู่ในเกณฑ์เหมาะสม</b>'}
       </div>
+
+      ${_pfPolicyTableHTML(m)}
+      <div class="pf-sum-foot">${m.singleCompany ? 'กรมธรรม์ทุกฉบับเป็นของ ' + _pfEsc(m.singleCompany) + ' · ' : ''}ข้อมูล ณ วันที่ ${CALC.sumLongDate(m.today)} · หน่วยเป็นบาท · วันที่เป็น วัน/เดือน/ปี พ.ศ. · “ครบกำหนดชำระเบี้ยฯ” คือวันครบรอบกรมธรรม์ครั้งถัดไป โดยถือว่าชำระเบี้ยรายปี · เบี้ยฯ (รายปี) รวมสัญญาเพิ่มเติมแล้ว</div>
+      <div class="pf-wide-note">ในไฟล์ PDF หัวข้อนี้อยู่บนหน้าแนวนอน ตัวอักษรในตารางจะใหญ่กว่าที่เห็นในตัวอย่างนี้</div>
     </div>
   `;
 }
@@ -3608,20 +3693,10 @@ function _pfRenderGoals(c) {
    - Images & SVGs render exactly as in browser
    - User sees standard print dialog → clicks "Save as PDF"
 ═══════════════════════════════════════════════ */
-async function downloadPlanPDF() {
-  const src = document.getElementById('pf-document');
-  if (!src) { alert('ไม่พบเอกสาร'); return; }
-  const btn = document.querySelector('#pf-footer .pf-btn-success');
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังเตรียม...'; }
-
-  try {
-    /* Wait for fonts before opening print window */
-    if (document.fonts && document.fonts.ready) await document.fonts.ready;
-
-    const client = getCurrent();
-    const clientName = _pfEsc(((client.firstName||'') + ' ' + (client.lastName||'')).trim() || 'ลูกค้า');
-    const docHTML = src.outerHTML;
-
+/* หน้าพิมพ์แบบ standalone: เนื้อเอกสาร + สไตล์ของหน้านี้ + กติกา @page — แยกเป็นฟังก์ชันให้ทดสอบ/พิมพ์จริงได้โดยไม่ต้องเปิดหน้าต่าง
+   docHTML = outerHTML ของ #pf-document · clientNameEsc = ชื่อลูกค้าที่ผ่าน _pfEsc แล้ว */
+function _pfBuildPrintHTML(docHTML, clientNameEsc) {
+    const clientName = clientNameEsc;
     /* Gather all stylesheets from current page so the print window matches */
     const styleLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
       .map(l => `<link rel="stylesheet" href="${l.href}">`).join('\n');
@@ -3631,7 +3706,7 @@ async function downloadPlanPDF() {
       .map(s => `<style>${s.textContent}</style>`).join('\n');
 
     /* Build a clean standalone print page */
-    const printHTML = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -3647,20 +3722,33 @@ ${inlineStyles}
     font-family: 'Sarabun', sans-serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    /* style.css ตั้ง max-width:100vw + overflow-x:hidden ไว้กันหน้าจอเลื่อนข้าง — ตอนพิมพ์ 100vw คือความกว้างของหน้าแรก (แนวตั้ง)
+       ถ้าไม่ปลดออก เนื้อหาบนหน้าแนวนอนจะกว้างได้แค่เท่าหน้าแนวตั้ง (ตารางไม่ขยาย เหลือที่ว่างด้านขวา) */
+    max-width: none !important;
+    overflow: visible !important;
   }
-  /* Make .pf-document fill the page nicely */
+  /* Make .pf-document fill the page nicely
+     overflow: visible — เอกสารเป็นกล่องเดียวที่ยาวข้ามทุกหน้า ถ้ายัง overflow:hidden หน้าแนวนอน (กว้างกว่า) จะถูกตัดที่ความกว้างของหน้าแนวตั้ง */
   .pf-document {
     box-shadow: none !important;
     border-radius: 0 !important;
     margin: 0 auto !important;
     max-width: 100% !important;
+    overflow: visible !important;
   }
   /* @page rules — A4 with reasonable margins */
   @page {
     size: A4 portrait;
     margin: 0;  /* document has its own padding */
   }
+  /* หัวข้อที่มีตารางกว้าง (รายการกรมธรรม์) พิมพ์บนหน้าแนวนอน — เบราว์เซอร์ขึ้นหน้าใหม่ให้เองทั้งก่อนและหลังหัวข้อ
+     ขอบบน/ล่าง 8mm เพราะหัวข้อเริ่มที่ขอบหน้าพอดี (หน้าแนวตั้งใช้ขอบ 0 ตามเดิม) · ขอบข้างมาจาก padding ของ .pf-doc-body */
+  @page pfWide {
+    size: A4 landscape;
+    margin: 8mm 0;
+  }
   @media print {
+    .pf-sec-wide { page: pfWide; }
     /* Each cover/agent page on its own */
     .pf-cover { page-break-after: always; break-after: page; }
     .pf-agent-page { page-break-before: always; break-before: page; }
@@ -3699,6 +3787,21 @@ ${docHTML}
 <\/script>
 </body>
 </html>`;
+}
+
+async function downloadPlanPDF() {
+  const src = document.getElementById('pf-document');
+  if (!src) { alert('ไม่พบเอกสาร'); return; }
+  const btn = document.querySelector('#pf-footer .pf-btn-success');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ กำลังเตรียม...'; }
+
+  try {
+    /* Wait for fonts before opening print window */
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+
+    const client = getCurrent();
+    const clientName = _pfEsc(((client.firstName||'') + ' ' + (client.lastName||'')).trim() || 'ลูกค้า');
+    const printHTML = _pfBuildPrintHTML(src.outerHTML, clientName);
 
     /* Open in new window — pop-up needs to be allowed by user.
        Some browsers/iOS PWAs block popups → fallback to data URL nav. */

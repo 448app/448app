@@ -369,6 +369,46 @@ async function runAll() {
       check('สรุปแผน / PDF', 'ปิรามิด L5 ติ๊กพินัยกรรม + ผู้รับประโยชน์ → ผ่าน', PS.computePyramid(withEstate, s, has).find(l => l.layer === 5).ok, true);
       check('สรุปแผน / PDF', 'อายุลูกค้า (ปีเต็ม)', Math.floor(PS._psAgeNow(PSclient.dob)), 40);
       check('สรุปแผน / PDF', 'FV สินทรัพย์ออมรายเดือน = หน้าสินทรัพย์ (CALC.assetFV)', PS.CALC.assetFV({ currentValue: 100000, expectedReturn: 6, contribution: 5000, contribFreq: 'monthly' }, 10), 1005433);
+
+      /* หัวข้อรายการกรมธรรม์ — ตารางสรุปความคุ้มครองชุดเดียวกับหน้าสรุปกรมธรรม์ (CALC.policySummary) พิมพ์บนหน้าแนวนอน */
+      const TP = 'สรุปแผน / PDF';
+      const pm = PS.CALC.policySummary(PSclient.policies, PSclient);
+      const pdoc = PS.document.createElement('div');
+      pdoc.innerHTML = PS._pfRenderPolicies(PSclient);
+      const pq = sel => pdoc.querySelectorAll(sel).length;
+      const ptx = sel => ((pdoc.querySelector(sel) || {}).textContent || '').replace(/\s+/g, ' ').trim();
+      check(TP, 'รายการกรมธรรม์: ใช้ตารางสรุปความคุ้มครอง (หัวคอลัมน์ 16 · แถว 4 · ไม่มีคอลัมน์ปุ่มลบ)', pq('.pf-sum-head th') + ' / ' + pq('.pf-sum-row') + ' / ' + pm.cols.some(x => x.key === 'act'), '16 / 4 / false');
+      check(TP, 'รายการกรมธรรม์: ทั้งหัวข้อติดป้ายหน้าแนวนอน (pf-sec-wide)', pq('.pf-doc-section.pf-sec-wide'), 1);
+      check(TP, 'รายการกรมธรรม์: แถวรวมอยู่ท้าย tbody ครั้งเดียว (ไม่ใช้ tfoot ซึ่งพิมพ์ซ้ำทุกหน้า)', pq('tbody tr.pf-sum-total') + ' / ' + pq('tfoot') + ' / ' + (pdoc.querySelector('tbody tr:last-child').className), '1 / 0 / pf-sum-total');
+      check(TP, 'รายการกรมธรรม์: แถวรวมตรงกับหน้าสรุปกรมธรรม์ (ทุนประกัน 5,000,000 · ค่ารักษา 500,000 · เบี้ย 221,000)', ['5,000,000', '500,000', '221,000'].every(v => ptx('.pf-sum-total').includes(v)), true);
+      check(TP, 'รายการกรมธรรม์: การ์ด “เบี้ยรวม/ปี” = แถวรวมของตาราง (รวมเบี้ยสัญญาเพิ่มเติม 26,000 · เดิมขึ้น 195,000)',
+        Array.from(pdoc.querySelectorAll('.pf-kpi')).map(k => k.textContent.replace(/\s+/g, ' ').trim()).find(t => /เบี้ยรวม/.test(t)), 'เบี้ยรวม/ปี ฿221,000');
+      const kpiOf = (root, re) => Array.from(root.querySelectorAll('.pf-kpi')).map(k => k.textContent.replace(/\s+/g, ' ').trim()).find(t => re.test(t));
+      check(TP, 'รายการกรมธรรม์: การ์ด “ทุนประกันรวม” = ผลรวมคอลัมน์ทุนประกันของตาราง (เดิม “ความคุ้มครองรวม” บวกทุนทุกประเภทได้ 6,000,000)',
+        kpiOf(pdoc, /ทุนประกันรวม/) + ' | ' + /ความคุ้มครองรวม/.test(pdoc.textContent), 'ทุนประกันรวม ฿5,000,000 | false');
+      const pbig = PS.document.createElement('div');
+      pbig.innerHTML = PS._pfRenderPolicies(Object.assign({}, PSclient, { policies: [{ name: 'x', company: 'AIA', type: 'ตลอดชีพ', lifeCoverage: 30715500, premium: 2465513, start: '2020-01-01', end: '2099-01-01' }] }));
+      const bigTotal = pbig.querySelector('.pf-sum-total').textContent;
+      check(TP, 'รายการกรมธรรม์: ยอดหลักล้านในการ์ดเป็นตัวเลขเต็มเหมือนในตาราง (ไม่ย่อเป็น ฿30.72M / ฿2.47M)',
+        kpiOf(pbig, /ทุนประกันรวม/) + ' | ' + kpiOf(pbig, /เบี้ยรวม/) + ' | ' + (bigTotal.includes('30,715,500') && bigTotal.includes('2,465,513')), 'ทุนประกันรวม ฿30,715,500 | เบี้ยรวม/ปี ฿2,465,513 | true');
+      check(TP, 'รายการกรมธรรม์: บริษัทเดียว (ซ่อนคอลัมน์บริษัท) → บอกชื่อบริษัทที่หมายเหตุใต้ตาราง', /กรมธรรม์ทุกฉบับเป็นของ AIA/.test(ptx('.pf-sum-foot')), true);
+      const pdx = PS.document.createElement('div');
+      pdx.innerHTML = PS._pfRenderPolicies(Object.assign({}, PSclient, { policies: [{ name: '<b id="t-pdfx">x</b>', company: 'A&B', number: 'N<1>', type: 'ตลอดชีพ', lifeCoverage: 100000, premium: 1000 }] }));
+      check(TP, 'รายการกรมธรรม์: ชื่อ/บริษัทที่มี < > & แสดงเป็นตัวอักษร ไม่ถูกตีความเป็นโค้ด',
+        pdx.querySelector('#t-pdfx') === null && /<b id="t-pdfx">x<\/b>/.test(pdx.querySelector('.pf-sum-plan').textContent) && /ของ A&B/.test(pdx.querySelector('.pf-sum-foot').textContent), true);
+      const ph = PS._pfBuildPrintHTML('<div id="pf-document"></div>', 'x');
+      check(TP, 'หน้าพิมพ์: มีกติกาหน้าแนวนอนของหัวข้อตารางกว้าง และปลดเพดานความกว้างของ body/เอกสาร (ไม่งั้นตารางไม่ขยายเต็มหน้าแนวนอน)',
+        [/@page pfWide\s*\{\s*size: A4 landscape/.test(ph), ph.includes('.pf-sec-wide { page: pfWide; }'), /max-width: none !important/.test(ph), (ph.match(/overflow: visible !important/g) || []).length >= 2].join(' '), 'true true true true');
+      /* ปุ่ม “บันทึกเป็น PDF” ทั้งเส้นทาง: เปิดตัวอย่าง → กดปุ่ม → เขียนหน้าพิมพ์ลงหน้าต่างใหม่ (จำลองหน้าต่าง ไม่สั่งพิมพ์จริง) */
+      let written = '';
+      const realOpen = PS.open;
+      try {
+        PS.eval('openPlanFileModal(); _pfStep = 2; renderPlanFileStep();');
+        PS.open = () => ({ document: { open() {}, write(h2) { written += h2; }, close() {} } });
+        await PS.downloadPlanPDF();
+      } finally { PS.open = realOpen; PS.closePlanFileModal(); }
+      check(TP, 'ปุ่มบันทึกเป็น PDF: หน้าพิมพ์มีตารางสรุปความคุ้มครองในหัวข้อหน้าแนวนอน พร้อมกติกา @page',
+        /class="pf-doc-section pf-sec-wide"/.test(written) && /<table class="pf-sum-table"/.test(written) && written.includes('@page pfWide') && written.includes('window.print()'), true);
     });
 
     await group('สรุปกรมธรรม์', async () => {
@@ -400,6 +440,9 @@ async function runAll() {
       const co = list => { const mm = W.buildPolicySummary(list.map(x => ({ company: x, premium: 1000 })), c, DAY); return hasCol(mm, 'company') + ' ' + (mm.singleCompany || '-'); };
       check(T, 'คอลัมน์บริษัท: บริษัทเดียว → ซ่อน (บอกชื่อที่บรรทัดสรุป) · ต่างบริษัท / กรอกไม่ครบ → แสดง · ไม่ได้กรอกเลย → ซ่อน',
         [co(['AIA', 'aia ']), co(['AIA', 'เมืองไทย']), co(['AIA', '']), co(['', ''])].join(' | '), 'false AIA | true - | true - | false -');
+      const cm = W.CALC.policySummary(c.policies, c, { today: DAY, families: [] });
+      check(T, 'ข้อมูลตารางมาจากสูตรกลาง CALC.policySummary (ไฟล์ PDF ใช้ชุดเดียวกัน) — หน้านี้เพิ่มเฉพาะคอลัมน์ปุ่มลบ',
+        JSON.stringify(cm.rows) === JSON.stringify(m.rows) && JSON.stringify(cm.total) === JSON.stringify(m.total) && m.cols.length === cm.cols.length + 1 && m.cols[m.cols.length - 1].key === 'act', true);
       check(T, 'หัวตาราง: ชื่อลูกค้าเติม “คุณ” · ไม่มีครอบครัว → ไม่มีแถบครอบครัว', m.personName + ' | ' + m.familyName, 'คุณทดสอบ อัตโนมัติ | ');
       check(T, 'วันที่แบบ วัน/เดือน/ปี พ.ศ. 2 หลัก (1 พ.ย. 2549 → 1/11/49 · 1 พ.ย. 2628 → 1/11/28)', m.rows[0].start + ' | ' + m.rows[0].end, '1/11/49 | 1/11/28');
       check(T, 'ตลอดชีพ 20/99 เริ่มปี 2549 ชำระ 20 ปี → “ชำระครบแล้ว”', m.rows[0].due, 'ชำระครบแล้ว');

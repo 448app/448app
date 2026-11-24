@@ -12,6 +12,7 @@
      3. การศึกษา    EDU_* · eduCostTable · eduStageCost · eduUniLevel · childEducation · childRearing · childTotalCost
      4. ภาษี        TAX_* · taxIncome · taxWages · taxYearOf · taxCapCtx · taxExpenseDetail · taxExpense · taxBracket · taxValue · taxScope · policyPremiums
      5. สุขภาพ/ทุน  HEALTH_ROWS · healthRecommend · healthFromPolicies · healthCalc · coverTarget · setCoverTarget · recommendCoverage · legacyCover
+     6. ตารางสรุปความคุ้มครอง  SUM_COLS · summaryCoverage · summaryDue · policySummary
 */
 (function () {
   if (window.CALC) return;
@@ -801,6 +802,175 @@
     return { cover: sum(pols, p => p.lifeCoverage || p.coverage), count: pols.length, legacyTypeCount: pols.filter(p => p.type === 'ส่งมอบ').length };
   }
 
+  /* ═══════════════════════════════════════════════
+     6. ตารางสรุปความคุ้มครอง — รูปแบบตารางของสำนักงาน  (หน้าสรุปกรมธรรม์ และไฟล์สรุปแผน/PDF ใช้ชุดเดียวกัน)
+  ═══════════════════════════════════════════════ */
+  /* คอลัมน์ตามตารางของสำนักงาน (แอปสรุปกรมธรรม์) · cov = คอลัมน์ความคุ้มครอง (มียอดรวม)
+     w = ความกว้างที่พอดีเนื้อหาเมื่อตัวอักษร 11px (ผลรวม ÷ 11 = ความกว้างตารางเป็น em — หน้าใช้ย่อ/ขยายตัวอักษรให้ตารางพอดีกล่อง)
+     card = ชื่อเต็มบนการ์ดจอแคบ · hint = คำอธิบายเมื่อชี้ที่หัวคอลัมน์
+     ไม่มี "เจ็บป่วยระยะสุดท้าย" และ "ตัวแทนที่ดูแล" เพราะแอปนี้ไม่มีช่องกรอกสองเรื่องนี้
+     "บริษัท" แสดงเฉพาะเมื่อมีมากกว่า 1 บริษัท · "อื่น ๆ" แสดงเฉพาะเมื่อมีรายการ และไม่รวมยอด (เป็นคนละประเภทกัน) — ดู policySummary */
+  const SUM_COLS = [
+    { key: 'no',        title: 'ลำดับ',                w: 26 },
+    { key: 'company',   title: 'บริษัท',               w: 46 },
+    { key: 'number',    title: 'เลข\nกรมธรรม์',        w: 70 },
+    { key: 'plan',      title: 'แบบประกัน',            w: 92 },
+    { key: 'start',     title: 'วันที่เริ่ม\nกธ.',       w: 55 },
+    { key: 'end',       title: 'วันครบ\nสัญญา',        w: 55 },
+    { key: 'due',       title: 'ครบกำหนด\nชำระเบี้ยฯ',  w: 56, hint: 'วันครบรอบกรมธรรม์ครั้งถัดไป (ถือว่าชำระเบี้ยรายปี) จนครบระยะเวลาชำระเบี้ย' },
+    { key: 'life',  cov: true, title: 'ทุนประกัน',      w: 65 },
+    { key: 'tpd',   cov: true, title: 'ทุพพลภาพ',       w: 58 },
+    { key: 'death', cov: true, title: 'มรณ/\nมะเร็ง',   w: 52, hint: 'เงินชดเชยกรณีเสียชีวิตของสัญญาเพิ่มเติมโรคร้ายแรง' },
+    { key: 'room',  cov: true, title: 'ค่าห้อง',        w: 44, unit: '/วัน' },
+    { key: 'ai',    cov: true, title: 'AI',             w: 58, hint: 'อุบัติเหตุ (เสียชีวิตจากอุบัติเหตุ)', card: 'อุบัติเหตุ (AI)' },
+    { key: 'ci',    cov: true, title: 'CI/ECIR',        w: 58, hint: 'โรคร้ายแรง (ระยะรุนแรง)', card: 'โรคร้ายแรง (CI)' },
+    { key: 'hb',    cov: true, title: 'HB',             w: 44, unit: '/วัน', hint: 'ชดเชยรายวันเมื่อนอนโรงพยาบาล', card: 'ชดเชยรายวัน (HB)' },
+    { key: 'med',   cov: true, title: 'ค่ารักษา\nเหมาจ่าย', w: 60 },
+    { key: 'other', cov: true, title: 'อื่น ๆ',         w: 68, optional: true, noTotal: true },
+    { key: 'premMonth', title: 'เบี้ยฯ\nเฉลี่ย\nต่อเดือน', w: 52, hint: 'เบี้ยต่อปี ÷ 12' },
+    { key: 'premYear',  title: 'เบี้ยฯ\n(รายปี)',       w: 60, hint: 'เบี้ยสัญญาหลัก + สัญญาเพิ่มเติม ต่อปี' },
+  ];
+  const SUM_TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+  const SUM_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})/;
+  /* '2018-09-11' → '11/9/61' (วัน/เดือน/ปี พ.ศ. 2 หลัก แบบตารางของสำนักงาน) */
+  function sumShortDate(iso) {
+    const m = SUM_DATE_RE.exec(iso || '');
+    return m ? Number(m[3]) + '/' + Number(m[2]) + '/' + String(Number(m[1]) + 543).slice(-2) : '';
+  }
+  function sumLongDate(iso) {
+    const m = SUM_DATE_RE.exec(iso || '');
+    return m ? Number(m[3]) + ' ' + SUM_TH_MONTHS[Number(m[2]) - 1] + ' ' + (Number(m[1]) + 543) : '';
+  }
+  function sumIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function sumParse(iso) { const m = SUM_DATE_RE.exec(iso || ''); return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null; }
+  function sumAddYears(iso, n) {
+    const m = SUM_DATE_RE.exec(iso || '');
+    if (!m) return '';
+    const y = Number(m[1]) + n, last = new Date(y, Number(m[2]), 0).getDate();
+    return y + '-' + m[2] + '-' + String(Math.min(Number(m[3]), last)).padStart(2, '0');
+  }
+  function sumFmt(n) { return Number(n).toLocaleString('th-TH', { maximumFractionDigits: 2 }); }
+
+  /* แบบประกันที่ช่อง "เงินเอาประกัน" ลงคอลัมน์ "ทุนประกัน" (ตารางของสำนักงานลงทุนประกันของทุกแบบไว้คอลัมน์นี้ รวมบำนาญ/ส่งมอบ)
+     ต่างจากกราฟใยแมงมุมที่นับ "ทุนชีวิต" เฉพาะแบบคุ้มครองชีวิต — ที่นี่เป็นรายการตามกรมธรรม์ ไม่ใช่การวิเคราะห์ความพอเพียง */
+  const SUM_LIFE_TYPES = ['', 'ชีวิต', 'ทุนชีวิต', 'ตลอดชีพ', 'สะสมทรัพย์', 'Unit Linked', 'บำนาญ', 'เกษียณ', 'ลดหย่อนภาษี', 'ลงทุน', 'การศึกษา', 'ส่งมอบ'];
+
+  /* ความคุ้มครองของกรมธรรม์ 1 ฉบับ แยกตามคอลัมน์ → { life:[{amount,unit,note}], tpd:[], … }
+     สัญญาหลัก: สุขภาพ → ค่ารักษา · โรคร้ายแรง → CI · PA/อุบัติเหตุ → AI (ทุนหลักตามกติกาเดียวกับ primaryCovOf ของหน้าสรุปกรมธรรม์)
+     · แบบประกันชีวิตทุกแบบ → ทุนประกัน · ที่เหลือ (รถยนต์ ฯลฯ) → อื่น ๆ
+     สัญญาเพิ่มเติมลงคอลัมน์ตามชนิด · กรมธรรม์รุ่นเก่า (ช่องเดี่ยว) ใช้เมื่อไม่มีสัญญาเพิ่มเติมชนิดนั้น */
+  function summaryCoverage(p) {
+    p = p || {};
+    const cov = { life: [], tpd: [], death: [], room: [], ai: [], ci: [], hb: [], med: [], other: [] };
+    const add = (k, amount, note, unit) => {
+      amount = Number(amount) || 0;
+      if (amount > 0) cov[k].push({ amount: amount, note: String(note || '').trim(), unit: unit || '' });
+    };
+    const riders = Array.isArray(p.riders) ? p.riders : [];
+    const of = t => riders.filter(r => r.type === t);
+    const has = t => riders.some(r => r.type === t);
+    const isHealth = p.type === 'สุขภาพ', isCI = p.type === 'โรคร้ายแรง', isAccident = p.type === 'อุบัติเหตุ' || p.type === 'PA';
+    const primary = isHealth ? (p.coverage || p.lifeCoverage || 0)
+      : isCI ? (p.riderCriticalCov || p.lifeCoverage || 0)
+      : p.type === 'อุบัติเหตุ' ? (p.riderAccidentCov || p.lifeCoverage || 0)
+      : (p.lifeCoverage || 0);
+
+    if (isHealth) {
+      add('med', primary);
+      if (Number(p.coverage) > 0) add('life', p.lifeCoverage, 'ทุนชีวิต');   /* มีทั้งวงเงินสุขภาพและทุนชีวิต → แสดงแยก (ไม่ซ้ำสองคอลัมน์) */
+    }
+    else if (isCI) add('ci', primary);
+    else if (isAccident) add('ai', primary);
+    else if (SUM_LIFE_TYPES.indexOf(p.type || '') >= 0) add('life', primary);   /* ช่อง "เงินเอาประกัน" ของแบบประกันชีวิตทุกแบบ */
+    else add('other', primary, p.type);                                        /* รถยนต์ · อื่นๆ · ประเภทที่ไม่รู้จัก */
+    if (p.type === 'PA' && p.pa) add('other', p.pa.medicalCoverage, 'ค่ารักษาอุบัติเหตุ');
+
+    add('tpd', p.disabilityAmount);
+    /* ชื่อสัญญาเพิ่มเติมแสดงในคอลัมน์หลักของมัน (ค่ารักษา · CI) — คอลัมน์รอง (ค่าห้อง · มรณ/มะเร็ง) แสดงเฉพาะตัวเลข ไม่ซ้ำชื่อ */
+    of('disability').forEach(r => add('tpd', r.disabilityAmt, r.name));
+    of('critical').forEach(r => add('death', r.ciDeath));
+    of('medical').forEach(r => add('room', r.roomMeal, '', '/วัน'));
+    of('income').forEach(r => add('hb', r.dailyComp, r.name, '/วัน'));
+    if (p.type !== 'อุบัติเหตุ') of('accident').forEach(r => add('ai', r.deathByAccident, r.name));
+    if (!isCI) of('critical').forEach(r =>
+      add('ci', r.ciSevere, [r.name, Number(r.ciEarly) > 0 ? 'ระยะต้น ' + sumFmt(r.ciEarly) : ''].filter(Boolean).join(' · ')));
+    if (!isHealth) of('medical').forEach(r => {
+      const lump = r.treatmentType === 'เหมาจ่าย' && Number(r.perYear) > 0;
+      add('med', lump ? r.perYear : r.perVisit, r.name, lump ? '/ปี' : '/ครั้ง');
+    });
+    /* กรมธรรม์รุ่นเก่า (ช่องเดี่ยว) */
+    if (!has('medical') && !isHealth) add('med', p.riderHealthCov, p.riderHealthName, '/ครั้ง');
+    if (!has('critical') && !isCI) add('ci', p.riderCriticalCov, p.riderCriticalName);
+    if (!has('accident') && p.type !== 'อุบัติเหตุ') add('ai', p.riderAccidentCov, p.riderAccidentName);
+    if (!has('income')) add('hb', p.riderIncomeDaily, p.riderIncomeName, '/วัน');
+    if (!has('disability')) add('tpd', p.riderDisabilityMonthly, p.riderDisabilityName, '/เดือน');
+    return cov;
+  }
+
+  /* ช่อง "ครบกำหนดชำระเบี้ยฯ": วันครบรอบกรมธรรม์ครั้งถัดไป (แอปนี้ไม่มีงวดชำระ จึงถือว่าชำระรายปี)
+     หยุดเมื่อครบระยะเวลาชำระเบี้ยของสัญญาหลัก — ไม่ได้กรอกระยะชำระ ใช้วันครบสัญญาแทน */
+  function summaryDue(p, todayIso) {
+    if (!p || !p.start) return '-';
+    const pay = Number(p.payYearsMain) || 0;
+    const stopAt = pay ? sumAddYears(p.start, pay) : (p.end || '');
+    for (let k = 1; k <= 120; k++) {
+      const d = sumAddYears(p.start, k);
+      if (stopAt && d >= stopAt) return pay ? 'ชำระครบแล้ว' : '-';
+      if (d >= todayIso) return sumShortDate(d);
+    }
+    return '-';
+  }
+
+  /* ข้อมูลของตารางสรุป (ไม่แตะหน้าจอ) — opts.today = 'YYYY-MM-DD' (ไม่ส่ง = วันนี้) · opts.families = รายการครอบครัวของตัวแทน (หาชื่อแถบครอบครัว)
+     คืน { cols, rows, familyName, personName, singleCompany, today, total{cov,premYear,premMonth}, statsLine }
+     เบี้ยต่อปีของแต่ละแถว = สัญญาหลัก + สัญญาเพิ่มเติม (policyPremiums สูตรเดียวกับหน้าภาษี) */
+  function policySummary(policies, client, opts) {
+    opts = opts || {};
+    const todayIso = opts.today || sumIso(new Date());
+    const today = sumParse(todayIso);
+    const soon = new Date(today); soon.setDate(soon.getDate() + 90);
+    const soonIso = sumIso(soon);
+    const rows = (policies || []).map((p, i) => {
+      const total = policyPremiums([p]).total;
+      const main = Number(p.premium) || 0;
+      const expired = !!p.end && p.end < todayIso;
+      const expiring = !!p.end && !expired && p.end <= soonIso;
+      return {
+        i: i, no: i + 1, company: String(p.company || ''), number: String(p.number || ''), name: String(p.name || ''), type: String(p.type || ''),
+        start: sumShortDate(p.start), end: sumShortDate(p.end), expired: expired, expiring: expiring,
+        daysLeft: expiring ? Math.round((sumParse(p.end) - today) / 86400000) : null,
+        due: expired ? 'ครบสัญญาแล้ว' : summaryDue(p, todayIso),
+        cov: summaryCoverage(p),
+        premYear: total, premMain: main, premRiders: Math.max(total - main, 0), premMonth: total / 12,
+      };
+    });
+    const hasOther = rows.some(r => r.cov.other.length);
+    /* คอลัมน์ "บริษัท" แสดงเมื่อกรมธรรม์มาจากมากกว่า 1 บริษัท (หรือบางฉบับไม่ได้กรอก) — บริษัทเดียวกันทั้งหมดบอกไว้ที่บรรทัดสรุปแทน แบบตารางของสำนักงาน */
+    const coKeys = rows.map(r => r.company.trim().toLowerCase());
+    const showCompany = new Set(coKeys).size > 1;
+    const singleCompany = !showCompany && coKeys[0] ? rows[0].company.trim() : '';
+    const cols = SUM_COLS.filter(c => c.key === 'company' ? showCompany : (!c.optional || hasOther));
+    const totalCov = {};
+    cols.filter(c => c.cov && !c.noTotal).forEach(c => {
+      totalCov[c.key] = rows.reduce((s, r) => s + r.cov[c.key].reduce((a, e) => a + e.amount, 0), 0);
+    });
+    const premYear = rows.reduce((s, r) => s + r.premYear, 0);
+    let familyName = '';
+    if (client && client.familyId) {
+      const fam = (opts.families || []).find(f => f && f.id === client.familyId);
+      if (fam && fam.name) familyName = /^ครอบครัว/.test(fam.name) ? fam.name : 'ครอบครัว' + fam.name;
+    }
+    const full = client ? [client.firstName, client.lastName].filter(Boolean).join(' ') : '';
+    const personName = !full ? 'ลูกค้า'
+      : /^(คุณ|นาย|นางสาว|นาง|น\.ส\.|ด\.ช\.|ด\.ญ\.|เด็กชาย|เด็กหญิง|ดร\.|mr\.?|mrs\.?|ms\.?|miss)\s*/i.test(full) ? full : 'คุณ' + full;
+    return {
+      cols: cols, rows: rows, familyName: familyName, personName: personName, singleCompany: singleCompany, today: todayIso,
+      total: { cov: totalCov, premYear: premYear, premMonth: premYear / 12 },
+      statsLine: 'กรมธรรม์ ' + rows.length + ' ฉบับ' + (singleCompany ? ' · บริษัท ' + singleCompany : '') +
+        ' · เบี้ยรวมประมาณ ' + sumFmt(Math.round(premYear)) + ' บาท/ปี · ข้อมูล ณ วันที่ ' + sumLongDate(todayIso),
+    };
+  }
+
   window.CALC = {
     VERSION: '1',
     num, ageYears, ageInt, incomeAnnual, annualContrib, fv, assetFV,
@@ -813,5 +983,6 @@
     TAX_HEALTH_TYPES, TAX_EXCLUDED_TYPES, RIDER_TAX_CLASS, RIDER_TAX_LABEL, policyTermYears, policyPremiums,
     HEALTH_ROWS, HEALTH_TIER, hospitalTier, healthRecommend, healthFromPolicies, healthCalc,
     COVER_TARGETS, coverTarget, setCoverTarget, recommendCoverage, LIFE_TYPES, legacyCover,
+    SUM_COLS, SUM_LIFE_TYPES, sumShortDate, sumLongDate, sumFmt, summaryCoverage, summaryDue, policySummary,
   };
 })();
